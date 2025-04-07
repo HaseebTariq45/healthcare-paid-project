@@ -269,6 +269,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 fontSize: 12,
                 color: Colors.black54,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
             ),
           ],
         ),

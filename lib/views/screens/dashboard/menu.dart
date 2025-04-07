@@ -39,16 +39,23 @@ class _MenuScreenState extends State<MenuScreen> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Color(0xFF3366FF),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.fromRGBO(64, 124, 226, 1),
+                    Color.fromRGBO(84, 144, 246, 1),
+                  ],
+                ),
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(40),
-                  bottomRight: Radius.circular(40),
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0xFF3366FF).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: Offset(0, 6),
+                    color: Color.fromRGBO(64, 124, 226, 0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
                   ),
                 ],
               ),
@@ -142,11 +149,11 @@ class _MenuScreenState extends State<MenuScreen> {
                   Container(
                     padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Color(0xFF3366FF).withOpacity(0.12),
+                      color: Color.fromRGBO(64, 124, 226, 0.12),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0xFF3366FF).withOpacity(0.08),
+                          color: Color.fromRGBO(64, 124, 226, 0.08),
                           blurRadius: 4,
                           offset: Offset(0, 2),
                         ),
@@ -154,7 +161,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                     child: Icon(
                       LucideIcons.settings,
-                      color: Color(0xFF3366FF),
+                      color: Color.fromRGBO(64, 124, 226, 1),
                       size: 20,
                     ),
                   ),
