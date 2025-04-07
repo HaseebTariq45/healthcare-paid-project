@@ -348,18 +348,18 @@ class FinancesScreen extends StatelessWidget {
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.symmetric(vertical: 12, horizontal: 15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade100,
+            color: Colors.grey.shade300,
             blurRadius: 5,
             spreadRadius: 1,
             offset: Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: Colors.grey.shade100,
+          color: Colors.grey.shade300,
           width: 1,
         ),
       ),
