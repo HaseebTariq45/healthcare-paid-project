@@ -1,14 +1,28 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:healthcare/services/auth_service.dart';
 // Import your custom onboarding AppBar, if needed
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/components/signup.dart';
 import 'package:healthcare/views/screens/dashboard/home.dart';
+import 'package:healthcare/views/screens/patient/dashboard/home.dart' as PatientHome;
 
 class OTPScreen extends StatefulWidget {
   final String text;
-  const OTPScreen({super.key, required this.text});
+  final String phoneNumber;
+  final bool isSignUp;
+  final String? userName;
+  final String? userType;
+  
+  const OTPScreen({
+    Key? key, 
+    required this.text, 
+    required this.phoneNumber,
+    this.isSignUp = false,
+    this.userName,
+    this.userType,
+  }) : super(key: key);
 
   @override
   State<OTPScreen> createState() => _OTPScreenState();
@@ -16,9 +30,14 @@ class OTPScreen extends StatefulWidget {
 
 class _OTPScreenState extends State<OTPScreen> {
   late String text;
+  late String phoneNumber;
+  late bool isSignUp;
+  final AuthService _authService = AuthService();
 
   Timer? _timer;
   int _start = 60;
+  bool _isVerifying = false;
+  String? _errorMessage;
 
   // Create a controller for each of the 6 OTP digits
   final List<TextEditingController> _controllers = List.generate(
@@ -30,6 +49,8 @@ class _OTPScreenState extends State<OTPScreen> {
   void initState() {
     super.initState();
     text = widget.text;
+    phoneNumber = widget.phoneNumber;
+    isSignUp = widget.isSignUp;
     startTimer();
   }
 
@@ -49,6 +70,119 @@ class _OTPScreenState extends State<OTPScreen> {
         });
       }
     });
+  }
+
+  Future<void> _resendOTP() async {
+    setState(() {
+      _isVerifying = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      await _authService.sendOTP(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (credential) {
+          setState(() {
+            _isVerifying = false;
+          });
+        },
+        verificationFailed: (exception) {
+          setState(() {
+            _isVerifying = false;
+            _errorMessage = exception.message ?? 'Verification failed';
+          });
+        },
+        codeSent: (verificationId, resendToken) {
+          setState(() {
+            _isVerifying = false;
+          });
+          
+          // Clear OTP fields
+          for (final controller in _controllers) {
+            controller.clear();
+          }
+          
+          // Restart the timer
+          startTimer();
+        },
+        codeAutoRetrievalTimeout: (verificationId) {
+          // Auto retrieval timeout
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _isVerifying = false;
+        _errorMessage = 'Failed to resend OTP. Please try again.';
+      });
+      print('Error resending OTP: $e');
+    }
+  }
+
+  Future<void> _verifyOTP() async {
+    final otp = _controllers.map((c) => c.text).join();
+    
+    if (otp.length != 6) {
+      setState(() {
+        _errorMessage = 'Please enter a valid 6-digit OTP';
+      });
+      return;
+    }
+    
+    setState(() {
+      _isVerifying = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final userCredential = await _authService.verifyOTP(otp);
+      
+      if (userCredential != null) {
+        if (isSignUp && widget.userName != null && widget.userType != null) {
+          // Register new user
+          await _authService.registerUser(
+            phoneNumber: phoneNumber,
+            name: widget.userName!,
+            type: widget.userType!,
+          );
+        }
+        
+        // Navigate to appropriate screen
+        if (mounted) {
+          // For demo purposes, navigate to doctor home if type is Doctor
+          // otherwise navigate to patient home
+          if (widget.userType == 'Doctor') {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                  profileStatus: "complete",
+                ),
+              ),
+              (route) => false,
+            );
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PatientHome.PatientHomeScreen(),
+              ),
+              (route) => false,
+            );
+          }
+        }
+      } else {
+        setState(() {
+          _isVerifying = false;
+          _errorMessage = 'Invalid OTP. Please try again.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isVerifying = false;
+        _errorMessage = 'Verification failed. Please try again.';
+      });
+      print('Error verifying OTP: $e');
+    }
   }
 
   @override
@@ -79,7 +213,7 @@ class _OTPScreenState extends State<OTPScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 20),
               child: Text(
-                'Enter the OTP sent to your phone',
+                'Enter the OTP sent to $phoneNumber',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.normal,
@@ -116,12 +250,38 @@ class _OTPScreenState extends State<OTPScreen> {
                         if (value.isNotEmpty && index < 5) {
                           FocusScope.of(context).nextFocus();
                         }
+                        // If all fields are filled, verify OTP automatically
+                        if (index == 5 && value.isNotEmpty) {
+                          bool allFilled = true;
+                          for (var controller in _controllers) {
+                            if (controller.text.isEmpty) {
+                              allFilled = false;
+                              break;
+                            }
+                          }
+                          if (allFilled) {
+                            _verifyOTP();
+                          }
+                        }
                       },
                     ),
                   );
                 }),
               ),
             ),
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  _errorMessage!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                    color: Colors.red,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             const SizedBox(height: 24),
             _start > 0
                 ? Text(
@@ -133,17 +293,7 @@ class _OTPScreenState extends State<OTPScreen> {
                   ),
                 )
                 : TextButton(
-                  onPressed: () {
-                    debugPrint("Resend OTP pressed");
-                    // Optionally clear OTP fields
-                    setState(() {
-                      for (final controller in _controllers) {
-                        controller.clear();
-                      }
-                    });
-                    // Restart the timer after resending OTP
-                    startTimer();
-                  },
+                  onPressed: _isVerifying ? null : _resendOTP,
                   child: Text(
                     "Resend OTP",
                     style: GoogleFonts.poppins(
@@ -158,27 +308,11 @@ class _OTPScreenState extends State<OTPScreen> {
             Container(
               margin: const EdgeInsets.only(top: 40),
               child: InkWell(
-                onTap: () {
-                  final otp = _controllers.map((c) => c.text).join();
-                  debugPrint("Entered OTP: $otp");
-                  // Clear OTP fields when Confirm OTP is pressed
-                  setState(() {
-                    for (final controller in _controllers) {
-                      controller.clear();
-                    }
-                  });
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HomeScreen(
-                        profileStatus: "in complete",
-                      ),
-                    ),
-                  );
-                  FocusScope.of(context).unfocus();
-                },
-                child: ProceedButton(isEnabled: true, text: "Confirm OTP"),
+                onTap: _isVerifying ? null : _verifyOTP,
+                child: ProceedButton(
+                  isEnabled: !_isVerifying,
+                  text: _isVerifying ? "Verifying..." : "Confirm OTP",
+                ),
               ),
             ),
           ],

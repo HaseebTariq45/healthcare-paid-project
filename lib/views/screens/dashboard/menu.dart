@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:healthcare/services/auth_service.dart';
+import 'package:healthcare/services/user_service.dart';
 import 'package:healthcare/views/screens/menu/appointment_history.dart';
 import 'package:healthcare/views/screens/menu/availability.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
@@ -17,6 +19,120 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  bool _isLoading = true;
+  String _doctorName = "Dr. Asmara";
+  String _specialty = "General Practitioner";
+  String? _profileImageUrl;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+  
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    final user = await _userService.getCurrentUser();
+    
+    if (user != null) {
+      setState(() {
+        _doctorName = "Dr. ${user.firstName} ${user.lastName}";
+        _specialty = user.specialty;
+        _profileImageUrl = user.profileImageUrl;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    // Show confirmation dialog
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          "Logout",
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          "Are you sure you want to logout?",
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.poppins(
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              "Logout",
+              style: GoogleFonts.poppins(
+                color: Colors.red,
+              ),
+            ),
+          ),
+        ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    ) ?? false;
+    
+    if (confirm) {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+      
+      try {
+        await _authService.signOut();
+        
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+        
+        // Navigate to onboarding screen
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => Onboarding3()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to logout. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   final List<MenuItem> menuItems = [
     MenuItem("Edit Profile", LucideIcons.user, ProfileEditorScreen()),
     MenuItem("Update Availability", LucideIcons.calendar, SetAvailabilityScreen()),
@@ -32,155 +148,161 @@ class _MenuScreenState extends State<MenuScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Solid color header with profile info
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Color(0xFF3366FF),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(40),
-                  bottomRight: Radius.circular(40),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFF3366FF).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              padding: EdgeInsets.fromLTRB(20, 35, 20, 35),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(),
+            )
+          : SafeArea(
               child: Column(
                 children: [
-                  // Profile image with border
-                  Hero(
-                    tag: 'profileImage',
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 55,
-                        backgroundImage: AssetImage("assets/images/User.png"),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 18),
-                  Text(
-                    "Dr. Asmara",
-                    style: GoogleFonts.poppins(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black12,
-                          offset: Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    "General Practitioner",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  SizedBox(height: 24),
-                  
-                  // Stats cards - enhanced with background
+                  // Solid color header with profile info
                   Container(
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildStatCard("Appointments", "25"),
-                        Container(
-                          height: 45,
-                          width: 1.5,
-                          margin: EdgeInsets.symmetric(horizontal: 24),
-                          color: Colors.white.withOpacity(0.4),
-                        ),
-                        _buildStatCard("Earnings", "Rs 15,000"),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            Padding(
-              padding: EdgeInsets.fromLTRB(22, 25, 22, 15),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Settings & Options",
-                    style: GoogleFonts.poppins(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333),
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Color(0xFF3366FF).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Color(0xFF3366FF),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(40),
+                        bottomRight: Radius.circular(40),
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0xFF3366FF).withOpacity(0.08),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                          color: Color(0xFF3366FF).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: Offset(0, 6),
                         ),
                       ],
                     ),
-                    child: Icon(
-                      LucideIcons.settings,
-                      color: Color(0xFF3366FF),
-                      size: 20,
+                    padding: EdgeInsets.fromLTRB(20, 35, 20, 35),
+                    child: Column(
+                      children: [
+                        // Profile image with border
+                        Hero(
+                          tag: 'profileImage',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: CircleAvatar(
+                              radius: 55,
+                              backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                  ? NetworkImage(_profileImageUrl!) as ImageProvider
+                                  : AssetImage("assets/images/User.png"),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 18),
+                        Text(
+                          _doctorName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black12,
+                                offset: Offset(0, 2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          _specialty,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        
+                        // Stats cards - enhanced with background
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _buildStatCard("Appointments", "25"),
+                              Container(
+                                height: 45,
+                                width: 1.5,
+                                margin: EdgeInsets.symmetric(horizontal: 24),
+                                color: Colors.white.withOpacity(0.4),
+                              ),
+                              _buildStatCard("Earnings", "Rs 15,000"),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(22, 25, 22, 15),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Settings & Options",
+                          style: GoogleFonts.poppins(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF3366FF).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF3366FF).withOpacity(0.08),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            LucideIcons.settings,
+                            color: Color(0xFF3366FF),
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Menu items list
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 18),
+                      physics: BouncingScrollPhysics(),
+                      itemCount: menuItems.length,
+                      itemBuilder: (context, index) {
+                        return AnimatedContainer(
+                          duration: Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          transform: Matrix4.translationValues(0, index * 5.0, 0)..translate(0, -index * 5.0),
+                          child: _buildMenuItem(menuItems[index], index),
+                        );
+                      },
                     ),
                   ),
                 ],
               ),
             ),
-            
-            // Menu items list
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 18),
-                physics: BouncingScrollPhysics(),
-                itemCount: menuItems.length,
-                itemBuilder: (context, index) {
-                  return AnimatedContainer(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    transform: Matrix4.translationValues(0, index * 5.0, 0)..translate(0, -index * 5.0),
-                    child: _buildMenuItem(menuItems[index], index),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -251,10 +373,7 @@ class _MenuScreenState extends State<MenuScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (context) => item.screen!));
             }
             if (isLogout) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => Onboarding3()),
-              );
+              _logout();
             }
           },
           child: Padding(

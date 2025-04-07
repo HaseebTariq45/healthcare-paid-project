@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             Text(
-                              "\$400.00",
+                              "Rs 400.00",
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 22,

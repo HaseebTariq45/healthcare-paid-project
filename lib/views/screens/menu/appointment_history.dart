@@ -19,7 +19,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       "time": "9:30 AM - 10:00 AM",
       "status": "completed",
       "patientImage": "assets/images/User.png",
-      "amount": "₹1,200",
+      "amount": "Rs 1,200",
       "type": "Video Consultation"
     },
     {
@@ -28,7 +28,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       "time": "2:00 PM - 2:30 PM",
       "status": "completed",
       "patientImage": "assets/images/User.png",
-      "amount": "₹1,500",
+      "amount": "Rs 1,500",
       "type": "In-Person Visit"
     },
     {
@@ -37,7 +37,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       "time": "11:00 AM - 11:30 AM",
       "status": "cancelled",
       "patientImage": "assets/images/User.png",
-      "amount": "₹800",
+      "amount": "Rs 800",
       "type": "Video Consultation"
     },
     {
@@ -46,7 +46,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       "time": "4:30 PM - 5:00 PM",
       "status": "completed",
       "patientImage": "assets/images/User.png",
-      "amount": "₹1,200",
+      "amount": "Rs 1,200",
       "type": "Video Consultation"
     },
   ];
@@ -58,7 +58,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       "time": "10:30 AM - 11:00 AM",
       "status": "upcoming",
       "patientImage": "assets/images/User.png",
-      "amount": "₹1,200",
+      "amount": "Rs 1,200",
       "type": "Video Consultation"
     },
     {
@@ -67,7 +67,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       "time": "3:00 PM - 3:30 PM",
       "status": "upcoming",
       "patientImage": "assets/images/User.png",
-      "amount": "₹1,500",
+      "amount": "Rs 1,500",
       "type": "In-Person Visit"
     },
   ];

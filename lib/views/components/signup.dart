@@ -7,17 +7,21 @@ class DataInputFeild extends StatelessWidget {
   final String hinttext;
   final IconData icon;
   final TextInputType inputType;
+  final TextEditingController? controller;
+  
   const DataInputFeild({
     super.key,
     required this.hinttext,
     required this.icon,
     required this.inputType,
+    this.controller,
   });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: TextFormField(
+        controller: controller,
         // controller: inputType == TextInputType.phone
         //     ? TextEditingController(text: '+92')
         //     : null,
