@@ -5,6 +5,7 @@ import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
 import 'package:healthcare/views/screens/complete_profile/profile1.dart';
 import 'package:healthcare/views/screens/dashboard/analytics.dart';
+import 'package:healthcare/views/screens/dashboard/finances.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -95,21 +96,32 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                ),
-              ],
-            ),
-                        child: CircleAvatar(
-                          radius: 28,
-                          backgroundImage: AssetImage("assets/images/User.png"),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => MenuScreen()),
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+                          child: Hero(
+                            tag: 'profileImage',
+                            child: CircleAvatar(
+                              radius: 28,
+                              backgroundImage: AssetImage("assets/images/User.png"),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -159,7 +171,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Spacer(),
                         IconButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FinancesScreen(),
+                              ),
+                            );
+                          },
                           icon: Icon(
                             LucideIcons.arrowRight,
                             color: Colors.white,

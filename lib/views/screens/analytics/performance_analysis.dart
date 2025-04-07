@@ -211,17 +211,20 @@ class _PerformanceAnalysisState extends State<PerformanceAnalysis> with SingleTi
           ),
           const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Text(
                 "4.7",
                 style: GoogleFonts.poppins(
-                  fontSize: 32,
+                  fontSize: 28,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              _buildStarRating(4.7),
+              SizedBox(width: 8),
+              Flexible(
+                child: _buildStarRating(4.7),
+              ),
             ],
           ),
         ],
@@ -230,18 +233,15 @@ class _PerformanceAnalysisState extends State<PerformanceAnalysis> with SingleTi
   }
 
   Widget _buildStarRating(double rating) {
-    return Container(
-      width: 85,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(5, (index) {
-          return Icon(
-            index < rating ? Icons.star : Icons.star_border,
-            color: Colors.white,
-            size: 16,
-          );
-        }),
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        return Icon(
+          index < rating ? Icons.star : Icons.star_border,
+          color: Colors.white,
+          size: 14,
+        );
+      }),
     );
   }
 

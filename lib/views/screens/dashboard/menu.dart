@@ -176,12 +176,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 physics: BouncingScrollPhysics(),
                 itemCount: menuItems.length,
                 itemBuilder: (context, index) {
-                  return AnimatedContainer(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    transform: Matrix4.translationValues(0, index * 5.0, 0)..translate(0, -index * 5.0),
-                    child: _buildMenuItem(menuItems[index], index),
-                  );
+                  return _buildMenuItem(menuItems[index], index);
                 },
               ),
             ),

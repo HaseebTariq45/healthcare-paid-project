@@ -1,0 +1,2157 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+class PaymentMethodsScreen extends StatefulWidget {
+  const PaymentMethodsScreen({super.key});
+
+  @override
+  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
+}
+
+class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
+  // Updated data structure optimized for Firestore
+  final List<Map<String, dynamic>> paymentMethods = [
+    {
+      "id": "card1", // Document ID from Firestore
+      "userId": "user123", // Firebase Auth User ID
+      "type": "Card",
+      "name": "Visa Platinum",
+      "holder": "Dr. Asmara Singh",
+      "number": "•••• •••• •••• 4444",
+      "expiry": "12/27",
+      "cvv": "333",
+      "color": "0xFF3366FF", // Blue color
+      "icon": LucideIcons.creditCard,
+      "bank_logo": "assets/images/User.png", // Will be replaced with Firebase Storage URL
+      "default": true,
+      "createdAt": 1673452800000,
+      "updatedAt": 1673452800000,
+    },
+    {
+      "id": "card2",
+      "userId": "user123",
+      "type": "Card",
+      "name": "Mastercard Gold",
+      "holder": "Dr. Asmara Singh",
+      "number": "•••• •••• •••• 8123",
+      "expiry": "09/26",
+      "cvv": "444",
+      "color": "0xFF8E44AD", // Purple color
+      "icon": LucideIcons.creditCard,
+      "bank_logo": "assets/images/User.png", // Will be replaced with Firebase Storage URL
+      "default": false,
+      "createdAt": 1673452800000,
+      "updatedAt": 1673452800000,
+    },
+    {
+      "id": "wallet1",
+      "userId": "user123",
+      "type": "Wallet",
+      "name": "JazzCash",
+      "holder": "Dr. Asmara Singh",
+      "number": "0300 - 1112223",
+      "color": "0xFFC2554D", // Red color
+      "icon": LucideIcons.wallet,
+      "bank_logo": "assets/images/User.png", // Will be replaced with Firebase Storage URL
+      "default": false,
+      "createdAt": 1673452800000,
+      "updatedAt": 1673452800000,
+    },
+  ];
+  
+  bool _isLoading = false; // For loading states
+  int _selectedPaymentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentMethods();
+  }
+
+  // Load payment methods from Firestore (mock implementation for now)
+  Future<void> _loadPaymentMethods() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // This will be replaced with actual Firestore queries:
+      /*
+      final String userId = FirebaseAuth.instance.currentUser!.uid;
+      
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('paymentMethods')
+          .orderBy('createdAt', descending: true)
+          .get();
+          
+      final methods = querySnapshot.docs.map((doc) => {
+        'id': doc.id,
+        ...doc.data(),
+      }).toList();
+      
+      setState(() {
+        paymentMethods.clear();
+        paymentMethods.addAll(methods);
+        _isLoading = false;
+      });
+      */
+      
+      // For demo purposes, use the sample data
+      await Future.delayed(Duration(milliseconds: 800)); // Simulate network delay
+      
+      // Data is already loaded in the paymentMethods list variable
+      setState(() {
+        _isLoading = false;
+      });
+      
+    } catch (e) {
+      print('Error loading payment methods: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load payment methods: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
+  // Add payment method to Firestore
+  Future<void> _addPaymentMethod(Map<String, dynamic> newMethod) async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Generate unique ID for local use (Firestore will generate one when actually implemented)
+      final String newId = 'method_${DateTime.now().millisecondsSinceEpoch}';
+      
+      // Add Firestore fields
+      final methodData = {
+        ...newMethod,
+        "id": newId,
+        "userId": "user123", // This will come from Firebase Auth
+        "createdAt": DateTime.now().millisecondsSinceEpoch,
+        "updatedAt": DateTime.now().millisecondsSinceEpoch,
+      };
+      
+      // This will be replaced with actual Firestore code:
+      /*
+      final String userId = FirebaseAuth.instance.currentUser!.uid;
+      
+      // Check if setting as default
+      if (methodData['default'] == true) {
+        // Update all other methods to not be default
+        final batch = FirebaseFirestore.instance.batch();
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('paymentMethods')
+            .where('default', isEqualTo: true)
+            .get();
+            
+        for (var doc in querySnapshot.docs) {
+          batch.update(doc.reference, {'default': false});
+        }
+        
+        // Add the new payment method
+        final docRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('paymentMethods')
+            .doc(); // Auto-generate ID
+            
+        batch.set(docRef, {
+          ...methodData,
+          'id': docRef.id, // Use Firestore generated ID
+        });
+        
+        await batch.commit();
+      } else {
+        // Just add the payment method normally
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('paymentMethods')
+            .add(methodData);
+      }
+      */
+      
+      // For demo purposes, update the local list
+      await Future.delayed(Duration(milliseconds: 500)); // Simulate network delay
+      
+      setState(() {
+        // If new method is default, remove default from others
+        if (methodData['default'] == true) {
+          for (var method in paymentMethods) {
+            method['default'] = false;
+          }
+        }
+        
+        // Add new method to list
+        paymentMethods.add(methodData);
+        _isLoading = false;
+      });
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment method added successfully'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to add payment method: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+      print('Error adding payment method: $e');
+    }
+  }
+
+  // Update payment method with Firebase support
+  Future<void> _updatePaymentMethod(Map<String, dynamic> updatedMethod) async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // This will be replaced with actual Firestore code:
+      /*
+      final String userId = FirebaseAuth.instance.currentUser!.uid;
+      final String methodId = updatedMethod['id'];
+      
+      // Check if setting as default
+      if (updatedMethod['default'] == true) {
+        // Update all other methods to not be default
+        final batch = FirebaseFirestore.instance.batch();
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('paymentMethods')
+            .where('default', isEqualTo: true)
+            .get();
+            
+        for (var doc in querySnapshot.docs) {
+          if (doc.id != methodId) {
+            batch.update(doc.reference, {'default': false});
+          }
+        }
+        
+        // Update the specified payment method
+        batch.update(
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('paymentMethods')
+              .doc(methodId),
+          {
+            ...updatedMethod,
+            'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          }
+        );
+        
+        await batch.commit();
+      } else {
+        // Just update the payment method normally
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('paymentMethods')
+            .doc(methodId)
+            .update({
+              ...updatedMethod,
+              'updatedAt': DateTime.now().millisecondsSinceEpoch,
+            });
+      }
+      */
+      
+      // For demo purposes, update the local list
+      await Future.delayed(Duration(milliseconds: 500)); // Simulate network delay
+      
+      setState(() {
+        final index = paymentMethods.indexWhere((method) => method['id'] == updatedMethod['id']);
+        
+        if (index != -1) {
+          // If updated method is being set as default, remove default from others
+          if (updatedMethod['default'] == true) {
+            for (var method in paymentMethods) {
+              method['default'] = false;
+            }
+          }
+          
+          // Update the method
+          paymentMethods[index] = {
+            ...updatedMethod,
+            'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          };
+        }
+        
+        _isLoading = false;
+      });
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment method updated successfully'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update payment method: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+      print('Error updating payment method: $e');
+    }
+  }
+
+  // Remove payment method with Firebase support
+  Future<void> _removePaymentMethod(int index) async {
+    if (index < 0 || index >= paymentMethods.length) return;
+    
+    final methodToRemove = paymentMethods[index];
+    final wasDefault = methodToRemove['default'] == true;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // This will be replaced with actual Firestore code:
+      /*
+      final String userId = FirebaseAuth.instance.currentUser!.uid;
+      final String methodId = methodToRemove['id'];
+      
+      // Remove the payment method
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('paymentMethods')
+          .doc(methodId)
+          .delete();
+          
+      // If it was the default method, set a new default
+      if (wasDefault) {
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('paymentMethods')
+            .limit(1)
+            .get();
+            
+        if (querySnapshot.docs.isNotEmpty) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('paymentMethods')
+              .doc(querySnapshot.docs.first.id)
+              .update({'default': true});
+        }
+      }
+      */
+      
+      // For demo purposes, update the local list
+      await Future.delayed(Duration(milliseconds: 500)); // Simulate network delay
+      
+      setState(() {
+        // Remove the payment method
+        paymentMethods.removeAt(index);
+        
+        // If it was the default method and we have other methods, set a new default
+        if (wasDefault && paymentMethods.isNotEmpty) {
+          paymentMethods[0]['default'] = true;
+        }
+        
+        // Update selected index if needed
+        if (_selectedPaymentIndex >= paymentMethods.length) {
+          _selectedPaymentIndex = paymentMethods.isEmpty ? 0 : paymentMethods.length - 1;
+        }
+        
+        _isLoading = false;
+      });
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment method removed successfully'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove payment method: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+      print('Error removing payment method: $e');
+    }
+  }
+
+  // Set payment method as default in Firestore
+  Future<void> _setDefaultPaymentMethod(String methodId) async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // This will be replaced with actual Firestore code:
+      /*
+      final String userId = FirebaseAuth.instance.currentUser!.uid;
+      
+      // Update all payment methods in a batch
+      final batch = FirebaseFirestore.instance.batch();
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('paymentMethods')
+          .get();
+          
+      for (var doc in querySnapshot.docs) {
+        batch.update(doc.reference, {
+          'default': doc.id == methodId,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        });
+      }
+      
+      await batch.commit();
+      */
+      
+      // For demo purposes, update the local list
+      await Future.delayed(Duration(milliseconds: 500)); // Simulate network delay
+      
+      setState(() {
+        for (var i = 0; i < paymentMethods.length; i++) {
+          paymentMethods[i]['default'] = paymentMethods[i]['id'] == methodId;
+        }
+        
+        _isLoading = false;
+      });
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Default payment method updated'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update default payment method: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      
+      print('Error setting default payment method: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: Icon(LucideIcons.arrowLeft, color: Color(0xFF333333), size: 24),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          "Payment Methods",
+          style: GoogleFonts.poppins(
+            color: Color(0xFF333333),
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(LucideIcons.info, color: Color(0xFF3366FF), size: 22),
+            onPressed: () {
+              // Show payment help dialog
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(
+                    "Payment Help",
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                  content: Text(
+                    "You can add multiple payment methods and set a default one for quicker checkout.",
+                    style: GoogleFonts.poppins(),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "Got it",
+                        style: GoogleFonts.poppins(color: Color(0xFF3366FF)),
+                      ),
+                    ),
+                  ],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Card preview section
+          Container(
+            height: 220,
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: PageView.builder(
+              controller: PageController(viewportFraction: 0.9),
+              onPageChanged: (index) {
+                setState(() {
+                  _selectedPaymentIndex = index;
+                });
+              },
+              itemCount: paymentMethods.length,
+              itemBuilder: (context, index) {
+                return _buildPaymentCard(paymentMethods[index], index);
+              },
+            ),
+          ),
+          
+          // Page indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              paymentMethods.length,
+              (index) => AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                margin: EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: _selectedPaymentIndex == index ? 24 : 8,
+                decoration: BoxDecoration(
+                  color: _selectedPaymentIndex == index
+                      ? Color(0xFF3366FF)
+                      : Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+          
+          SizedBox(height: 30),
+          
+          // Payment details section
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Card Information",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+                SizedBox(height: 20),
+                
+                // Card details
+                _buildDetailsRow(
+                  "Card Holder",
+                  paymentMethods[_selectedPaymentIndex]["holder"],
+                  LucideIcons.user,
+                ),
+                SizedBox(height: 16),
+                _buildDetailsRow(
+                  "Card Number",
+                  paymentMethods[_selectedPaymentIndex]["number"],
+                  LucideIcons.creditCard,
+                ),
+                if (paymentMethods[_selectedPaymentIndex]["expiry"] != null) ...[
+                  SizedBox(height: 16),
+                  _buildDetailsRow(
+                    "Expiry Date",
+                    paymentMethods[_selectedPaymentIndex]["expiry"],
+                    LucideIcons.calendar,
+                  ),
+                ],
+                
+                SizedBox(height: 30),
+                
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                        "Edit",
+                        LucideIcons.pencil,
+                        Color(0xFF3366FF),
+                        () {
+                          _showEditPaymentBottomSheet(paymentMethods[_selectedPaymentIndex]);
+                        },
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: _buildActionButton(
+                        "Remove",
+                        LucideIcons.trash2,
+                        Colors.red,
+                        () {
+                          // Show beautiful confirmation dialog for removing payment method
+                          showGeneralDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            barrierLabel: "Remove Payment Method",
+                            barrierColor: Colors.black.withOpacity(0.5),
+                            transitionDuration: Duration(milliseconds: 300),
+                            pageBuilder: (context, animation1, animation2) => Container(),
+                            transitionBuilder: (context, animation, secondaryAnimation, child) {
+                              final curvedAnimation = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutBack,
+                              );
+                              
+                              return ScaleTransition(
+                                scale: Tween<double>(begin: 0.8, end: 1.0).animate(curvedAnimation),
+                                child: FadeTransition(
+                                  opacity: Tween<double>(begin: 0.5, end: 1.0).animate(curvedAnimation),
+                                  child: Dialog(
+                                    backgroundColor: Colors.transparent,
+        elevation: 0,
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.zero,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(24),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.1),
+                                            blurRadius: 20,
+                                            offset: Offset(0, 10),
+                                          ),
+                                        ],
+                                      ),
+        child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+          children: [
+                                          // Top section with illustration
+                                          Container(
+                                            padding: EdgeInsets.all(20),
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFFFFF0F0),
+                                              borderRadius: BorderRadius.only(
+                                                topLeft: Radius.circular(24),
+                                                topRight: Radius.circular(24),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                // Animated icon
+                                                TweenAnimationBuilder<double>(
+                                                  duration: Duration(milliseconds: 500),
+                                                  tween: Tween(begin: 0.0, end: 1.0),
+                                                  builder: (context, value, child) {
+                                                    return Transform.scale(
+                                                      scale: value,
+                                                      child: Container(
+                                                        width: 72,
+                                                        height: 72,
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white,
+                                                          shape: BoxShape.circle,
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Color(0xFFE74C3C).withOpacity(0.2),
+                                                              blurRadius: 12,
+                                                              spreadRadius: 2,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: Center(
+                                                          child: TweenAnimationBuilder<double>(
+                                                            duration: Duration(milliseconds: 700),
+                                                            tween: Tween(begin: 0.0, end: 1.0),
+                                                            curve: Curves.elasticOut,
+                                                            builder: (context, value, child) {
+                                                              return Transform.scale(
+                                                                scale: value,
+                                                                child: Icon(
+                                                                  paymentMethods[_selectedPaymentIndex]["type"] == "Wallet" 
+                                                                    ? LucideIcons.wallet 
+                                                                    : LucideIcons.creditCard,
+                                                                  color: Color(0xFFE74C3C),
+                                                                  size: 34,
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                                SizedBox(height: 16),
+                                                // Text content
+                                                Text(
+                                                  "Remove Payment Method",
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFF333333),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  "Are you sure you want to remove\n${paymentMethods[_selectedPaymentIndex]["name"]}?",
+                                                  textAlign: TextAlign.center,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 15,
+                                                    color: Color(0xFF666666),
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          
+                                          // Buttons section
+                                          Padding(
+                                            padding: EdgeInsets.all(20),
+                                            child: Row(
+                                              children: [
+                                                // Cancel button
+            Expanded(
+                                                  child: ElevatedButton(
+                                                    onPressed: () => Navigator.pop(context),
+                                                    style: ElevatedButton.styleFrom(
+                                                      foregroundColor: Color(0xFF333333),
+                                                      backgroundColor: Colors.white,
+                                                      elevation: 0,
+                                                      padding: EdgeInsets.symmetric(vertical: 14),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12),
+                                                        side: BorderSide(color: Colors.grey.shade300),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      "Cancel",
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(width: 16),
+                                                // Remove button
+                                                Expanded(
+                                                  child: ElevatedButton(
+                                                    onPressed: () {
+                                                      // Close dialog first
+                                                      Navigator.pop(context);
+                                                      
+                                                      // Handle removal of the payment method
+                                                      _removePaymentMethod(_selectedPaymentIndex);
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      foregroundColor: Colors.white,
+                                                      backgroundColor: Color(0xFFE74C3C),
+                                                      elevation: 0,
+                                                      padding: EdgeInsets.symmetric(vertical: 14),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      "Remove",
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Show bottom sheet to add new payment method
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Add Payment Method",
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(LucideIcons.x),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      "Select Method",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    _buildMethodOption(
+                      "Credit Card",
+                      LucideIcons.creditCard,
+                      Color(0xFF3366FF),
+                      () {
+                        Navigator.pop(context);
+                        _showAddPaymentBottomSheet("Card", "Credit Card", null);
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    _buildMethodOption(
+                      "Debit Card",
+                      LucideIcons.landmark,
+                      Color(0xFF4CAF50),
+                      () {
+                        Navigator.pop(context);
+                        _showAddPaymentBottomSheet("Card", "Debit Card", null);
+                      },
+                    ),
+                    SizedBox(height: 12),
+                    _buildMethodOption(
+                      "Mobile Wallet",
+                      LucideIcons.smartphone,
+                      Color(0xFFC2554D),
+                      () {
+                        Navigator.pop(context);
+                        _showAddPaymentBottomSheet("Wallet", "Mobile Wallet", null);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+        backgroundColor: Color(0xFF3366FF),
+        elevation: 2,
+        child: Icon(LucideIcons.plus, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildPaymentCard(Map<String, dynamic> payment, int index) {
+    bool isSelected = index == _selectedPaymentIndex;
+    
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      margin: EdgeInsets.only(right: 12, left: 4, top: isSelected ? 0 : 12, bottom: isSelected ? 0 : 12),
+      decoration: BoxDecoration(
+        color: Color(int.parse(payment["color"])),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(int.parse(payment["color"])).withOpacity(0.4),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(int.parse(payment["color"])),
+            Color(int.parse(payment["color"])).withAlpha(220),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Payment card content
+          Padding(
+            padding: EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+            children: [
+              Icon(
+                          payment["icon"],
+                color: Colors.white,
+                          size: 26,
+              ),
+                        SizedBox(width: 8),
+                Text(
+                          payment["type"],
+                  style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 16,
+                  ),
+                ),
+            ],
+          ),
+                    Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        payment["type"] == "Wallet" ? LucideIcons.wallet : LucideIcons.creditCard,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+                Spacer(),
+          Text(
+                  payment["number"],
+            style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "CARD HOLDER",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 10,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          payment["holder"],
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (payment["expiry"] != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            "EXPIRES",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 10,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            payment["expiry"],
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          // Default badge
+          if (payment["default"] == true)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(20),
+                    bottomLeft: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      LucideIcons.check,
+                      color: Color(int.parse(payment["color"])),
+                      size: 14,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      "Default",
+                      style: GoogleFonts.poppins(
+                        color: Color(int.parse(payment["color"])),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsRow(String label, String value, IconData icon) {
+    return Container(
+      padding: EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Color(0xFF3366FF).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: Color(0xFF3366FF),
+              size: 18,
+            ),
+          ),
+          SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Color(0xFF666666),
+                ),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF333333),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        foregroundColor: color,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withOpacity(0.3)),
+        ),
+      ),
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMethodOption(String label, IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 22,
+              ),
+            ),
+            SizedBox(width: 16),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+              fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF333333),
+              ),
+            ),
+            Spacer(),
+            Icon(
+              LucideIcons.chevronRight,
+              color: Colors.grey.shade400,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditPaymentBottomSheet(Map<String, dynamic> payment) {
+    TextEditingController nameController = TextEditingController(text: payment["name"]);
+    TextEditingController holderController = TextEditingController(text: payment["holder"]);
+    TextEditingController numberController = TextEditingController(text: payment["number"]);
+    TextEditingController expiryController = 
+        payment["expiry"] != null ? TextEditingController(text: payment["expiry"]) : TextEditingController();
+    TextEditingController cvvController = 
+        payment["cvv"] != null ? TextEditingController(text: payment["cvv"]) : TextEditingController();
+    
+    // Form validation flags
+    bool isNameValid = true;
+    bool isHolderValid = true;
+    bool isNumberValid = true;
+    bool isExpiryValid = payment["type"] != "Card" || (payment["expiry"] != null && payment["expiry"].isNotEmpty);
+    bool isCvvValid = payment["type"] != "Card" || (payment["cvv"] != null && payment["cvv"].isNotEmpty);
+    
+    bool makeDefault = payment["default"] ?? false;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Edit Payment Method",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(LucideIcons.x),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Card Preview
+                        Container(
+                          height: 180,
+                          width: double.infinity,
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Color(int.parse(payment["color"])),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(int.parse(payment["color"])).withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    nameController.text,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Icon(
+                                    payment["icon"],
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                              if (payment["type"] == "Card") ...[
+                                Text(
+                                  numberController.text,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "CARD HOLDER",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            color: Colors.white.withOpacity(0.7),
+                                          ),
+                                        ),
+                                        Text(
+                                          holderController.text,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "EXPIRY",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            color: Colors.white.withOpacity(0.7),
+                                          ),
+                                        ),
+                                        Text(
+                                          expiryController.text,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                Text(
+                                  holderController.text,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  numberController.text,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        
+                        SizedBox(height: 24),
+                        
+                        // Form Fields
+                        Text(
+                          "Payment Details",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Name field
+                        _buildTextField(
+                          label: "${payment["type"]} Name",
+                          controller: nameController,
+                          isValid: isNameValid,
+                          errorText: "Please enter a valid name",
+                          onChanged: (value) {
+                            setState(() {
+                              isNameValid = value.isNotEmpty;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Holder field
+                        _buildTextField(
+                          label: "${payment["type"] == "Card" ? "Card" : "Account"} Holder",
+                          controller: holderController,
+                          isValid: isHolderValid,
+                          errorText: "Please enter a valid holder name",
+                          onChanged: (value) {
+                            setState(() {
+                              isHolderValid = value.isNotEmpty;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Number field
+                        _buildTextField(
+                          label: payment["type"] == "Card" ? "Card Number" : "Mobile Number",
+                          controller: numberController,
+                          isValid: isNumberValid,
+                          errorText: "Please enter a valid number",
+                          onChanged: (value) {
+                            setState(() {
+                              isNumberValid = value.isNotEmpty;
+                            });
+                          },
+                        ),
+                        
+                        // Card specific fields
+                        if (payment["type"] == "Card") ...[
+                          SizedBox(height: 16),
+                          
+                          // Expiry and CVV fields in a row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  label: "Expiry Date",
+                                  controller: expiryController,
+                                  isValid: isExpiryValid,
+                                  errorText: "Invalid",
+                                  hintText: "MM/YY",
+                                  onChanged: (value) {
+                                    setState(() {
+                                      isExpiryValid = value.isNotEmpty;
+                                    });
+                                  },
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: _buildTextField(
+                                  label: "CVV",
+                                  controller: cvvController,
+                                  isValid: isCvvValid,
+                                  errorText: "Invalid",
+                                  hintText: "123",
+                                  onChanged: (value) {
+                                    setState(() {
+                                      isCvvValid = value.isNotEmpty;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        
+                        SizedBox(height: 24),
+                        
+                        // Make default switch
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF5F7FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Make Default",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Switch(
+                                value: makeDefault,
+                                onChanged: (value) {
+                                  setState(() {
+                                    makeDefault = value;
+                                  });
+                                },
+                                activeColor: Color(0xFF3366FF),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Bottom buttons
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Color(0xFF333333),
+                            backgroundColor: Colors.white,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Validate all fields
+                            bool isFormValid = true;
+                            
+                            setState(() {
+                              isNameValid = nameController.text.isNotEmpty;
+                              isHolderValid = holderController.text.isNotEmpty;
+                              isNumberValid = numberController.text.isNotEmpty;
+                              
+                              if (payment["type"] == "Card") {
+                                isExpiryValid = expiryController.text.isNotEmpty;
+                                isCvvValid = cvvController.text.isNotEmpty;
+                                isFormValid = isNameValid && isHolderValid && isNumberValid && isExpiryValid && isCvvValid;
+                              } else {
+                                isFormValid = isNameValid && isHolderValid && isNumberValid;
+                              }
+                            });
+                            
+                            if (isFormValid) {
+                              // Close bottom sheet
+                              Navigator.pop(context);
+                              
+                              // Create updated payment object
+                              Map<String, dynamic> updatedPayment = {
+                                ...payment,
+                                "name": nameController.text,
+                                "holder": holderController.text,
+                                "number": numberController.text,
+                                "default": makeDefault,
+                                "updatedAt": DateTime.now().millisecondsSinceEpoch,
+                              };
+                              
+                              if (payment["type"] == "Card") {
+                                updatedPayment["expiry"] = expiryController.text;
+                                updatedPayment["cvv"] = cvvController.text;
+                              }
+                              
+                              // Update payment method with Firebase support
+                              _updatePaymentMethod(updatedPayment);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Color(0xFF3366FF),
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            "Save Changes",
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required bool isValid,
+    required String errorText,
+    String? hintText,
+    required Function(String) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF666666),
+          ),
+        ),
+        SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Color(0xFFF5F7FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isValid ? Colors.grey.shade200 : Colors.red,
+            ),
+          ),
+          child: TextField(
+            controller: controller,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              color: Color(0xFF333333),
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.grey.shade400,
+                fontSize: 15,
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+            onChanged: onChanged,
+          ),
+        ),
+        if (!isValid)
+          Padding(
+            padding: EdgeInsets.only(top: 6, left: 4),
+            child: Text(
+              errorText,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.red,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showAddPaymentBottomSheet(String type, String name, Color? color) {
+    TextEditingController nameController = TextEditingController(text: name);
+    TextEditingController holderController = TextEditingController(text: "Dr. Asmara Singh");
+    TextEditingController numberController = TextEditingController();
+    TextEditingController expiryController = type == "Card" ? TextEditingController() : TextEditingController();
+    TextEditingController cvvController = type == "Card" ? TextEditingController() : TextEditingController();
+    
+    // Form validation flags
+    bool isNameValid = true;
+    bool isHolderValid = true;
+    bool isNumberValid = true;
+    bool isExpiryValid = type != "Card";
+    bool isCvvValid = type != "Card";
+    
+    bool makeDefault = paymentMethods.isEmpty; // Make default if it's the first payment method
+    
+    // Card color
+    String cardColor = color != null 
+        ? '0x${color.value.toRadixString(16).padLeft(8, '0')}'
+        : type == "Card" 
+            ? "0xFF3366FF" 
+            : "0xFFC2554D";
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Add $name",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(LucideIcons.x),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Card Preview
+                        Container(
+                          height: 180,
+                          width: double.infinity,
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Color(int.parse(cardColor)),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(int.parse(cardColor)).withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    nameController.text.isEmpty ? name : nameController.text,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Icon(
+                                    type == "Card" ? LucideIcons.creditCard : LucideIcons.wallet,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                              if (type == "Card") ...[
+                                Text(
+                                  numberController.text.isEmpty ? "•••• •••• •••• ••••" : numberController.text,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "CARD HOLDER",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            color: Colors.white.withOpacity(0.7),
+                                          ),
+                                        ),
+                                        Text(
+                                          holderController.text,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "EXPIRY",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            color: Colors.white.withOpacity(0.7),
+                                          ),
+                                        ),
+                                        Text(
+                                          expiryController.text.isEmpty ? "MM/YY" : expiryController.text,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                Text(
+                                  holderController.text,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  numberController.text.isEmpty ? "0300 - ••••••••" : numberController.text,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        
+                        SizedBox(height: 24),
+                        
+                        // Form Fields
+                        Text(
+                          "Payment Details",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Name field
+                        _buildTextField(
+                          label: "$type Name",
+                          controller: nameController,
+                          isValid: isNameValid,
+                          errorText: "Please enter a valid name",
+                          onChanged: (value) {
+                            setState(() {
+                              isNameValid = value.isNotEmpty;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Holder field
+                        _buildTextField(
+                          label: type == "Card" ? "Card Holder" : "Account Holder",
+                          controller: holderController,
+                          isValid: isHolderValid,
+                          errorText: "Please enter a valid holder name",
+                          onChanged: (value) {
+                            setState(() {
+                              isHolderValid = value.isNotEmpty;
+                            });
+                          },
+                        ),
+                        SizedBox(height: 16),
+                        
+                        // Number field
+                        _buildTextField(
+                          label: type == "Card" ? "Card Number" : "Mobile Number",
+                          controller: numberController,
+                          isValid: isNumberValid,
+                          errorText: "Please enter a valid number",
+                          onChanged: (value) {
+                            setState(() {
+                              isNumberValid = value.isNotEmpty;
+                            });
+                          },
+                        ),
+                        
+                        // Card specific fields
+                        if (type == "Card") ...[
+                          SizedBox(height: 16),
+                          
+                          // Expiry and CVV fields in a row
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildTextField(
+                                  label: "Expiry Date",
+                                  controller: expiryController,
+                                  isValid: isExpiryValid,
+                                  errorText: "Invalid",
+                                  hintText: "MM/YY",
+                                  onChanged: (value) {
+                                    setState(() {
+                                      isExpiryValid = value.isNotEmpty;
+                                    });
+                                  },
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: _buildTextField(
+                                  label: "CVV",
+                                  controller: cvvController,
+                                  isValid: isCvvValid,
+                                  errorText: "Invalid",
+                                  hintText: "123",
+                                  onChanged: (value) {
+                                    setState(() {
+                                      isCvvValid = value.isNotEmpty;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        
+                        SizedBox(height: 24),
+                        
+                        // Make default switch
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF5F7FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Make Default",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Switch(
+                                value: makeDefault,
+                                onChanged: (value) {
+                                  setState(() {
+                                    makeDefault = value;
+                                  });
+                                },
+                                activeColor: Color(0xFF3366FF),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                // Bottom buttons
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Color(0xFF333333),
+                            backgroundColor: Colors.white,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          child: Text(
+                            "Cancel",
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Validate all fields
+                            bool isFormValid = true;
+                            
+                            setState(() {
+                              isNameValid = nameController.text.isNotEmpty;
+                              isHolderValid = holderController.text.isNotEmpty;
+                              isNumberValid = numberController.text.isNotEmpty;
+                              
+                              if (type == "Card") {
+                                isExpiryValid = expiryController.text.isNotEmpty;
+                                isCvvValid = cvvController.text.isNotEmpty;
+                                isFormValid = isNameValid && isHolderValid && isNumberValid && isExpiryValid && isCvvValid;
+                              } else {
+                                isFormValid = isNameValid && isHolderValid && isNumberValid;
+                              }
+                            });
+                            
+                            if (isFormValid) {
+                              // Close bottom sheet
+                              Navigator.pop(context);
+                              
+                              // Create new payment object
+                              Map<String, dynamic> newPayment = {
+                                "type": type,
+                                "name": nameController.text,
+                                "holder": holderController.text,
+                                "number": numberController.text,
+                                "color": cardColor,
+                                "icon": type == "Card" ? LucideIcons.creditCard : LucideIcons.wallet,
+                                "bank_logo": "assets/images/User.png",
+                                "default": makeDefault,
+                              };
+                              
+                              if (type == "Card") {
+                                newPayment["expiry"] = expiryController.text;
+                                newPayment["cvv"] = cvvController.text;
+                              }
+                              
+                              // Add payment method with Firebase support
+                              _addPaymentMethod(newPayment);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Color(0xFF3366FF),
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            "Add Payment",
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
