@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:healthcare/views/screens/onboarding/splash.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:healthcare/firebase_options.dart';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
+      // DEVELOPMENT MODE: Skipping splash screen and login/signup flow : const SplashScreen(),
+      // Change back to SplashScreen() when ready for production
+      home: BottomNavigationBarScreen(profileStatus: "complete"),
     );
   }
 }
