@@ -2,7 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
+import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
 import 'package:healthcare/views/screens/complete_profile/profile1.dart';
+import 'package:healthcare/views/screens/dashboard/analytics.dart';
+import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -184,21 +187,56 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: LucideIcons.calendarClock,
                         label: "Schedule",
                         color: Color.fromRGBO(64, 124, 226, 1),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AppointmentsScreen(),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickActionButton(
                         icon: LucideIcons.clipboardPlus,
                         label: "New Patient",
                         color: Color(0xFF4CAF50),
+                        onTap: () {
+                          // Navigate to patient screen, assuming it exists
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AppointmentDetailsScreen(),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickActionButton(
                         icon: Icons.bar_chart,
                         label: "Reports",
                         color: Color(0xFFF44336),
+                        onTap: () {
+                          // Navigate to analytics screen
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AnalyticsScreen(),
+                            ),
+                          );
+                        },
                       ),
                       _buildQuickActionButton(
                         icon: LucideIcons.messageCircle,
-                        label: "Chat",
+                        label: "Menu",
                         color: Color(0xFFFF9800),
+                        onTap: () {
+                          // Navigate to menu screen
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MenuScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -434,27 +472,31 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData icon,
     required String label,
     required Color color,
+    required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(15),
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: color),
           ),
-          child: Icon(icon, color: color),
-        ),
-        SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+          SizedBox(height: 8),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

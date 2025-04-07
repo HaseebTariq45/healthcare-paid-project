@@ -5,6 +5,7 @@ import 'package:healthcare/views/screens/analytics/financial_analysis.dart';
 import 'package:healthcare/views/screens/analytics/patients.dart';
 import 'package:healthcare/views/screens/analytics/performance_analysis.dart';
 import 'package:healthcare/views/screens/analytics/reports.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -18,112 +19,256 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBarOnboarding(isBackButtonVisible: false, text: "Analytics"),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildAnalyticsCard(
-                icon: Icons.show_chart_rounded,
-                title: "Performance Analysis",
-                color: Color.fromRGBO(167, 199, 231, 1),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PerformanceAnalysis(),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Custom app bar with gradient
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade100,
+                    spreadRadius: 1,
+                    blurRadius: 1,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    "Analytics Dashboard",
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
                     ),
-                  );
-                },
-              ),
-              _buildAnalyticsCard(
-                icon: Icons.bar_chart_rounded,
-                title: "Financial Analytics",
-                color: Color.fromRGBO(49, 93, 168, 0.744),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FinancialAnalyticsScreen(),
+                  ),
+                  Spacer(),
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Color.fromRGBO(64, 124, 226, 0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-                },
+                    child: Icon(
+                      LucideIcons.activity,
+                      color: Color.fromRGBO(64, 124, 226, 1),
+                    ),
+                  ),
+                ],
               ),
-              _buildAnalyticsCard(
-                icon: Icons.group_rounded,
-                title: "Patients",
-                color: Color.fromRGBO(162, 217, 160, 1),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => PatientsScreen()),
-                  );
-                },
+            ),
+            
+            // Summary stats row
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color.fromRGBO(64, 124, 226, 1),
+                      Color.fromRGBO(84, 144, 246, 1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color.fromRGBO(64, 124, 226, 0.3),
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildSummaryItem("121", "Patients"),
+                    Container(
+                      height: 40,
+                      width: 1,
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                    _buildSummaryItem("86", "Appointments"),
+                    Container(
+                      height: 40,
+                      width: 1,
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                    _buildSummaryItem("\$4.5k", "Earnings"),
+                  ],
+                ),
               ),
-              _buildAnalyticsCard(
-                icon: Icons.description_rounded,
-                title: "Reports",
-                color: Color.fromRGBO(189, 195, 199, 1),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ReportsScreen()),
-                  );
-                },
+            ),
+            
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                "Analytics Categories",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ],
-          ),
+            ),
+            
+            // Analytics cards
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  childAspectRatio: 1.05,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                  children: [
+                    _buildAnalyticsCard(
+                      icon: LucideIcons.trendingUp,
+                      title: "Performance Analysis",
+                      description: "Track your growth metrics",
+                      bgColor: Color(0xFFE3F2FD),
+                      iconColor: Color(0xFF2196F3),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PerformanceAnalysis(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildAnalyticsCard(
+                      icon: LucideIcons.activity,
+                      title: "Financial Analytics",
+                      description: "Revenue & expense reports",
+                      bgColor: Color(0xFFE1F5FE),
+                      iconColor: Color(0xFF03A9F4),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FinancialAnalyticsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildAnalyticsCard(
+                      icon: LucideIcons.users,
+                      title: "Patients",
+                      description: "Manage patient data",
+                      bgColor: Color(0xFFE8F5E9),
+                      iconColor: Color(0xFF4CAF50),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => PatientsScreen()),
+                        );
+                      },
+                    ),
+                    _buildAnalyticsCard(
+                      icon: LucideIcons.clipboardList,
+                      title: "Reports",
+                      description: "View all reports",
+                      bgColor: Color(0xFFFFF3E0),
+                      iconColor: Color(0xFFFF9800),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ReportsScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSummaryItem(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.white.withOpacity(0.8),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildAnalyticsCard({
     required IconData icon,
     required String title,
-    required Color color,
-    VoidCallback? onPressed,
+    required String description,
+    required Color bgColor,
+    required Color iconColor,
+    required VoidCallback onPressed,
   }) {
     return InkWell(
       onTap: onPressed,
       child: Container(
-        margin: EdgeInsets.only(bottom: 16),
-        padding: EdgeInsets.all(16),
-        height: 140,
+        padding: EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment:
-              MainAxisAlignment
-                  .spaceBetween, // Ensures spacing between text and arrow
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Left side content (icon and text)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              // mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 32, color: Colors.black),
-                SizedBox(height: 8), // Spacing between icon and text
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 5,
+              offset: Offset(0, 3),
             ),
-            // Right side (arrow icon)
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Icon(Icons.arrow_forward_ios, size: 28, color: Colors.black),
-              ],
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: iconColor,
+              ),
+            ),
+            Spacer(),
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 3),
+            Text(
+              description,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.black54,
+              ),
             ),
           ],
         ),
