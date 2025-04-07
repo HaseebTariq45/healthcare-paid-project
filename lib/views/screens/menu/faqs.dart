@@ -312,11 +312,11 @@ class _FAQScreenState extends State<FAQScreen> with TickerProviderStateMixin {
                 : ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     itemCount: filteredFAQs.length,
-                    itemBuilder: (context, index) {
+          itemBuilder: (context, index) {
                       final originalIndex = _faqData.indexOf(filteredFAQs[index]);
                       return _buildFAQItem(filteredFAQs[index], originalIndex);
-                    },
-                  ),
+          },
+        ),
           ),
         ],
       ),
@@ -353,16 +353,16 @@ class _FAQScreenState extends State<FAQScreen> with TickerProviderStateMixin {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
-              setState(() {
-                _expanded[index] = !_expanded[index];
+          onTap: () {
+            setState(() {
+              _expanded[index] = !_expanded[index];
                 if (_expanded[index]) {
                   _controllers[index].forward();
                 } else {
                   _controllers[index].reverse();
                 }
-              });
-            },
+            });
+          },
             child: Column(
               children: [
                 Padding(
@@ -382,9 +382,9 @@ class _FAQScreenState extends State<FAQScreen> with TickerProviderStateMixin {
                       SizedBox(width: 12),
                       // Question
                       Expanded(
-                        child: Text(
+                          child: Text(
                           faq["question"],
-                          style: GoogleFonts.poppins(
+                            style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF333333),
@@ -398,8 +398,8 @@ class _FAQScreenState extends State<FAQScreen> with TickerProviderStateMixin {
                           LucideIcons.chevronDown,
                           color: Color(0xFF3366FF),
                           size: 20,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

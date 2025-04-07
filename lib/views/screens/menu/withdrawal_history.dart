@@ -237,11 +237,11 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
               height: 60,
               padding: EdgeInsets.symmetric(vertical: 8),
               color: Colors.white,
-              child: ListView.builder(
+        child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 itemCount: filters.length,
-                itemBuilder: (context, index) {
+          itemBuilder: (context, index) {
                   final isSelected = _selectedFilter == filters[index];
                   return GestureDetector(
                     onTap: () {
@@ -393,7 +393,7 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
       ),
     );
   }
-  
+
   Widget _buildMainContent() {
     if (_isLoading) {
       return _buildLoadingState();
@@ -494,7 +494,7 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
               backgroundColor: Color(0xFF3366FF),
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
@@ -613,11 +613,11 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
                       ),
                       SizedBox(width: 12),
                       // Transaction details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                               "Withdrawn ${transaction.amount}",
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.w600,
@@ -873,8 +873,8 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
                   ),
                   child: Text(
                     "Download Receipt",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -893,14 +893,14 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
+                Text(
             label,
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Color(0xFF666666),
             ),
           ),
-          Text(
+                Text(
             value,
             style: GoogleFonts.poppins(
               fontSize: 14,
@@ -946,7 +946,7 @@ class _WithdrawalHistoryScreenState extends State<WithdrawalHistoryScreen> with 
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+            onPressed: () {},
                   icon: Icon(LucideIcons.messageCircle, size: 16),
                   label: Text("Chat Support"),
                   style: OutlinedButton.styleFrom(

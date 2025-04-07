@@ -224,7 +224,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                   opacity: Tween<double>(begin: 0.5, end: 1.0).animate(curvedAnimation),
                                   child: Dialog(
                                     backgroundColor: Colors.transparent,
-                                    elevation: 0,
+        elevation: 0,
                                     child: Container(
                                       width: double.infinity,
                                       padding: EdgeInsets.zero,
@@ -239,9 +239,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                           ),
                                         ],
                                       ),
-                                      child: Column(
+        child: Column(
                                         mainAxisSize: MainAxisSize.min,
-                                        children: [
+          children: [
                                           // Top section with illustration
                                           Container(
                                             padding: EdgeInsets.all(20),
@@ -328,7 +328,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                             child: Row(
                                               children: [
                                                 // Cancel button
-                                                Expanded(
+            Expanded(
                                                   child: ElevatedButton(
                                                     onPressed: () => Navigator.pop(context),
                                                     style: ElevatedButton.styleFrom(
@@ -518,30 +518,30 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           // Payment card content
           Padding(
             padding: EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: [
-                        Icon(
+            children: [
+              Icon(
                           payment["icon"],
-                          color: Colors.white,
+                color: Colors.white,
                           size: 26,
-                        ),
+              ),
                         SizedBox(width: 8),
-                        Text(
+                Text(
                           payment["type"],
-                          style: GoogleFonts.poppins(
+                  style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontWeight: FontWeight.w500,
                             fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
+                  ),
+                ),
+            ],
+          ),
                     Container(
                       padding: EdgeInsets.all(6),
                       decoration: BoxDecoration(
@@ -557,9 +557,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   ],
                 ),
                 Spacer(),
-                Text(
+          Text(
                   payment["number"],
-                  style: GoogleFonts.poppins(
+            style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -766,7 +766,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 16,
+              fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF333333),
               ),
@@ -840,7 +840,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+          Text(
                         "Edit Payment Method",
                         style: GoogleFonts.poppins(
                           fontSize: 18,
@@ -882,12 +882,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
                             nameController.text,
-                            style: GoogleFonts.poppins(
+                style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontWeight: FontWeight.w600,
                               fontSize: 18,
@@ -915,7 +915,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             : _formatCardNumberForDisplay(numberController.text),
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontSize: 16,
+                  fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -931,9 +931,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Card Name
-                        Text(
+                Text(
                           "Card Name",
-                          style: GoogleFonts.poppins(
+                  style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF666666),
@@ -1162,9 +1162,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                   }
                                 },
                               ),
-                            ),
-                          ),
-                        ],
+                  ),
+                ),
+            ],
                         
                         if (payment["expiry"] != null) ...[
                           SizedBox(height: 20),
@@ -1262,9 +1262,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                           buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
+          ),
+        ],
+      ),
                               ),
                               
                               // CVV
@@ -1420,7 +1420,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 Padding(
                   padding: EdgeInsets.all(20),
                   child: SizedBox(
-                    width: double.infinity,
+      width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
@@ -1521,7 +1521,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         backgroundColor: Color(0xFF3366FF),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
+          shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
@@ -1800,7 +1800,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: Color(0xFFF5F7FF),
-                              borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: fieldErrors['name']! 
                                     ? Colors.red 

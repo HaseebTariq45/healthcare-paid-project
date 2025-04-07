@@ -67,34 +67,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               padding: EdgeInsets.fromLTRB(25, 70, 25, 30),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Welcome",
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                          Text(
-                            "Dr. Asmara",
-                            style: GoogleFonts.poppins(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
                       ),
+                    ),
+                    Text(
+                      "Dr. Asmara",
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
                       Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -104,9 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.black12,
                               blurRadius: 8,
                               offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
+                ),
+              ],
+            ),
                         child: CircleAvatar(
                           radius: 28,
                           backgroundImage: AssetImage("assets/images/User.png"),
@@ -121,9 +121,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Row(
-                      children: [
+              ),
+              child: Row(
+                children: [
                         Container(
                           padding: EdgeInsets.all(10),
                           decoration: BoxDecoration(
@@ -137,25 +137,25 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         SizedBox(width: 15),
-                        Column(
+                  Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Total Earning",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
+                    children: [
+                      Text(
+                        "Total Earning",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
                                 fontSize: 14,
-                              ),
-                            ),
-                            Text(
+                        ),
+                      ),
+                      Text(
                               "Rs 400.00",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
                                 fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                         ),
                         Spacer(),
                         IconButton(
@@ -244,13 +244,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(height: 25),
                   
                   // Ratings Card with improved design
-                  Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
+                boxShadow: [
+                  BoxShadow(
                           color: Color.fromRGBO(158, 158, 158, 0.2),
                           blurRadius: 15,
                           offset: Offset(0, 5),
@@ -260,12 +260,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.grey.shade100,
                         width: 1,
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
                             Container(
                               padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -279,26 +279,26 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             SizedBox(width: 12),
-                            Text(
-                              "Overall Ratings",
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                      Text(
+                        "Overall Ratings",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ],
+                  ),
                         SizedBox(height: 15),
-                        Row(
-                          children: [
-                            Text(
+                  Row(
+                    children: [
+                      Text(
                               "4.2",
-                              style: GoogleFonts.poppins(
+                        style: GoogleFonts.poppins(
                                 fontSize: 30,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromRGBO(64, 124, 226, 1),
-                              ),
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromRGBO(64, 124, 226, 1),
+                        ),
+                      ),
                             SizedBox(width: 12),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,8 +313,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                                 SizedBox(height: 5),
-                                Text(
-                                  "Based on 121 reviews",
+                  Text(
+                    "Based on 121 reviews",
                                   style: GoogleFonts.poppins(
                                     color: Colors.grey,
                                     fontSize: 12,
@@ -323,71 +323,71 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                           ],
-                        ),
-                      ],
-                    ),
                   ),
+                ],
+              ),
+            ),
                   
                   SizedBox(height: 25),
-                  
-                  // Upcoming Appointments
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Upcoming Appointments",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+
+            // Upcoming Appointments
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Upcoming Appointments",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                       TextButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AppointmentsScreen(),
-                            ),
-                          );
-                        },
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AppointmentsScreen(),
+                      ),
+                    );
+                  },
                         icon: Icon(
                           LucideIcons.chevronRight,
                           size: 18,
                           color: Color.fromRGBO(64, 124, 226, 1),
                         ),
                         label: Text(
-                          "See all",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Color.fromRGBO(64, 124, 226, 1),
-                          ),
-                        ),
-                      ),
-                    ],
+                    "See all",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Color.fromRGBO(64, 124, 226, 1),
+                    ),
                   ),
+                ),
+              ],
+            ),
                   SizedBox(height: 15),
 
-                  Column(
-                    children: List.generate(3, (index) {
-                      return Container(
+            Column(
+              children: List.generate(3, (index) {
+                return Container(
                         margin: EdgeInsets.only(bottom: 15),
                         padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                           borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
+                    boxShadow: [
+                      BoxShadow(
                               color: Color.fromRGBO(158, 158, 158, 0.15),
                               blurRadius: 10,
                               offset: Offset(0, 3),
-                            ),
-                          ],
+                      ),
+                    ],
                           border: Border.all(
                             color: Colors.grey.shade100,
                             width: 1,
                           ),
-                        ),
-                        child: Row(
+                  ),
+                  child: Row(
                           children: [
                             Container(
                               width: 40,
@@ -419,16 +419,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Appointment with Hania",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                    children: [
+                      Text(
+                        "Appointment with Hania",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                                   SizedBox(height: 4),
-                                  Text(
+                      Text(
                                     "Jan ${10 + index}, 2025 • 12:00 pm",
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
@@ -446,17 +446,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               child: Text(
                                 "View",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                   color: Color.fromRGBO(64, 124, 226, 1),
                                 ),
-                              ),
-                            ),
-                          ],
                         ),
-                      );
-                    }),
+                      ),
+                    ],
+                  ),
+                );
+              }),
                   ),
                   SizedBox(height: 25),
                 ],

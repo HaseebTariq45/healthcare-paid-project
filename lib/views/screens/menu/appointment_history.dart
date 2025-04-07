@@ -248,14 +248,14 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                   backgroundImage: AssetImage(appointment["patientImage"]),
                 ),
                 SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                         appointment["title"],
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF333333),
                         ),
@@ -408,9 +408,9 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: EdgeInsets.all(8),
-        decoration: BoxDecoration(
+      decoration: BoxDecoration(
           color: color.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color.withOpacity(0.2), width: 1),
         ),
         child: Icon(
