@@ -101,29 +101,83 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
     }
   }
 
+  bool _validateCardNumber(String number) {
+    // Remove spaces and non-digit characters
+    String cleanNumber = number.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // Check if it's a valid length
+    if (cleanNumber.length < 13 || cleanNumber.length > 19) {
+      return false;
+    }
+    
+    // Luhn algorithm
+    int sum = 0;
+    bool alternate = false;
+    for (int i = cleanNumber.length - 1; i >= 0; i--) {
+      int digit = int.parse(cleanNumber[i]);
+      if (alternate) {
+        digit *= 2;
+        if (digit > 9) {
+          digit = (digit % 10) + 1;
+        }
+      }
+      sum += digit;
+      alternate = !alternate;
+    }
+    return (sum % 10 == 0);
+  }
+
+  bool _validateExpiryDate(String date) {
+    if (date.length != 5) return false;
+    
+    try {
+      int month = int.parse(date.substring(0, 2));
+      int year = int.parse(date.substring(3));
+      
+      if (month < 1 || month > 12) return false;
+      
+      // Get current year and month
+      DateTime now = DateTime.now();
+      int currentYear = now.year % 100;
+      int currentMonth = now.month;
+      
+      // Check if card is expired
+      if (year < currentYear || (year == currentYear && month < currentMonth)) {
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  bool _validateCVV(String cvv) {
+    return cvv.length >= 3 && cvv.length <= 4 && RegExp(r'^\d+$').hasMatch(cvv);
+  }
+
   void _processPayment() {
-    // Basic form validation
-    if (_cardNameController.text.isEmpty ||
-        _cardNumberController.text.isEmpty ||
-        _expiryDateController.text.isEmpty ||
-        _cvvController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 10),
-              Text("Please fill all card details"),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: EdgeInsets.all(10),
-        ),
-      );
+    // Validate card number
+    if (!_validateCardNumber(_cardNumberController.text)) {
+      _showError("Invalid card number");
+      return;
+    }
+    
+    // Validate expiry date
+    if (!_validateExpiryDate(_expiryDateController.text)) {
+      _showError("Invalid or expired card");
+      return;
+    }
+    
+    // Validate CVV
+    if (!_validateCVV(_cvvController.text)) {
+      _showError("Invalid CVV");
+      return;
+    }
+    
+    // Validate cardholder name
+    if (_cardNameController.text.isEmpty) {
+      _showError("Please enter cardholder name");
       return;
     }
 
@@ -137,13 +191,78 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
         _isLoading = false;
       });
       
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PatientAppointmentDetailsScreen(),
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(LucideIcons.check, color: Colors.green),
+              SizedBox(width: 10),
+              Text("Payment Successful"),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Your payment has been processed successfully."),
+              SizedBox(height: 10),
+              Text("Amount: ${widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}"),
+              SizedBox(height: 10),
+              Text("Would you like to save this card for future use?"),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PatientAppointmentDetailsScreen(),
+                  ),
+                );
+              },
+              child: Text("No, thanks"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // TODO: Save card to user's payment methods
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PatientAppointmentDetailsScreen(),
+                  ),
+                );
+              },
+              child: Text("Save Card"),
+            ),
+          ],
         ),
       );
     });
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 10),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.all(10),
+      ),
+    );
   }
 
   @override

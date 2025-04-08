@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/views/screens/patient/appointment/card_payment.dart';
 import 'package:healthcare/views/screens/patient/appointment/easypaisa_payment.dart';
 import 'package:healthcare/views/screens/patient/appointment/jazzcash_payment.dart';
+import 'package:healthcare/views/screens/patient/appointment/saved_cards.dart';
 
 class PatientPaymentScreen extends StatefulWidget {
   final Map<String, dynamic> appointmentDetails;
@@ -50,7 +51,7 @@ class _PatientPaymentScreenState extends State<PatientPaymentScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CardPaymentScreen(
+            builder: (context) => SavedCardsScreen(
               appointmentDetails: widget.appointmentDetails,
             ),
           ),

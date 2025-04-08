@@ -103,9 +103,11 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(LucideIcons.wallet, 
-                              color: Color(0xFF4CAF50),
-                              size: 40,
+                            Image.asset(
+                              "assets/images/easypaisa.png",
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.contain,
                             ),
                             SizedBox(height: 8),
                             Text(

@@ -24,26 +24,26 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
   List<String> selectedAllergies = [];
   String searchQuery = '';
   String allergySearchQuery = '';
-  
+
   final List<String> bloodGroups = ["A-", "A+", "B-", "B+", "AB", "AB-"];
   
   // Grouped diseases
   final Map<String, List<String>> groupedDiseases = {
     "Chronic Diseases": [
-      "Diabetes",
-      "Hypertension",
-      "High Blood Pressure",
-      "Arthritis",
-      "Asthma",
-      "Kidney Problem",
-      "Heart Issue",
-      "Thyroid Disorder",
-      "Liver Disease",
-      "Cancer",
-      "Tuberculosis",
-      "Epilepsy",
-      "Chronic Obstructive Pulmonary Disease (COPD)",
-      "HIV/AIDS",
+  "Diabetes",
+  "Hypertension",
+  "High Blood Pressure",
+  "Arthritis",
+  "Asthma",
+  "Kidney Problem",
+  "Heart Issue",
+  "Thyroid Disorder",
+  "Liver Disease",
+  "Cancer",
+  "Tuberculosis",
+  "Epilepsy",
+  "Chronic Obstructive Pulmonary Disease (COPD)",
+  "HIV/AIDS",
       "Chronic Fatigue Syndrome",
       "Fibromyalgia",
       "Chronic Pain",
@@ -61,8 +61,8 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       "Cardiomyopathy",
     ],
     "Mental Health": [
-      "Depression",
-      "Anxiety",
+  "Depression",
+  "Anxiety",
       "Alzheimer's Disease",
       "Parkinson's Disease",
       "Bipolar Disorder",
@@ -89,7 +89,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       "Gaming Disorder",
     ],
     "Autoimmune Disorders": [
-      "Multiple Sclerosis",
+  "Multiple Sclerosis",
       "Psoriasis",
       "Celiac Disease",
       "Rheumatoid Arthritis",
@@ -116,10 +116,10 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       "Alopecia Areata",
     ],
     "Digestive Disorders": [
-      "Gastroesophageal Reflux Disease (GERD)",
-      "Irritable Bowel Syndrome (IBS)",
+  "Gastroesophageal Reflux Disease (GERD)",
+  "Irritable Bowel Syndrome (IBS)",
       "Crohn's Disease",
-      "Ulcerative Colitis",
+  "Ulcerative Colitis",
       "Gastritis",
       "Peptic Ulcer",
       "Gallstones",
@@ -147,9 +147,9 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       "Rectal Prolapse",
     ],
     "Reproductive Health": [
-      "Polycystic Ovary Syndrome (PCOS)",
-      "Endometriosis",
-      "Infertility",
+  "Polycystic Ovary Syndrome (PCOS)",
+  "Endometriosis",
+  "Infertility",
       "Menstrual Disorders",
       "Premenstrual Syndrome (PMS)",
       "Uterine Fibroids",
@@ -184,10 +184,10 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     ],
     "Blood Disorders": [
       "Anemia",
-      "Leukemia",
-      "Lymphoma",
-      "Sickle Cell Disease",
-      "Hemophilia",
+  "Leukemia",
+  "Lymphoma",
+  "Sickle Cell Disease",
+  "Hemophilia",
       "Thalassemia",
       "Deep Vein Thrombosis (DVT)",
       "Hemochromatosis",
@@ -274,13 +274,13 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     "Infectious Diseases": [
       "Hepatitis B",
       "Hepatitis C",
-      "Dengue",
-      "Malaria",
-      "Chikungunya",
-      "COVID-19",
-      "Pneumonia",
-      "Bronchitis",
-      "Sinusitis",
+  "Dengue",
+  "Malaria",
+  "Chikungunya",
+  "COVID-19",
+  "Pneumonia",
+  "Bronchitis",
+  "Sinusitis",
       "Tonsillitis",
       "Tuberculosis",
       "Influenza (Flu)",
@@ -759,23 +759,23 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
             ),
           ),
           Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: value,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: value,
                 hint: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    hint,
-                    style: GoogleFonts.poppins(
-                      color: Colors.grey.shade600,
-                      fontSize: 14,
+            hint,
+            style: GoogleFonts.poppins(
+              color: Colors.grey.shade600,
+              fontSize: 14,
                     ),
-                  ),
-                ),
-                items: items.map((String item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
+            ),
+          ),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
@@ -805,26 +805,26 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            item,
-                            style: GoogleFonts.poppins(
+                item,
+                style: GoogleFonts.poppins(
                               color: value == item ? const Color(0xFF3366CC) : Colors.black87,
-                              fontSize: 14,
+                  fontSize: 14,
                               fontWeight: value == item ? FontWeight.w500 : FontWeight.normal,
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
                 icon: Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: Icon(
-                    LucideIcons.chevronDown,
-                    color: const Color(0xFF3366CC),
-                  ),
-                ),
+            LucideIcons.chevronDown,
+            color: const Color(0xFF3366CC),
+          ),
+        ),
                 dropdownColor: Colors.white,
                 menuMaxHeight: 300,
                 borderRadius: BorderRadius.circular(16),
