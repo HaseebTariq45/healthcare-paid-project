@@ -1821,6 +1821,29 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF3366CC)),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BottomNavigationBarPatientScreen(
+                    profileStatus: "incomplete",
+                    suppressProfilePrompt: true,
+                  ),
+                ),
+              );
+            },
+            child: Text(
+              "Skip",
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF3366CC),
+              ),
+            ),
+          ),
+        ],
         backgroundColor: Colors.white,
         elevation: 0,
       ),

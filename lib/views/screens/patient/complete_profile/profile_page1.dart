@@ -6,6 +6,7 @@ import 'package:healthcare/views/screens/patient/complete_profile/profile_page2.
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
+import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
 
 class CompleteProfilePatient1Screen extends StatefulWidget {
   const CompleteProfilePatient1Screen({super.key});
@@ -204,6 +205,29 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF3366CC)),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BottomNavigationBarPatientScreen(
+                    profileStatus: "incomplete",
+                    suppressProfilePrompt: true,
+                  ),
+                ),
+              );
+            },
+            child: Text(
+              "Skip",
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF3366CC),
+              ),
+            ),
+          ),
+        ],
         backgroundColor: Colors.white,
         elevation: 0,
       ),

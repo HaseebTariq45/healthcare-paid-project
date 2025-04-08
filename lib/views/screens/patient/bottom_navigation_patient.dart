@@ -6,11 +6,16 @@ import 'package:healthcare/views/screens/patient/dashboard/profile.dart';
 
 class BottomNavigationBarPatientScreen extends StatefulWidget {
   final String profileStatus;
+  final bool suppressProfilePrompt;
 
   // Add static key to access navigator state
   static final GlobalKey<_BottomNavigationBarPatientScreenState> navigatorKey = GlobalKey<_BottomNavigationBarPatientScreenState>();
 
-  const BottomNavigationBarPatientScreen({super.key, required this.profileStatus});
+  const BottomNavigationBarPatientScreen({
+    super.key, 
+    required this.profileStatus,
+    this.suppressProfilePrompt = false,
+  });
 
   @override
   State<BottomNavigationBarPatientScreen> createState() => _BottomNavigationBarPatientScreenState();
@@ -35,16 +40,21 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
 
 class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPatientScreen> {
   late String profileStatus;
+  late bool suppressProfilePrompt;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     profileStatus = widget.profileStatus;
+    suppressProfilePrompt = widget.suppressProfilePrompt;
   }
 
   List<Widget> _widgetOptions() => <Widget>[
-    PatientHomeScreen(profileStatus: profileStatus),
+    PatientHomeScreen(
+      profileStatus: profileStatus,
+      suppressProfilePrompt: suppressProfilePrompt,
+    ),
     ReportsScreen(),
     PatientFinancesScreen(),
     PatientMenuScreen(),

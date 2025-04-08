@@ -30,7 +30,13 @@ class DiseaseCategory {
 
 class PatientHomeScreen extends StatefulWidget {
   final String profileStatus;
-  const PatientHomeScreen({super.key, this.profileStatus = "incomplete"});
+  final bool suppressProfilePrompt;
+  
+  const PatientHomeScreen({
+    super.key, 
+    this.profileStatus = "incomplete",
+    this.suppressProfilePrompt = false,
+  });
 
   @override
   _PatientHomeScreenState createState() => _PatientHomeScreenState();
@@ -38,6 +44,7 @@ class PatientHomeScreen extends StatefulWidget {
 
 class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTickerProviderStateMixin {
   late String profileStatus;
+  late bool suppressProfilePrompt;
   late TabController _tabController;
   final List<String> _categories = ["All", "Upcoming", "Completed", "Cancelled"];
   int _selectedCategoryIndex = 0;
@@ -142,10 +149,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   void initState() {
     super.initState();
     profileStatus = widget.profileStatus;
+    suppressProfilePrompt = widget.suppressProfilePrompt;
     _tabController = TabController(length: _categories.length, vsync: this);
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (profileStatus.toLowerCase() != "complete") {
+      if (profileStatus.toLowerCase() != "complete" && !suppressProfilePrompt) {
         showPopup(context);
       }
     });
