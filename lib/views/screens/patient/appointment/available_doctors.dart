@@ -13,6 +13,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
   String? selectedLocation;
   String? selectedSpeciality;
   bool isFilterVisible = false;
+  bool showOnlineOnly = false;
+  bool sortByPriceLowToHigh = false;
   late TabController _tabController;
   final List<String> _categories = ["All", "Cardiologist", "Dentist", "Orthopedic", "Neurologist"];
   int _selectedCategoryIndex = 0;
@@ -155,9 +157,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
               InkWell(
                 onTap: () => Navigator.pop(context),
                 borderRadius: BorderRadius.circular(12),
@@ -204,7 +206,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
       child: Row(
         children: [
-          Expanded(
+            Expanded(
             child: Container(
               height: 50,
               decoration: BoxDecoration(
@@ -290,12 +292,12 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     return Container(
       height: 40,
       margin: EdgeInsets.only(left: 20),
-      child: ListView.builder(
+              child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _categories.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () {
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () {
               setState(() {
                 _selectedCategoryIndex = index;
                 _tabController.animateTo(index);
@@ -337,9 +339,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                       : Colors.grey.shade700,
                 ),
               ),
-            ),
-          );
-        },
+                    ),
+                  );
+                },
       ),
     );
   }
@@ -505,12 +507,12 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
               children: [
                 Padding(
                   padding: EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                       Container(
-                        width: 80,
-                        height: 80,
+                width: 80,
+                height: 80,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
@@ -522,15 +524,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                           ],
                           image: DecorationImage(
                             image: AssetImage(doctor["image"]),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                fit: BoxFit.cover,
+              ),
+            ),
                       ),
                       SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -571,8 +573,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                               ),
                             ),
                             SizedBox(height: 8),
-                            Row(
-                              children: [
+                  Row(
+                    children: [
                                 _buildInfoBadge(
                                   LucideIcons.star,
                                   doctor["rating"],
@@ -587,15 +589,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                               ],
                             ),
                             SizedBox(height: 8),
-                            Row(
-                              children: [
+                  Row(
+                    children: [
                                 Icon(
                                   LucideIcons.mapPin,
                                   color: Colors.grey.shade600,
                                   size: 14,
                                 ),
                                 SizedBox(width: 4),
-                                Expanded(
+                      Expanded(
                                   child: Text(
                                     doctor["location"],
                                     style: GoogleFonts.poppins(
@@ -604,15 +606,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                   ),
-                ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
@@ -934,23 +936,55 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     setState(() {
       _searchQuery = _searchController.text.toLowerCase();
       
-      if (_selectedCategoryIndex == 0) {
-        // "All" category selected
-        _filteredDoctors = doctors.where((doctor) {
+      // Start with all doctors
+      _filteredDoctors = List.from(doctors);
+      
+      // Filter by category if a specific one is selected
+      if (_selectedCategoryIndex != 0) {
+        String selectedCategory = _categories[_selectedCategoryIndex];
+        _filteredDoctors = _filteredDoctors.where((doctor) {
+          return doctor["specialty"] == selectedCategory;
+        }).toList();
+      }
+      
+      // Filter by search query
+      if (_searchQuery.isNotEmpty) {
+        _filteredDoctors = _filteredDoctors.where((doctor) {
           return doctor["name"].toLowerCase().contains(_searchQuery) ||
                  doctor["specialty"].toLowerCase().contains(_searchQuery) ||
                  doctor["location"].toLowerCase().contains(_searchQuery);
         }).toList();
-      } else {
-        // Specific category selected
-        String selectedCategory = _categories[_selectedCategoryIndex];
-        _filteredDoctors = doctors.where((doctor) {
-          bool matchesCategory = doctor["specialty"] == selectedCategory;
-          bool matchesSearch = doctor["name"].toLowerCase().contains(_searchQuery) ||
-                              doctor["specialty"].toLowerCase().contains(_searchQuery) ||
-                              doctor["location"].toLowerCase().contains(_searchQuery);
-          return matchesCategory && (_searchQuery.isEmpty || matchesSearch);
+      }
+      
+      // Filter by rating
+      if (selectedRating == "4+") {
+        _filteredDoctors = _filteredDoctors.where((doctor) {
+          return double.parse(doctor["rating"]) >= 4.0;
         }).toList();
+      }
+      
+      // Filter by location
+      if (selectedLocation != null) {
+        _filteredDoctors = _filteredDoctors.where((doctor) {
+          return doctor["location"].contains(selectedLocation!);
+        }).toList();
+      }
+      
+      // Filter by online availability
+      if (showOnlineOnly) {
+        _filteredDoctors = _filteredDoctors.where((doctor) {
+          return doctor["available"];
+        }).toList();
+      }
+      
+      // Sort by price (low to high)
+      if (sortByPriceLowToHigh) {
+        _filteredDoctors.sort((a, b) {
+          // Extract numeric value from fee strings like "Rs 1500"
+          int priceA = int.parse(a["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
+          int priceB = int.parse(b["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
+          return priceA.compareTo(priceB);
+        });
       }
     });
   }

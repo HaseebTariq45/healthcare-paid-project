@@ -305,7 +305,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
       child: Container(
-        width: double.infinity,
+                width: double.infinity,
         height: 65,
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -331,11 +331,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => DoctorsScreen()),
-              );
-            },
+                    Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => DoctorsScreen()),
+            );
+                  },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(

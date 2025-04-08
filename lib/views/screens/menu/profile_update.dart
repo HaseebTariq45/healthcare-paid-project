@@ -194,7 +194,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                       tag: 'profileImage',
                       child: Stack(
                         alignment: Alignment.bottomRight,
-                        children: [
+                    children: [
                           Container(
                             height: 110,
                             width: 110,
@@ -239,9 +239,9 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
               ),
               
               // Form fields
@@ -249,7 +249,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                 padding: EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                children: [
                     Text(
                       "Personal Information",
                       style: GoogleFonts.poppins(
@@ -378,11 +378,11 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
         return Transform.translate(
           offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF666666),
