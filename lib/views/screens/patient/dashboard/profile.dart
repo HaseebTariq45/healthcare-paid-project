@@ -232,7 +232,19 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const PatientDetailProfileScreen(),
+                            builder: (context) => PatientDetailProfileScreen(
+                              name: widget.name,
+                              age: "28", // This would come from actual user data
+                              bloodGroup: "B+", // This would come from actual user data
+                              phoneNumber: "+92 300 1234567", // This would come from actual user data
+                              // Sample data - in a real app, these would be passed from state
+                              allergies: const ["Peanuts", "Penicillin", "Dust Mites"],
+                              diseases: const ["Asthma", "Migraine", "High Blood Pressure"],
+                              height: 165,
+                              weight: 65,
+                              // Document files would be passed from the user's profile data
+                              // In a real app, these would be loaded from a storage service
+                            ),
                           ),
                         );
                       },
