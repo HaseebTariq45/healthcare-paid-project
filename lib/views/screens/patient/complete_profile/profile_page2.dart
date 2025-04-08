@@ -21,7 +21,9 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
 
   String? selectedBloodGroup;
   List<String> selectedDiseases = [];
+  List<String> selectedAllergies = [];
   String searchQuery = '';
+  String allergySearchQuery = '';
   
   final List<String> bloodGroups = ["A-", "A+", "B-", "B+", "AB", "AB-"];
   
@@ -563,6 +565,95 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     ],
   };
 
+  // Grouped allergies
+  final Map<String, List<String>> groupedAllergies = {
+    "Food Allergies": [
+      "Peanuts",
+      "Tree Nuts",
+      "Milk",
+      "Eggs",
+      "Fish",
+      "Shellfish",
+      "Soy",
+      "Wheat",
+      "Sesame",
+      "Mustard",
+      "Celery",
+      "Lupin",
+      "Molluscs",
+      "Sulphites",
+      "Gluten",
+    ],
+    "Medication Allergies": [
+      "Penicillin",
+      "Sulfa Drugs",
+      "Aspirin",
+      "Ibuprofen",
+      "Naproxen",
+      "Codeine",
+      "Morphine",
+      "Local Anesthetics",
+      "Insulin",
+      "Vaccines",
+      "Antibiotics",
+      "Anticonvulsants",
+      "Chemotherapy Drugs",
+      "ACE Inhibitors",
+      "Statins",
+    ],
+    "Environmental Allergies": [
+      "Pollen",
+      "Dust Mites",
+      "Mold",
+      "Pet Dander",
+      "Cockroach Allergens",
+      "Grass",
+      "Weed Pollen",
+      "Tree Pollen",
+      "Ragweed",
+      "Hay Fever",
+      "Smoke",
+      "Perfumes",
+      "Cleaning Products",
+      "Latex",
+      "Insect Stings",
+    ],
+    "Skin Allergies": [
+      "Nickel",
+      "Fragrances",
+      "Preservatives",
+      "Rubber",
+      "Hair Dye",
+      "Cosmetics",
+      "Sunscreen",
+      "Adhesives",
+      "Topical Medications",
+      "Essential Oils",
+      "Wool",
+      "Detergents",
+      "Soaps",
+      "Shampoos",
+      "Fabric Softeners",
+    ],
+    "Other Allergies": [
+      "Bee Stings",
+      "Wasp Stings",
+      "Fire Ant Stings",
+      "Mosquito Bites",
+      "Ticks",
+      "Mites",
+      "Flea Bites",
+      "Contact Lenses",
+      "Dental Materials",
+      "Surgical Implants",
+      "Tattoo Ink",
+      "Henna",
+      "Hair Products",
+      "Nail Products",
+      "Jewelry",
+    ],
+  };
+
   // Get all diseases as a flat list
   List<String> get allDiseases {
     List<String> result = [];
@@ -583,6 +674,26 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     groupedDiseases.forEach((group, diseases) {
       List<String> filtered = diseases.where((disease) => 
         disease.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+      
+      if (filtered.isNotEmpty) {
+        filteredGroups[group] = filtered;
+      }
+    });
+    
+    return filteredGroups.entries.toList();
+  }
+
+  // Get filtered allergies based on search query
+  List<MapEntry<String, List<String>>> get filteredGroupedAllergies {
+    if (allergySearchQuery.isEmpty) {
+      return groupedAllergies.entries.toList();
+    }
+    
+    Map<String, List<String>> filteredGroups = {};
+    
+    groupedAllergies.forEach((group, allergies) {
+      List<String> filtered = allergies.where((allergy) => 
+        allergy.toLowerCase().contains(allergySearchQuery.toLowerCase())).toList();
       
       if (filtered.isNotEmpty) {
         filteredGroups[group] = filtered;
@@ -665,14 +776,43 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                 items: items.map((String item) {
                   return DropdownMenuItem<String>(
                     value: item,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        item,
-                        style: GoogleFonts.poppins(
-                          color: Colors.black87,
-                          fontSize: 14,
-                        ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: value == item ? const Color(0xFF3366CC).withOpacity(0.1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: value == item ? const Color(0xFF3366CC) : Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: value == item ? const Color(0xFF3366CC) : Colors.grey.shade300,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: value == item
+                                ? const Icon(
+                                    LucideIcons.check,
+                                    color: Colors.white,
+                                    size: 16,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            item,
+                            style: GoogleFonts.poppins(
+                              color: value == item ? const Color(0xFF3366CC) : Colors.black87,
+                              fontSize: 14,
+                              fontWeight: value == item ? FontWeight.w500 : FontWeight.normal,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -684,6 +824,14 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                     LucideIcons.chevronDown,
                     color: const Color(0xFF3366CC),
                   ),
+                ),
+                dropdownColor: Colors.white,
+                menuMaxHeight: 300,
+                borderRadius: BorderRadius.circular(16),
+                elevation: 4,
+                style: GoogleFonts.poppins(
+                  color: Colors.black87,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -1115,6 +1263,410 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     }
   }
 
+  Widget _buildSearchableAllergySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Search box with enhanced styling
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3366CC).withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: const Color(0xFF3366CC).withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF3366CC).withOpacity(0.1),
+                      const Color(0xFF3366CC).withOpacity(0.2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  LucideIcons.search,
+                  color: const Color(0xFF3366CC),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      allergySearchQuery = value;
+                    });
+                  },
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "Search allergies...",
+                    hintStyle: GoogleFonts.poppins(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+              if (allergySearchQuery.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      allergySearchQuery = '';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(
+                      LucideIcons.x,
+                      color: Colors.grey.shade600,
+                      size: 18,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        
+        // Display selected allergies with improved chip styling
+        if (selectedAllergies.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white,
+                  const Color(0xFF3366CC).withOpacity(0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF3366CC).withOpacity(0.3),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF3366CC).withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      LucideIcons.check,
+                      color: const Color(0xFF3366CC),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Selected Allergies",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (selectedAllergies.length > 1)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedAllergies.clear();
+                          });
+                        },
+                        child: Text(
+                          "Clear All",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF3366CC),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 10,
+                  children: selectedAllergies.map((allergy) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF3366CC).withOpacity(0.15),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Chip(
+                        label: Text(
+                          allergy,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        backgroundColor: const Color(0xFF3366CC),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                        deleteIconColor: Colors.white.withOpacity(0.9),
+                        deleteIcon: const Icon(LucideIcons.x, size: 14),
+                        onDeleted: () {
+                          setState(() {
+                            selectedAllergies.remove(allergy);
+                          });
+                        },
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        
+        // Enhanced allergy groups list
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3366CC).withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          constraints: const BoxConstraints(maxHeight: 320),
+          child: filteredGroupedAllergies.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.search,
+                          size: 40,
+                          color: Colors.grey.shade400,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "No allergies found",
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey.shade600,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Try a different search term",
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey.shade500,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: filteredGroupedAllergies.length,
+                  itemBuilder: (context, groupIndex) {
+                    final group = filteredGroupedAllergies[groupIndex];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: Colors.grey.shade200,
+                          width: 1,
+                        ),
+                      ),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3366CC).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              _getAllergyCategoryIcon(group.key),
+                              color: const Color(0xFF3366CC),
+                              size: 18,
+                            ),
+                          ),
+                          title: Text(
+                            group.key,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            "${group.value.length} ${group.value.length == 1 ? 'allergy' : 'allergies'}",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          trailing: Icon(
+                            LucideIcons.chevronDown,
+                            color: const Color(0xFF3366CC),
+                            size: 20,
+                          ),
+                          childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: group.value.length,
+                              itemBuilder: (context, index) {
+                                final allergy = group.value[index];
+                                final isSelected = selectedAllergies.contains(allergy);
+                                return InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        selectedAllergies.remove(allergy);
+                                      } else {
+                                        selectedAllergies.add(allergy);
+                                      }
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                    child: Row(
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? const Color(0xFF3366CC)
+                                                : Colors.white,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? const Color(0xFF3366CC)
+                                                  : Colors.grey.shade400,
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: isSelected
+                                                ? [
+                                                    BoxShadow(
+                                                      color: const Color(0xFF3366CC).withOpacity(0.2),
+                                                      blurRadius: 4,
+                                                      offset: const Offset(0, 2),
+                                                    )
+                                                  ]
+                                                : null,
+                                          ),
+                                          child: isSelected
+                                              ? const Icon(
+                                                  LucideIcons.check,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                )
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            allergy,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 14,
+                                              fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                                              color: isSelected ? const Color(0xFF3366CC) : Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  // Helper method to get an appropriate icon for each allergy category
+  IconData _getAllergyCategoryIcon(String category) {
+    switch (category) {
+      case "Food Allergies":
+        return LucideIcons.utensils;
+      case "Medication Allergies":
+        return LucideIcons.pill;
+      case "Environmental Allergies":
+        return LucideIcons.wind;
+      case "Skin Allergies":
+        return LucideIcons.scan;
+      case "Other Allergies":
+        return LucideIcons.plus;
+      default:
+        return LucideIcons.plus;
+    }
+  }
+
   Widget _buildTextField({
     required String hint,
     required IconData icon,
@@ -1347,6 +1899,18 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                     ),
                     const SizedBox(height: 8),
                     _buildSearchableDiseaseSelector(),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Select Allergies",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.left,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildSearchableAllergySelector(),
                   ],
                 ),
               ),
