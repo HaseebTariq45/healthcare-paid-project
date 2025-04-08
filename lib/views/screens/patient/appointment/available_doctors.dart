@@ -16,6 +16,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
   late TabController _tabController;
   final List<String> _categories = ["All", "Cardiologist", "Dentist", "Orthopedic", "Neurologist"];
   int _selectedCategoryIndex = 0;
+  
+  // Add search controller and filtered doctors list
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  List<Map<String, dynamic>> _filteredDoctors = [];
 
   final List<Map<String, dynamic>> doctors = [
     {
@@ -74,10 +79,16 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(length: _categories.length, vsync: this);
+    _filteredDoctors = List.from(doctors);
+    
+    // Add listener to search controller
+    _searchController.addListener(_filterDoctors);
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_filterDoctors);
+    _searchController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -208,6 +219,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                 ],
               ),
               child: TextField(
+                controller: _searchController,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   color: Colors.black87,
@@ -226,9 +238,21 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                       size: 20,
                     ),
                   ),
+                  suffixIcon: _searchController.text.isNotEmpty 
+                    ? IconButton(
+                        icon: Icon(LucideIcons.x, size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      ) 
+                    : null,
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 15),
                 ),
+                onChanged: (value) {
+                  // This is redundant since we have a listener, but it provides immediate feedback
+                  _filterDoctors();
+                },
               ),
             ),
           ),
@@ -275,6 +299,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
               setState(() {
                 _selectedCategoryIndex = index;
                 _tabController.animateTo(index);
+                _filterDoctors(); // Filter doctors when category changes
               });
             },
             child: Container(
@@ -415,12 +440,45 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
   }
 
   Widget _buildDoctorsList() {
+    // Show a message when no doctors match the search criteria
+    if (_filteredDoctors.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              LucideIcons.searchX,
+              size: 70,
+              color: Colors.grey.shade300,
+            ),
+            SizedBox(height: 16),
+            Text(
+              "No doctors found",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Try adjusting your search or filters",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
     return ListView.builder(
       physics: BouncingScrollPhysics(),
       padding: EdgeInsets.fromLTRB(20, 10, 20, 20),
-      itemCount: doctors.length,
+      itemCount: _filteredDoctors.length,
       itemBuilder: (context, index) {
-        final doctor = doctors[index];
+        final doctor = _filteredDoctors[index];
         return InkWell(
           onTap: () {
             Navigator.of(context).push(
@@ -869,6 +927,32 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
         ),
       ],
     );
+  }
+
+  // Filter doctors based on search query and selected category
+  void _filterDoctors() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+      
+      if (_selectedCategoryIndex == 0) {
+        // "All" category selected
+        _filteredDoctors = doctors.where((doctor) {
+          return doctor["name"].toLowerCase().contains(_searchQuery) ||
+                 doctor["specialty"].toLowerCase().contains(_searchQuery) ||
+                 doctor["location"].toLowerCase().contains(_searchQuery);
+        }).toList();
+      } else {
+        // Specific category selected
+        String selectedCategory = _categories[_selectedCategoryIndex];
+        _filteredDoctors = doctors.where((doctor) {
+          bool matchesCategory = doctor["specialty"] == selectedCategory;
+          bool matchesSearch = doctor["name"].toLowerCase().contains(_searchQuery) ||
+                              doctor["specialty"].toLowerCase().contains(_searchQuery) ||
+                              doctor["location"].toLowerCase().contains(_searchQuery);
+          return matchesCategory && (_searchQuery.isEmpty || matchesSearch);
+        }).toList();
+      }
+    });
   }
 }
 
