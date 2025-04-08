@@ -7,6 +7,7 @@ import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
+import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientHomeScreen extends StatefulWidget {
@@ -81,7 +82,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     
     // Show popup automatically if the profile is not complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (profileStatus != "complete") {
+      print("Profile Status: $profileStatus"); // Debug print
+      if (profileStatus.toLowerCase() != "complete") {
+        print("Showing popup for incomplete profile"); // Debug print
         showPopup(context);
       }
     });

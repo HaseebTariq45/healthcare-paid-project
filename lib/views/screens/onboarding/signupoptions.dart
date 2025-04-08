@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/common/signup.dart';
-import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
+import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SignUpOptions extends StatelessWidget {
@@ -54,7 +54,7 @@ class SignUpOptions extends StatelessWidget {
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CompleteProfilePatient1Screen(),
+                      builder: (context) => const PatientSignUp(),
                     ),
                   ),
                 ),
