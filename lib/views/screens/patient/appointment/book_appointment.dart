@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';
+import 'package:healthcare/views/screens/patient/appointment/patient_payment_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -235,12 +236,23 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       height: 50,
       child: ElevatedButton(
         onPressed: () {
+          // Collect appointment details
+          Map<String, dynamic> appointmentDetails = {
+            'doctor': widget.doctor['name'] ?? 'Dr. Sarah Ahmed',
+            'date': "${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}",
+            'time': _selectedTime,
+            'location': widget.doctor['location'] ?? 'Aga Khan Hospital, Karachi',
+            'fee': widget.doctor['fee'] ?? 'Rs. 2000',
+          };
+
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => PaymentMethodScreen(), // Navigate to JazzCash screen
+              builder: (context) => PatientPaymentScreen(
+                appointmentDetails: appointmentDetails,
+              ),
             ),
-      );
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Color.fromRGBO(64, 124, 226, 1),

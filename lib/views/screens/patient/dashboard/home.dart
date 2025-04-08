@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
+import 'package:healthcare/views/screens/patient/doctors/available_doctors.dart';
 import 'package:healthcare/views/screens/patient/appointment/appointment_booking_flow.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';

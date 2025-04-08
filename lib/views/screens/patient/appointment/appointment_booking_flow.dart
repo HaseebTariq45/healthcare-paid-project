@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';
+import 'package:healthcare/views/screens/patient/appointment/patient_payment_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AppointmentBookingFlow extends StatefulWidget {
   final String? specialty;
-  const AppointmentBookingFlow({super.key, this.specialty});
+  final Map<String, dynamic>? preSelectedDoctor;
+  const AppointmentBookingFlow({
+    super.key, 
+    this.specialty,
+    this.preSelectedDoctor,
+  });
 
   @override
   _AppointmentBookingFlowState createState() => _AppointmentBookingFlowState();
@@ -20,6 +26,15 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> {
   String? _selectedReason;
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.preSelectedDoctor != null) {
+      _selectedDoctor = widget.preSelectedDoctor!['name'];
+      _currentStep = 1; // Skip doctor selection step
+    }
+  }
 
   // Sample data - Replace with actual API calls
   final List<String> _locations = [
@@ -73,6 +88,114 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> {
     },
   ];
 
+  List<Step> _buildSteps() {
+    List<Step> steps = [
+      Step(
+        title: Text(
+          'Select Location',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: _selectedLocation != null
+            ? Text(
+                _selectedLocation!,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              )
+            : null,
+        content: _buildLocationStep(),
+        isActive: _currentStep >= 0,
+        state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+      ),
+      Step(
+        title: Text(
+          'Select Date',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: _selectedDate != null
+            ? Text(
+                '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              )
+            : null,
+        content: _buildDateStep(),
+        isActive: _currentStep >= 1,
+        state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+      ),
+      Step(
+        title: Text(
+          'Select Time',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: _selectedTime != null
+            ? Text(
+                _selectedTime!,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              )
+            : null,
+        content: _buildTimeStep(),
+        isActive: _currentStep >= 2,
+        state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+      ),
+    ];
+
+    if (widget.preSelectedDoctor == null) {
+      steps.add(
+        Step(
+          title: Text(
+            'Select Doctor',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: _selectedDoctor != null
+              ? Text(
+                  _selectedDoctor!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildDoctorStep(),
+          isActive: _currentStep >= 3,
+          state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+        ),
+      );
+    }
+
+    steps.add(
+      Step(
+        title: Text(
+          'Appointment Details',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: _buildAppointmentDetailsStep(),
+        isActive: _currentStep >= (widget.preSelectedDoctor == null ? 4 : 3),
+        state: _currentStep > (widget.preSelectedDoctor == null ? 4 : 3) 
+            ? StepState.complete 
+            : StepState.indexed,
+      ),
+    );
+
+    return steps;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,175 +215,44 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> {
             currentStep: _currentStep,
             onStepContinue: _proceedToNextStep,
             onStepCancel: _goToPreviousStep,
-            steps: [
-              Step(
-                title: Text(
-                  'Select Location',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
+            steps: _buildSteps(),
+          ),
+          if (_errorMessage != null)
+            Positioned(
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.red.shade200,
+                    width: 1,
                   ),
                 ),
-                subtitle: _selectedLocation != null
-                    ? Text(
-                        _selectedLocation!,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      )
-                    : null,
-                content: _buildLocationStep(),
-                isActive: _currentStep >= 0,
-                state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text(
-                  'Select Date',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: _selectedDate != null
-                    ? Text(
-                        '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      )
-                    : null,
-                content: _buildDateStep(),
-                isActive: _currentStep >= 1,
-                state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text(
-                  'Select Time',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: _selectedTime != null
-                    ? Text(
-                        _selectedTime!,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      )
-                    : null,
-                content: _buildTimeStep(),
-                isActive: _currentStep >= 2,
-                state: _currentStep > 2 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text(
-                  'Select Doctor',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: _selectedDoctor != null
-                    ? Text(
-                        _selectedDoctor!,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      )
-                    : null,
-                content: _buildDoctorStep(),
-                isActive: _currentStep >= 3,
-                state: _currentStep > 3 ? StepState.complete : StepState.indexed,
-              ),
-              Step(
-                title: Text(
-                  'Appointment Details',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                content: _buildAppointmentDetailsStep(),
-                isActive: _currentStep >= 4,
-                state: _currentStep > 4 ? StepState.complete : StepState.indexed,
-              ),
-            ],
-            controlsBuilder: (context, details) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Column(
+                child: Row(
                   children: [
-                    if (_errorMessage != null)
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        margin: EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.red.shade200,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.red.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
+                    Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.red.shade900,
                         ),
                       ),
-                    Row(
-                      children: [
-                        if (_currentStep > 0)
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: details.onStepCancel,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey.shade200,
-                                foregroundColor: Colors.black87,
-                                padding: EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text('Back'),
-                            ),
-                          ),
-                        if (_currentStep > 0) SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _isStepValid() ? details.onStepContinue : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF3366CC),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(_currentStep == 4 ? 'Proceed to Payment' : 'Next'),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
-              );
-            },
-          ),
+              ),
+            ),
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.3),
@@ -312,10 +304,22 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> {
       // Simulate API call
       await Future.delayed(Duration(seconds: 2));
 
+      // Collect appointment details
+      Map<String, dynamic> appointmentDetails = {
+        'doctor': _selectedDoctor ?? '',
+        'date': _selectedDate != null ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}' : '',
+        'time': _selectedTime ?? '',
+        'location': _selectedLocation ?? '',
+        'reason': _selectedReason ?? '',
+        'fee': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['fee'] : 'Rs. 2000', // Default fee
+      };
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PaymentMethodScreen(),
+          builder: (context) => PatientPaymentScreen(
+            appointmentDetails: appointmentDetails,
+          ),
         ),
       );
     } catch (e) {

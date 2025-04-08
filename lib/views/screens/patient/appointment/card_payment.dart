@@ -1,113 +1,726 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/successfull_appoinment.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class CardPaymentScreen extends StatefulWidget {
+  final Map<String, dynamic>? appointmentDetails;
+  
+  const CardPaymentScreen({
+    super.key,
+    this.appointmentDetails,
+  });
+
   @override
   _CardPaymentScreenState createState() => _CardPaymentScreenState();
 }
 
 class _CardPaymentScreenState extends State<CardPaymentScreen> {
-
   final TextEditingController _cardNameController = TextEditingController();
   final TextEditingController _cardNumberController = TextEditingController();
   final TextEditingController _expiryDateController = TextEditingController();
   final TextEditingController _cvvController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _provinceController = TextEditingController();
-  final TextEditingController _zipCodeController = TextEditingController();
+  
+  bool _isLoading = false;
+  CardType _cardType = CardType.Invalid;
+  
+  // Focus nodes for form fields
+  final FocusNode _cardNumberFocus = FocusNode();
+  final FocusNode _expiryDateFocus = FocusNode();
+  final FocusNode _cvvFocus = FocusNode();
+  
+  @override
+  void initState() {
+    super.initState();
+    _cardNumberController.addListener(_getCardTypeFrmNumber);
+  }
+  
+  @override
+  void dispose() {
+    _cardNumberController.removeListener(_getCardTypeFrmNumber);
+    _cardNumberController.dispose();
+    _cardNameController.dispose();
+    _expiryDateController.dispose();
+    _cvvController.dispose();
+    _cardNumberFocus.dispose();
+    _expiryDateFocus.dispose();
+    _cvvFocus.dispose();
+    super.dispose();
+  }
+  
+  void _getCardTypeFrmNumber() {
+    if (_cardNumberController.text.length <= 4) {
+      String input = _cardNumberController.text.trim();
+      CardType type = CardType.Invalid;
+      
+      if (input.startsWith(RegExp(r'[4]'))) {
+        type = CardType.Visa;
+      } else if (input.startsWith(RegExp(r'[5]'))) {
+        type = CardType.MasterCard;
+      } else if (input.startsWith(RegExp(r'[3]'))) {
+        type = CardType.AmericanExpress;
+      } else if (input.startsWith(RegExp(r'[6]'))) {
+        type = CardType.Discover;
+      }
+      
+      setState(() {
+        _cardType = type;
+      });
+    }
+  }
+
+  String _getCardIcon() {
+    switch (_cardType) {
+      case CardType.Visa:
+        return '💳 Visa';
+      case CardType.MasterCard:
+        return '💳 MasterCard';
+      case CardType.AmericanExpress:
+        return '💳 Amex';
+      case CardType.Discover:
+        return '💳 Discover';
+      default:
+        return '💳 Card';
+    }
+  }
+
+  Color _getCardTypeColor() {
+    switch (_cardType) {
+      case CardType.Visa:
+        return Color(0xFF1A1F71);
+      case CardType.MasterCard:
+        return Color(0xFFFF5F00);
+      case CardType.AmericanExpress:
+        return Color(0xFF2E77BC);
+      case CardType.Discover:
+        return Color(0xFFFF6000);
+      default:
+        return Color(0xFF3366CC);
+    }
+  }
+
+  void _processPayment() {
+    // Basic form validation
+    if (_cardNameController.text.isEmpty ||
+        _cardNumberController.text.isEmpty ||
+        _expiryDateController.text.isEmpty ||
+        _cvvController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 10),
+              Text("Please fill all card details"),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: EdgeInsets.all(10),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate API call
+    Future.delayed(Duration(seconds: 2), () {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PatientAppointmentDetailsScreen(),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Get the appropriate fee from appointment details
+    String fee = widget.appointmentDetails != null && widget.appointmentDetails!.containsKey('fee') 
+        ? widget.appointmentDetails!['fee'] 
+        : 'Rs. 2,000';
+    
+    String doctor = widget.appointmentDetails != null && widget.appointmentDetails!.containsKey('doctor') 
+        ? widget.appointmentDetails!['doctor'] 
+        : 'Doctor';
+    
     return Scaffold(
-      appBar: AppBarOnboarding(isBackButtonVisible: true, text: "Book Appointment"),
+      appBar: AppBarOnboarding(isBackButtonVisible: true, text: "Card Payment"),
       backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Text(
-                "Debit Card",
-                style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Credit Card Visualization
+                  _buildCreditCardWidget(),
+                  
+                  SizedBox(height: 30),
+                  
+                  // Payment Information
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Payment Summary",
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 15),
+                        _buildSummaryRow(
+                          "Appointment",
+                          "Consultation with $doctor",
+                          LucideIcons.calendar,
+                        ),
+                        Divider(height: 20),
+                        _buildSummaryRow(
+                          "Amount",
+                          fee,
+                          LucideIcons.creditCard,
+                          isAmount: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  SizedBox(height: 30),
+                  
+                  // Card Details Section
+                  Text(
+                    "Card Details",
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  
+                  // Card Name Field
+                  _buildTextField(
+                    controller: _cardNameController,
+                    label: "Cardholder Name",
+                    hint: "John Smith",
+                    icon: LucideIcons.user,
+                    onEditingComplete: () => _cardNumberFocus.requestFocus(),
+                  ),
+                  
+                  // Card Number Field with formatting
+                  _buildTextField(
+                    controller: _cardNumberController,
+                    label: "Card Number",
+                    hint: "1234 5678 9012 3456",
+                    icon: LucideIcons.creditCard,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(16),
+                      CardNumberFormatter(),
+                    ],
+                    focusNode: _cardNumberFocus,
+                    onEditingComplete: () => _expiryDateFocus.requestFocus(),
+                  ),
+                  
+                  // Expiry Date and CVV Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _expiryDateController,
+                          label: "Expiry Date",
+                          hint: "MM/YY",
+                          icon: LucideIcons.calendar,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                            ExpiryDateFormatter(),
+                          ],
+                          focusNode: _expiryDateFocus,
+                          onEditingComplete: () => _cvvFocus.requestFocus(),
+                        ),
+                      ),
+                      SizedBox(width: 15),
+                      Expanded(
+                        child: _buildTextField(
+                          controller: _cvvController,
+                          label: "CVV",
+                          hint: "123",
+                          icon: LucideIcons.lock,
+                          keyboardType: TextInputType.number,
+                          obscureText: true,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          focusNode: _cvvFocus,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 40),
+                  
+                  // Security Message
+                  Container(
+                    padding: EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          LucideIcons.shield,
+                          color: Colors.green,
+                          size: 24,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "Your payment is secure. We use SSL encryption to protect your data.",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  SizedBox(height: 30),
+                  
+                  // Process Payment Button
+                  _buildSubmitButton(),
+                  
+                  SizedBox(height: 20),
+                ],
               ),
             ),
-            SizedBox(height: 20),
-
-            _buildTextField(_cardNameController, "Name of Card", Icons.person),
-            _buildTextField(_cardNumberController, "0000 0000 0000 0000", Icons.credit_card, keyboardType: TextInputType.number),
-
-            Row(
-              children: [
-                Expanded(child: _buildTextField(_expiryDateController, "12/22", Icons.calendar_today, keyboardType: TextInputType.datetime)),
-                SizedBox(width: 10),
-                Expanded(child: _buildTextField(_cvvController, "123", Icons.lock, keyboardType: TextInputType.number, obscureText: true)),
-              ],
+          ),
+          
+          // Loading Overlay
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(_getCardTypeColor()),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        "Processing payment...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
+        ],
+      ),
+    );
+  }
 
-            _buildTextField(_addressController, "Address", Icons.location_on),
-            _buildTextField(_provinceController, "Province", Icons.image),
-            _buildTextField(_zipCodeController, "ZIP Code", Icons.location_city, keyboardType: TextInputType.number),
-
-            SizedBox(height: 30),
-
-            // Proceed Button
-            _buildSubmitButton(),
+  Widget _buildCreditCardWidget() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _getCardTypeColor(),
+            _getCardTypeColor().withOpacity(0.8),
           ],
         ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: _getCardTypeColor().withOpacity(0.3),
+            blurRadius: 15,
+            offset: Offset(0, 8),
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _getCardIcon(),
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              Icon(
+                LucideIcons.wifi,
+                color: Colors.white,
+                size: 24,
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _cardNumberController.text.isEmpty 
+                    ? "•••• •••• •••• ••••" 
+                    : _cardNumberController.text,
+                style: GoogleFonts.sourceCodePro(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: 2,
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "CARD HOLDER",
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      Text(
+                        _cardNameController.text.isEmpty 
+                            ? "YOUR NAME" 
+                            : _cardNameController.text.toUpperCase(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "EXPIRES",
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      Text(
+                        _expiryDateController.text.isEmpty 
+                            ? "MM/YY" 
+                            : _expiryDateController.text,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, IconData icon,
-      {TextInputType keyboardType = TextInputType.text, bool obscureText = false}) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    bool obscureText = false,
+    VoidCallback? onEditingComplete,
+    FocusNode? focusNode,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        decoration: InputDecoration(
-          hintText: hint,
-          prefixIcon: Icon(icon, color: Colors.grey),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          filled: true,
-          fillColor: Colors.grey[200],
-        ),
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              obscureText: obscureText,
+              inputFormatters: inputFormatters,
+              onEditingComplete: onEditingComplete,
+              focusNode: focusNode,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+              ),
+              decoration: InputDecoration(
+                hintText: hint,
+                prefixIcon: Icon(
+                  icon,
+                  color: _getCardTypeColor(),
+                  size: 20,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.grey.shade200,
+                    width: 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: _getCardTypeColor(),
+                    width: 1,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildSummaryRow(String label, String value, IconData icon, {bool isAmount = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isAmount ? _getCardTypeColor().withOpacity(0.1) : Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: isAmount ? _getCardTypeColor() : Colors.grey.shade700,
+              size: 18,
+            ),
+          ),
+          SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: isAmount ? FontWeight.w700 : FontWeight.w500,
+                    color: isAmount ? _getCardTypeColor() : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 55,
       child: ElevatedButton(
-        onPressed: () {
-           Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PatientAppointmentDetailsScreen(), // Navigate to JazzCash screen
-            ),
-          );
-        },
+        onPressed: _isLoading ? null : _processPayment,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color.fromRGBO(64, 124, 226, 1),
+          backgroundColor: _getCardTypeColor(),
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(15),
           ),
+          elevation: 0,
+          padding: EdgeInsets.symmetric(vertical: 15),
         ),
-        child: Text(
-          "Proceed",
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
+        child: _isLoading
+            ? CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Pay Now",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(LucideIcons.arrowRight, size: 18),
+                ],
+              ),
       ),
     );
   }
+}
 
+enum CardType {
+  MasterCard,
+  Visa,
+  AmericanExpress,
+  Discover,
+  Invalid
+}
+
+class CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+    
+    // Remove all non-digits
+    String value = newValue.text.replaceAll(RegExp(r'\D'), '');
+    
+    // Limit to 16 digits
+    if (value.length > 16) {
+      value = value.substring(0, 16);
+    }
+    
+    // Format with spaces
+    StringBuffer buffer = StringBuffer();
+    for (int i = 0; i < value.length; i++) {
+      buffer.write(value[i]);
+      if ((i + 1) % 4 == 0 && i != value.length - 1) {
+        buffer.write(' ');
+      }
+    }
+    
+    return TextEditingValue(
+      text: buffer.toString(),
+      selection: TextSelection.collapsed(offset: buffer.toString().length),
+    );
+  }
+}
+
+class ExpiryDateFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+    
+    // Remove all non-digits
+    String value = newValue.text.replaceAll(RegExp(r'\D'), '');
+    
+    // Limit to 4 digits
+    if (value.length > 4) {
+      value = value.substring(0, 4);
+    }
+    
+    // Format with slash
+    StringBuffer buffer = StringBuffer();
+    for (int i = 0; i < value.length; i++) {
+      buffer.write(value[i]);
+      if (i == 1 && i != value.length - 1) {
+        buffer.write('/');
+      }
+    }
+    
+    return TextEditingValue(
+      text: buffer.toString(),
+      selection: TextSelection.collapsed(offset: buffer.toString().length),
+    );
+  }
 } 
