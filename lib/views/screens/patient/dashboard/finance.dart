@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../../../models/transaction_model.dart';
+import '../../../../services/mock_financial_repository.dart';
 
 class PatientFinancesScreen extends StatefulWidget {
-  const PatientFinancesScreen({Key? key}) : super(key: key);
+  const PatientFinancesScreen({super.key});
 
   @override
   State<PatientFinancesScreen> createState() => _PatientFinancesScreenState();
@@ -11,51 +13,29 @@ class PatientFinancesScreen extends StatefulWidget {
 
 class _PatientFinancesScreenState extends State<PatientFinancesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ["All", "Payments", "Refunds"];
   int _selectedTabIndex = 0;
+  TransactionType? _selectedType;
 
-  final List<Map<String, dynamic>> transactions = [
-    {
-      "title": "Appointment with Dr. Asmara",
-      "amount": "Rs 1,800",
-      "date": "Jan 12, 2023",
-      "type": "payment",
-      "status": "completed"
-    },
-    {
-      "title": "Appointment with Dr. Akbar",
-      "amount": "Rs 5,500",
-      "date": "Dec 28, 2022",
-      "type": "payment",
-      "status": "completed"
-    },
-    {
-      "title": "Refund - Cancelled Appointment",
-      "amount": "Rs 900",
-      "date": "Dec 15, 2022",
-      "type": "refund",
-      "status": "completed"
-    },
-    {
-      "title": "Appointment with Dr. Fahad",
-      "amount": "Rs 2,990",
-      "date": "Nov 30, 2022",
-      "type": "payment",
-      "status": "completed"
-    },
-    {
-      "title": "Service Charges",
-      "amount": "Rs 300",
-      "date": "Nov 15, 2022",
-      "type": "payment",
-      "status": "completed"
-    },
-  ];
+  // Mock repository instance
+  final FinancialRepository _repository = FinancialRepository();
+  
+  // Financial summary data
+  Map<String, num> _financialSummary = {
+    'income': 0,
+    'expense': 0,
+    'balance': 0,
+  };
+  
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
+    
+    // Initialize data
+    _loadFinancialSummary();
   }
 
   @override
@@ -64,25 +44,59 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
     super.dispose();
   }
 
-  List<Map<String, dynamic>> get _filteredTransactions {
-    if (_selectedTabIndex == 0) return transactions;
-    if (_selectedTabIndex == 1) return transactions.where((t) => t["type"] == "payment").toList();
-    if (_selectedTabIndex == 2) return transactions.where((t) => t["type"] == "refund").toList();
-    return transactions;
+  void _handleTabChange() {
+    if (_tabController.indexIsChanging) {
+      setState(() {
+        _selectedTabIndex = _tabController.index;
+        
+        // Update selected type based on tab
+        switch (_selectedTabIndex) {
+          case 0: // All
+            _selectedType = null;
+            break;
+          case 1: // Payments
+            _selectedType = TransactionType.payment;
+            break;
+          case 2: // Refunds
+            _selectedType = TransactionType.refund;
+            break;
+        }
+      });
+    }
+  }
+
+  // Load financial summary data
+  Future<void> _loadFinancialSummary() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final summary = await _repository.getFinancialSummary();
+      
+      setState(() {
+        _financialSummary = summary;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
             _buildFinancialSummary(),
             _buildTabBar(),
-            _buildTransactionList(),
+            Expanded(
+              child: _buildTransactionsList(),
+            ),
           ],
         ),
       ),
@@ -90,57 +104,34 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade100,
-            spreadRadius: 1,
-            blurRadius: 1,
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F7FF),
-                borderRadius: BorderRadius.circular(8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Financial Overview',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              child: const Icon(
-                LucideIcons.arrowLeft,
-                color: Color(0xFF3366CC),
-                size: 20,
+              Text(
+                'Track all your medical payments',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
               ),
-            ),
+            ],
           ),
-          const SizedBox(width: 15),
-          Text(
-            "My Finances",
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F7FF),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              LucideIcons.wallet,
-              color: Color(0xFF3366CC),
-              size: 20,
-            ),
+          IconButton(
+            onPressed: _loadFinancialSummary,
+            icon: Icon(LucideIcons.refreshCcw),
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -149,369 +140,292 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
 
   Widget _buildFinancialSummary() {
     return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
+          colors: [Color(0xFF0167FF), Color(0xFF0157FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF3366CC),
-            Color(0xFF5E8EF7),
-          ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3366CC).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-            spreadRadius: 1,
+            color: Color(0xFF0167FF).withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Total Spending",
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withOpacity(0.9),
-                ),
+      child: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Balance',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
                 ),
-                child: Row(
+                const SizedBox(height: 4),
+                Text(
+                  '\$${_financialSummary['balance']}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(
-                      LucideIcons.calendar,
-                      color: Colors.white,
-                      size: 14,
+                    _buildSummaryItem(
+                      title: 'Payments',
+                      amount: _financialSummary['income'],
+                      icon: LucideIcons.arrowDown,
+                      iconColor: Colors.greenAccent,
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      "This Year",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
+                    _buildSummaryItem(
+                      title: 'Refunds',
+                      amount: _financialSummary['expense'],
+                      icon: LucideIcons.arrowUp,
+                      iconColor: Colors.redAccent,
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
+    );
+  }
+
+  Widget _buildSummaryItem({
+    required String title,
+    required num? amount,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 20),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "Rs 15,000",
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      LucideIcons.trendingUp,
-                      color: Colors.white,
-                      size: 12,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      "12%",
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: 16,
           ),
-          const SizedBox(height: 25),
-          Row(
-            children: List.generate(
-              12,
-              (index) => Expanded(
-                child: Container(
-                  height: 60,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Simulating a chart bar with varying heights
-                      Container(
-                        height: [20, 35, 15, 40, 25, 50, 30, 45, 20, 55, 35, 40][index].toDouble(),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.8),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Jan",
-                style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  color: Colors.white.withOpacity(0.7),
-                ),
+            Text(
+              '\$${amount ?? 0}',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
               ),
-              Text(
-                "Dec",
-                style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildTabBar() {
     return Container(
-      height: 44,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FF),
-        borderRadius: BorderRadius.circular(22),
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        children: List.generate(
-          _tabs.length,
-          (index) => Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTabIndex = index;
-                  _tabController.animateTo(index);
-                });
-              },
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _selectedTabIndex == index
-                      ? const Color(0xFF3366CC)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(22),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          color: Color(0xFF0167FF),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.black87,
+        labelStyle: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        unselectedLabelStyle: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+        tabs: const [
+          Tab(text: 'All'),
+          Tab(text: 'Payments'),
+          Tab(text: 'Refunds'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionsList() {
+    return StreamBuilder<List<FinancialTransaction>>(
+      stream: _repository.getTransactions(type: _selectedType),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Something went wrong. Please try again.',
+              style: GoogleFonts.poppins(),
+            ),
+          );
+        }
+        
+        final transactions = snapshot.data ?? [];
+        
+        if (transactions.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  LucideIcons.receipt,
+                  size: 48,
+                  color: Colors.grey[400],
                 ),
-                child: Text(
-                  _tabs[index],
+                const SizedBox(height: 16),
+                Text(
+                  'No transactions found',
                   style: GoogleFonts.poppins(
-                    color: _selectedTabIndex == index
-                        ? Colors.white
-                        : const Color(0xFF3366CC),
+                    fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    fontSize: 14,
+                    color: Colors.grey[700],
                   ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  _selectedType == null
+                      ? 'Your transaction history will appear here'
+                      : 'No ${_selectedType == TransactionType.payment ? 'payment' : 'refund'} transactions found',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
-          ),
-        ),
-      ),
+          );
+        }
+        
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: transactions.length,
+          separatorBuilder: (context, index) => const Divider(),
+          itemBuilder: (context, index) {
+            final transaction = transactions[index];
+            return _buildTransactionItem(transaction);
+          },
+        );
+      },
     );
   }
 
-  Widget _buildTransactionList() {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Transaction History",
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(height: 15),
-            Expanded(
-              child: _filteredTransactions.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: _filteredTransactions.length,
-                      itemBuilder: (context, index) {
-                        final transaction = _filteredTransactions[index];
-                        return _buildTransactionItem(transaction);
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            LucideIcons.fileText,
-            size: 60,
-            color: Color(0xFFE0E0E0),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "No transactions yet",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _selectedTabIndex == 0
-                ? "You haven't made any transactions"
-                : _selectedTabIndex == 1
-                    ? "You haven't made any payments"
-                    : "You haven't received any refunds",
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionItem(Map<String, dynamic> transaction) {
-    final bool isRefund = transaction["type"] == "refund";
+  Widget _buildTransactionItem(FinancialTransaction transaction) {
+    final isPayment = transaction.type == TransactionType.payment;
+    final isCompleted = transaction.status == TransactionStatus.completed;
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
-        border: Border.all(
-          color: Colors.grey.shade100,
-          width: 1,
-        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isRefund 
-                  ? const Color(0xFFE8F5E9) 
-                  : const Color(0xFFE3F2FD),
-              borderRadius: BorderRadius.circular(12),
+              color: isPayment ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
-              child: Icon(
-                isRefund ? LucideIcons.recycle : LucideIcons.creditCard,
-                color: isRefund ? Colors.green : const Color(0xFF3366CC),
-                size: 24,
-              ),
+            child: Icon(
+              isPayment ? LucideIcons.creditCard : LucideIcons.banknote,
+              color: isPayment ? Colors.blue : Colors.orange,
+              size: 20,
             ),
           ),
-          const SizedBox(width: 15),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  transaction["title"],
+                  transaction.title,
                   style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  transaction["date"],
+                  '${transaction.date.day}/${transaction.date.month}/${transaction.date.year}',
                   style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                    color: Colors.grey[600],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                transaction["amount"],
+                '${isPayment ? '-' : '+'}\$${transaction.amount}',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isRefund ? Colors.green : Colors.black87,
+                  fontWeight: FontWeight.w500,
+                  color: isPayment ? Colors.red : Colors.green,
                 ),
               ),
-              const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(10),
+                  color: isCompleted ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  "Completed",
+                  transaction.status.toString(),
                   style: GoogleFonts.poppins(
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF3366CC),
+                    color: isCompleted ? Colors.green : Colors.grey[700],
                   ),
                 ),
               ),
