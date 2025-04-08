@@ -2,17 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ReportsScreen extends StatelessWidget {
-  final List<Map<String, String>> reports = [
-    {"title": "Appointment with Dr Asmara", "date": "Dec 30, 2024"},
-    {"title": "Appointment with Dr Fahad", "date": "Dec 30, 2024"},
-    {"title": "Last Month Expenditure", "date": "Dec 30, 2024"},
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView( // Fix: Allows the entire screen to be scrollable
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,12 +40,11 @@ class ReportsScreen extends StatelessWidget {
 
               // Report List
               ListView.builder(
-                shrinkWrap: true, // Fix: Prevents ListView from taking all space
-                physics: NeverScrollableScrollPhysics(), // Fix: Avoids nested scrolling issue
-                itemCount: reports.length,
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                itemCount: 3,
                 itemBuilder: (context, index) {
-                  final report = reports[index];
-                  return _reportTile(report["title"]!, report["date"]!);
+                  return _reportTile(context, index);
                 },
               ),
             ],
@@ -64,7 +57,7 @@ class ReportsScreen extends StatelessWidget {
   // Widget for Info Cards
   Widget _infoCard({required String title, required String value, required IconData icon, required Color color}) {
     return Container(
-      width: 40,
+      width: 160,
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color,
@@ -84,7 +77,19 @@ class ReportsScreen extends StatelessWidget {
   }
 
   // Widget for Report ListTile
-  Widget _reportTile(String title, String date) {
+  Widget _reportTile(BuildContext context, int index) {
+    final titles = [
+      "Appointment with Dr Asmara",
+      "Appointment with Dr Fahad",
+      "Last Month Expenditure"
+    ];
+
+    final dates = [
+      "Dec 30, 2024",
+      "Dec 30, 2024",
+      "Dec 30, 2024"
+    ];
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(12),
@@ -115,13 +120,48 @@ class ReportsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(titles[index], style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text(date, style: TextStyle(fontSize: 14, color: Colors.grey)),
+                Text(dates[index], style: TextStyle(fontSize: 14, color: Colors.grey)),
               ],
             ),
           ),
-          Icon(LucideIcons.ellipsis, color: Colors.black54),
+          PopupMenuButton(
+            icon: Icon(Icons.more_vert, color: Colors.black54),
+            onSelected: (value) {
+              if (value == 'pin') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Pinned: ${titles[index]}'))
+                );
+              } else if (value == 'delete') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Deleted: ${titles[index]}'))
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'pin',
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.pin, size: 18, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Pin'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.trash, size: 18, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -119,74 +119,74 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             
             // Analytics cards
             Expanded(
-              child: Padding(
+        child: Padding(
                 padding: const EdgeInsets.all(15.0),
                 child: GridView.count(
                   crossAxisCount: 2,
                   childAspectRatio: 1.05,
                   crossAxisSpacing: 15,
                   mainAxisSpacing: 15,
-                  children: [
-                    _buildAnalyticsCard(
+            children: [
+              _buildAnalyticsCard(
                       icon: LucideIcons.trendingUp,
-                      title: "Performance Analysis",
+                title: "Performance Analysis",
                       description: "Track your growth metrics",
                       bgColor: Color(0xFFE3F2FD),
                       iconColor: Color(0xFF2196F3),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PerformanceAnalysis(),
-                          ),
-                        );
-                      },
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PerformanceAnalysis(),
                     ),
-                    _buildAnalyticsCard(
+                  );
+                },
+              ),
+              _buildAnalyticsCard(
                       icon: LucideIcons.activity,
-                      title: "Financial Analytics",
+                title: "Financial Analytics",
                       description: "Revenue & expense reports",
                       bgColor: Color(0xFFE1F5FE),
                       iconColor: Color(0xFF03A9F4),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FinancialAnalyticsScreen(),
-                          ),
-                        );
-                      },
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FinancialAnalyticsScreen(),
                     ),
-                    _buildAnalyticsCard(
+                  );
+                },
+              ),
+              _buildAnalyticsCard(
                       icon: LucideIcons.users,
-                      title: "Patients",
+                title: "Patients",
                       description: "Manage patient data",
                       bgColor: Color(0xFFE8F5E9),
                       iconColor: Color(0xFF4CAF50),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => PatientsScreen()),
-                        );
-                      },
-                    ),
-                    _buildAnalyticsCard(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => PatientsScreen()),
+                  );
+                },
+              ),
+              _buildAnalyticsCard(
                       icon: LucideIcons.clipboardList,
-                      title: "Reports",
+                title: "Reports",
                       description: "View all reports",
                       bgColor: Color(0xFFFFF3E0),
                       iconColor: Color(0xFFFF9800),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => ReportsScreen()),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ReportsScreen()),
+                  );
+                },
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
           ],
         ),
       ),
@@ -254,9 +254,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ),
             Spacer(),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
