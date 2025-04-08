@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
-import 'package:healthcare/views/screens/complete_profile/profile1.dart';
+import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/dashboard/analytics.dart';
 import 'package:healthcare/views/screens/dashboard/finances.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final String profileStatus;
@@ -561,7 +562,7 @@ void showPopup(BuildContext context) {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const CompleteProfileScreen(),
+                      builder: (context) => ProfilePage1(userRole: UserRole.doctor),
                     ),
                   );
                 },

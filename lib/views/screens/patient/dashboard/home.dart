@@ -8,6 +8,7 @@ import 'package:healthcare/views/screens/patient/appointment/payment_options.dar
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/services/auth_service.dart';
 
 class PatientHomeScreen extends StatefulWidget {
   final String profileStatus;
@@ -895,7 +896,7 @@ void showPopup(BuildContext context) {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const CompleteProfilePatient1Screen(),
+                      builder: (context) => ProfilePage1(userRole: UserRole.patient),
                     ),
                   );
                 },
