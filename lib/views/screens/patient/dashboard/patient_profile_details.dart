@@ -4,6 +4,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
+import 'package:path/path.dart' as path;
+import 'package:image_picker/image_picker.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:file_picker/file_picker.dart';
+
+// Document type enum for upload functionality
+enum DocumentType { identification, medical }
 
 class PatientDetailProfileScreen extends StatefulWidget {
   final String name;
@@ -20,6 +29,12 @@ class PatientDetailProfileScreen extends StatefulWidget {
   final File? cnicBack;
   final File? medicalReport1;
   final File? medicalReport2;
+  final String? email;
+  final String? address;
+  final String? city;
+  final String? state;
+  final String? country;
+  final String? zipCode;
 
   const PatientDetailProfileScreen({
     super.key,
@@ -37,6 +52,12 @@ class PatientDetailProfileScreen extends StatefulWidget {
     this.cnicBack,
     this.medicalReport1,
     this.medicalReport2,
+    this.email,
+    this.address,
+    this.city,
+    this.state,
+    this.country,
+    this.zipCode,
   });
 
   @override
@@ -397,6 +418,12 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           
           const SizedBox(height: 20),
           
+          // Contact information card
+          _buildSectionTitle("Contact Information"),
+          _buildContactInformationCard(),
+          
+          const SizedBox(height: 20),
+          
           // Allergies card
           _buildSectionTitle("Allergies"),
           _buildAllergiesCard(),
@@ -406,6 +433,114 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           // Current conditions card
           _buildSectionTitle("Current Conditions"),
           _buildCurrentConditionsCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactInformationCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade100,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          if (widget.email != null) 
+            _buildContactItem(
+              icon: LucideIcons.mail,
+              title: "Email",
+              value: widget.email!,
+              iconColor: Colors.blue.shade600,
+            ),
+          if (widget.phoneNumber.isNotEmpty) ...[
+            if (widget.email != null) const Divider(height: 1),
+            _buildContactItem(
+              icon: LucideIcons.phone,
+              title: "Phone",
+              value: widget.phoneNumber,
+              iconColor: Colors.green.shade600,
+            ),
+          ],
+          if (widget.address != null) ...[
+            const Divider(height: 1),
+            _buildContactItem(
+              icon: LucideIcons.building,
+              title: "Address",
+              value: widget.address!,
+              iconColor: Colors.orange.shade700,
+            ),
+          ],
+          if (widget.city != null && widget.country != null) ...[
+            const Divider(height: 1),
+            _buildContactItem(
+              icon: LucideIcons.mapPin,
+              title: "Location",
+              value: "${widget.city}, ${widget.state ?? ''} ${widget.zipCode ?? ''}\n${widget.country}",
+              iconColor: Colors.red.shade600,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactItem({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color iconColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: iconColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -527,121 +662,18 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   }
 
   Widget _buildDocumentsTab() {
-    // Check if any documents exist
-    final bool hasIdentityDocs = widget.cnicFront != null || widget.cnicBack != null;
-    final bool hasMedicalDocs = widget.medicalReport1 != null || widget.medicalReport2 != null;
-    final bool hasAnyDocs = hasIdentityDocs || hasMedicalDocs;
-
-    if (!hasAnyDocs) {
-      // If no documents, show the empty state
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(30),
-          margin: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.07),
-                blurRadius: 20,
-                offset: const Offset(0, 5),
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF3366CC).withOpacity(0.2),
-                      const Color(0xFF3366CC).withOpacity(0.1),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  LucideIcons.fileText,
-                  size: 50,
-                  color: const Color(0xFF3366CC).withOpacity(0.8),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                "No medical documents yet",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  "Upload your medical reports, prescriptions, and other important documents",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Upload document action
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3366CC),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(LucideIcons.upload),
-                  label: Text(
-                    "Upload Documents",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // If has documents, show the document sections
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Action buttons row
+          // Upload action buttons
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // Upload document action
-                  },
+                  onPressed: () => _uploadDocument(DocumentType.identification),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3366CC),
                     foregroundColor: Colors.white,
@@ -651,9 +683,9 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                     ),
                     elevation: 0,
                   ),
-                  icon: const Icon(LucideIcons.upload, size: 18),
+                  icon: const Icon(LucideIcons.idCard, size: 18),
                   label: Text(
-                    "Upload",
+                    "Upload ID",
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -663,21 +695,20 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // Organize documents action
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF3366CC),
-                    side: const BorderSide(color: Color(0xFF3366CC)),
+                child: ElevatedButton.icon(
+                  onPressed: () => _uploadDocument(DocumentType.medical),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 0,
                   ),
-                  icon: const Icon(LucideIcons.folder, size: 18),
+                  icon: const Icon(LucideIcons.fileText, size: 18),
                   label: Text(
-                    "Organize",
+                    "Upload Medical",
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -689,250 +720,333 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           ),
           
           const SizedBox(height: 24),
-          
-          // Identity Documents Section
-          if (hasIdentityDocs) ...[
-            _buildSectionTitle("Identity Documents"),
-            const SizedBox(height: 8),
-            _buildDocumentsGrid([
-              if (widget.cnicFront != null)
-                DocumentItem(
-                  file: widget.cnicFront!,
-                  title: "CNIC Front",
-                  date: "Jun 10, 2023",
-                  icon: LucideIcons.creditCard,
-                ),
-              if (widget.cnicBack != null)
-                DocumentItem(
-                  file: widget.cnicBack!,
-                  title: "CNIC Back",
-                  date: "Jun 10, 2023",
-                  icon: LucideIcons.creditCard,
-                ),
-            ]),
-            const SizedBox(height: 24),
-          ],
-          
-          // Medical Reports Section
-          if (hasMedicalDocs) ...[
-            _buildSectionTitle("Medical Reports"),
-            const SizedBox(height: 8),
-            _buildDocumentsGrid([
-              if (widget.medicalReport1 != null)
-                DocumentItem(
-                  file: widget.medicalReport1!,
-                  title: "Medical Report 1",
-                  date: "Jul 15, 2023",
-                  icon: LucideIcons.fileText,
-                ),
-              if (widget.medicalReport2 != null)
-                DocumentItem(
-                  file: widget.medicalReport2!,
-                  title: "Medical Report 2",
-                  date: "Aug 22, 2023",
-                  icon: LucideIcons.fileText,
-                ),
-            ]),
-          ],
+
+          // Identification Documents
+          _buildSectionTitle("Identification Documents"),
+          const SizedBox(height: 10),
+          _buildDocumentGrid([
+            if (widget.cnicFront != null)
+              _buildDocumentCard(
+                title: "CNIC Front",
+                icon: LucideIcons.idCard,
+                color: Colors.blue.shade700,
+                file: widget.cnicFront!,
+                onTap: () => _viewDocument(widget.cnicFront!),
+              ),
+            if (widget.cnicBack != null)
+              _buildDocumentCard(
+                title: "CNIC Back",
+                icon: LucideIcons.idCard,
+                color: Colors.blue.shade700,
+                file: widget.cnicBack!,
+                onTap: () => _viewDocument(widget.cnicBack!),
+              ),
+          ]),
+
+          const SizedBox(height: 30),
+
+          // Medical Reports
+          _buildSectionTitle("Medical Reports"),
+          const SizedBox(height: 10),
+          _buildDocumentGrid([
+            if (widget.medicalReport1 != null)
+              _buildDocumentCard(
+                title: "Medical Report 1",
+                icon: LucideIcons.clipboardList,
+                color: Colors.green.shade700,
+                file: widget.medicalReport1!,
+                onTap: () => _viewDocument(widget.medicalReport1!),
+              ),
+            if (widget.medicalReport2 != null)
+              _buildDocumentCard(
+                title: "Medical Report 2",
+                icon: LucideIcons.clipboardList,
+                color: Colors.green.shade700,
+                file: widget.medicalReport2!,
+                onTap: () => _viewDocument(widget.medicalReport2!),
+              ),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentsGrid(List<DocumentItem> documents) {
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: documents.length,
-      itemBuilder: (context, index) {
-        final doc = documents[index];
-        return _buildDocumentCard(doc);
-      },
-    );
-  }
-
-  Widget _buildDocumentCard(DocumentItem document) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Document preview
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F4FF),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-                image: DecorationImage(
-                  image: FileImage(document.file),
-                  fit: BoxFit.cover,
+  Widget _buildDocumentGrid(List<Widget> documents) {
+    if (documents.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Icon(
+                LucideIcons.fileX,
+                size: 50,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "No documents available",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
                 ),
               ),
-              width: double.infinity,
-              child: Stack(
+              const SizedBox(height: 10),
+              Text(
+                "Tap the upload button above to add documents",
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      childAspectRatio: 0.8,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      children: documents,
+    );
+  }
+
+  Widget _buildDocumentCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required File file,
+    required VoidCallback onTap,
+  }) {
+    final bool isImage = _isImageFile(file.path);
+    final bool isPdf = _isPdfFile(file.path);
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.grey.shade100,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Preview section
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.05),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                width: double.infinity,
+                child: isImage 
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                        child: Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Icon(
+                                LucideIcons.imageOff,
+                                color: color,
+                                size: 32,
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : isPdf
+                        ? Center(
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  LucideIcons.fileText,
+                                  color: color,
+                                  size: 42,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      "PDF",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(15),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                icon,
+                                color: color,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+              ),
+            ),
+            
+            // Info section
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Overlay to ensure text visibility
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.4),
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.4),
-                        ],
-                        stops: const [0, 0.3, 0.7, 1],
-                      ),
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  // File type indicator (top-right)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _getFileExtension(document.file.path).toUpperCase(),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _getFileSize(file),
                         style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
                         ),
                       ),
-                    ),
-                  ),
-                  // Action buttons (bottom-right)
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Row(
-                      children: [
-                        _buildActionButton(
-                          onPressed: () {
-                            // View document action
-                          },
-                          icon: LucideIcons.eye,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
                         ),
-                        const SizedBox(width: 8),
-                        _buildActionButton(
-                          onPressed: () {
-                            // Share document action
-                          },
-                          icon: LucideIcons.share,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                      ],
-                    ),
+                        child: Text(
+                          _getFileExtension(file.path).toUpperCase(),
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-          // Document info
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3366CC).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        document.icon,
-                        color: const Color(0xFF3366CC),
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        document.title,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Uploaded: ${document.date}",
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required VoidCallback onPressed,
-    required IconData icon,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+  void _viewDocument(File file) {
+    if (_isImageFile(file.path)) {
+      _showImageViewer(file);
+    } else if (_isPdfFile(file.path)) {
+      _showPdfViewer(file);
+    } else {
+      // For other file types, just show info for now
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Viewing file: ${path.basename(file.path)}"),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showImageViewer(File imageFile) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              path.basename(imageFile.path),
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(LucideIcons.share2),
+                onPressed: () {
+                  // Implement share functionality
+                },
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.download),
+                onPressed: () {
+                  // Implement download functionality
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            child: Icon(
-              icon,
-              color: const Color(0xFF3366CC),
-              size: 16,
+          body: PhotoView(
+            imageProvider: FileImage(imageFile),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2,
+            loadingBuilder: (context, event) => Center(
+              child: CircularProgressIndicator(
+                value: event?.expectedTotalBytes != null
+                    ? event!.cumulativeBytesLoaded / event.expectedTotalBytes!
+                    : null,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
             ),
           ),
         ),
@@ -940,8 +1054,246 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     );
   }
 
-  String _getFileExtension(String path) {
-    return path.split('.').last;
+  void _showPdfViewer(File pdfFile) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: Text(
+              path.basename(pdfFile.path),
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(LucideIcons.share2),
+                onPressed: () {
+                  // Implement share functionality
+                },
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.download),
+                onPressed: () {
+                  // Implement download functionality
+                },
+              ),
+            ],
+          ),
+          body: PDFView(
+            filePath: pdfFile.path,
+            enableSwipe: true,
+            swipeHorizontal: true,
+            autoSpacing: false,
+            pageFling: false,
+            pageSnap: true,
+            defaultPage: 0,
+            fitPolicy: FitPolicy.BOTH,
+            preventLinkNavigation: false,
+            onRender: (_pages) {
+              // PDF rendered
+            },
+            onError: (error) {
+              // Handle error
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Error loading PDF: $error"),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
+            onPageError: (page, error) {
+              // Handle page error
+            },
+            onViewCreated: (PDFViewController pdfViewController) {
+              // PDF view created
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper methods for document handling
+  bool _isImageFile(String filePath) {
+    final ext = _getFileExtension(filePath).toLowerCase();
+    return ext == 'jpg' || ext == 'jpeg' || ext == 'png' || ext == 'gif';
+  }
+  
+  bool _isPdfFile(String filePath) {
+    return _getFileExtension(filePath).toLowerCase() == 'pdf';
+  }
+  
+  String _getFileExtension(String filePath) {
+    return path.extension(filePath).replaceAll('.', '');
+  }
+  
+  String _getFileSize(File file) {
+    try {
+      final bytes = file.lengthSync();
+      if (bytes < 1024) {
+        return "$bytes B";
+      } else if (bytes < 1024 * 1024) {
+        return "${(bytes / 1024).toStringAsFixed(1)} KB";
+      } else {
+        return "${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB";
+      }
+    } catch (e) {
+      return "Unknown";
+    }
+  }
+
+  // Document upload functionality
+  Future<void> _uploadDocument(DocumentType type) async {
+    final source = await _showDocumentSourceDialog();
+    if (source == null) return;
+    
+    File? pickedFile;
+    
+    if (source == 'camera') {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1000,
+      );
+      
+      if (image != null) {
+        pickedFile = File(image.path);
+      }
+    } else if (source == 'gallery') {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1000,
+      );
+      
+      if (image != null) {
+        pickedFile = File(image.path);
+      }
+    } else if (source == 'file') {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+      
+      if (result != null) {
+        pickedFile = File(result.files.single.path!);
+      }
+    }
+    
+    if (pickedFile == null) return;
+    
+    // Here we would normally upload the file to a backend server
+    // For now, we'll just show a confirmation and simulate success
+    
+    // Show uploading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text("Uploading document..."),
+          ],
+        ),
+      ),
+    );
+    
+    // Simulate upload delay
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // Dismiss uploading dialog
+    if (context.mounted) Navigator.of(context).pop();
+    
+    // Show success message
+    final documentTypeName = type == DocumentType.identification ? "identification" : "medical";
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("$documentTypeName document uploaded successfully"),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+    
+    // In a real app, you would update the state with the new document
+    // and possibly refresh the UI to show the new document
+  }
+  
+  Future<String?> _showDocumentSourceDialog() async {
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            "Select Document Source",
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF3366CC),
+                  child: Icon(LucideIcons.camera, color: Colors.white, size: 20),
+                ),
+                title: Text(
+                  "Take Photo",
+                  style: GoogleFonts.poppins(),
+                ),
+                onTap: () => Navigator.pop(context, 'camera'),
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.green.shade600,
+                  child: const Icon(LucideIcons.image, color: Colors.white, size: 20),
+                ),
+                title: Text(
+                  "Choose from Gallery",
+                  style: GoogleFonts.poppins(),
+                ),
+                onTap: () => Navigator.pop(context, 'gallery'),
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.orange.shade600,
+                  child: const Icon(LucideIcons.fileText, color: Colors.white, size: 20),
+                ),
+                title: Text(
+                  "Choose File (PDF)",
+                  style: GoogleFonts.poppins(),
+                ),
+                onTap: () => Navigator.pop(context, 'file'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                "Cancel",
+                style: GoogleFonts.poppins(
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildSectionTitle(String title) {
@@ -1324,18 +1676,4 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
         return LucideIcons.plus;
     }
   }
-}
-
-class DocumentItem {
-  final File file;
-  final String title;
-  final String date;
-  final IconData icon;
-
-  DocumentItem({
-    required this.file,
-    required this.title,
-    required this.date,
-    required this.icon,
-  });
 } 
