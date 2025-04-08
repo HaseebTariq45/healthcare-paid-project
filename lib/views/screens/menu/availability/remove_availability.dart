@@ -212,11 +212,11 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
       ),
       padding: EdgeInsets.fromLTRB(20, 10, 20, 25),
       child: SafeArea(
-        child: Column(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
-              children: [
+            children: [
                 IconButton(
                   icon: Icon(LucideIcons.arrowLeft, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
@@ -263,10 +263,10 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
       child: Column(
         children: [
           TableCalendar(
-            focusedDay: _selectedDay,
+        focusedDay: _selectedDay,
             firstDay: DateTime.now().subtract(Duration(days: 365)),
             lastDay: DateTime.now().add(Duration(days: 365)),
-            calendarFormat: CalendarFormat.month,
+        calendarFormat: CalendarFormat.month,
             eventLoader: (day) {
               for (var eventDay in eventDays) {
                 if (isSameDay(day, eventDay)) {
@@ -275,15 +275,15 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
               }
               return [];
             },
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
+        calendarStyle: CalendarStyle(
+          todayDecoration: BoxDecoration(
                 color: Color.fromRGBO(64, 124, 226, 0.5),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: Color.fromRGBO(64, 124, 226, 1),
-                shape: BoxShape.circle,
-              ),
+            shape: BoxShape.circle,
+          ),
+          selectedDecoration: BoxDecoration(
+            color: Color.fromRGBO(64, 124, 226, 1),
+            shape: BoxShape.circle,
+          ),
               weekendTextStyle: GoogleFonts.poppins(color: Colors.red.shade300),
               defaultTextStyle: GoogleFonts.poppins(),
               outsideTextStyle: GoogleFonts.poppins(color: Colors.grey.shade400),
@@ -296,8 +296,8 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
               canMarkersOverflow: false,
             ),
             headerStyle: HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
+          formatButtonVisible: false,
+          titleCentered: true,
               titleTextStyle: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -323,14 +323,14 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
                 fontSize: 12,
                 color: Colors.red.shade300,
               ),
-            ),
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
+        ),
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        onDaySelected: (selectedDay, focusedDay) {
+          setState(() {
+            _selectedDay = selectedDay;
                 _selectedTime = null;
-              });
-            },
+          });
+        },
           ),
           SizedBox(height: 12),
           Row(
@@ -395,24 +395,24 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+      spacing: 12,
+      runSpacing: 12,
             children: timeSlots.map((time) {
-              bool isSelected = time == _selectedTime;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedTime = time;
-                  });
-                },
+        bool isSelected = time == _selectedTime;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedTime = time;
+            });
+          },
                 child: AnimatedContainer(
                   duration: Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
-                  decoration: BoxDecoration(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+            decoration: BoxDecoration(
                     color: isSelected
                         ? Colors.red.shade50
                         : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
                           ? Colors.red.shade300
@@ -505,7 +505,7 @@ class _RemoveAvailabilityState extends State<RemoveAvailability> with SingleTick
                   ),
                   SizedBox(width: 12),
                   Expanded(
-                    child: Text(
+            child: Text(
                       "This will remove the selected time slot. Patients won't be able to book this slot anymore.",
                       style: GoogleFonts.poppins(
                         fontSize: 12,

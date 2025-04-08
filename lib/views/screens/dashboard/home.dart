@@ -104,11 +104,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         },
                         child: Container(
-                          decoration: BoxDecoration(
+              decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
+                boxShadow: [
+                  BoxShadow(
                                 color: Colors.black12,
                                 blurRadius: 8,
                                 offset: Offset(0, 3),

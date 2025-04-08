@@ -391,7 +391,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+      color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -413,18 +413,18 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 topRight: Radius.circular(20),
               ),
             ),
-            child: Row(
-              children: [
+        child: Row(
+          children: [
                 CircleAvatar(
                   radius: 24,
                   backgroundImage: AssetImage(appointment.patientImage),
                 ),
                 SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                         appointment.patientName,
                         style: GoogleFonts.poppins(
                           fontSize: 16,
@@ -436,7 +436,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                       SizedBox(height: 4),
                       Text(
                         appointment.type,
-                        style: GoogleFonts.poppins(
+                    style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: Color(0xFF666666),
                         ),
@@ -498,8 +498,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         Expanded(
                           child: Text(
                             appointment.cancellationReason!,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
                               color: Colors.red.shade700,
                             ),
                           ),
@@ -544,19 +544,19 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         ],
                       )
                     : Row(
-                        children: [
+              children: [
                           Expanded(
                             child: _buildActionButton(
                               "View Details",
                               LucideIcons.clipboardList,
                               statusColor,
                               () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AppointmentDetailsScreen(),
-                                  ),
-                                );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AppointmentDetailsScreen(),
+                    ),
+                  );
                               },
                             ),
                           ),
@@ -573,10 +573,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                               ),
                             ),
                           ],
-                        ],
-                      ),
               ],
             ),
+          ],
+        ),
           ),
         ],
       ),
@@ -637,8 +637,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   ) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
         foregroundColor: Colors.white,
         padding: EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(
@@ -648,7 +648,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
       ),
       icon: Icon(icon, size: 18),
       label: Text(
-        label,
+          label,
         style: GoogleFonts.poppins(
           fontSize: 14,
           fontWeight: FontWeight.w500,

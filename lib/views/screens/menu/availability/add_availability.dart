@@ -288,7 +288,7 @@ class _AddAvailabilityScreenState extends State<AddAvailabilityScreen> with Sing
                 fontWeight: FontWeight.w500,
                 fontSize: 12,
                 color: Colors.red.shade300,
-              ),
+          ),
         ),
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         onDaySelected: (selectedDay, focusedDay) {
@@ -393,7 +393,7 @@ class _AddAvailabilityScreenState extends State<AddAvailabilityScreen> with Sing
                       color: isSelected ? Colors.white : Color(0xFF666666),
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                       fontSize: 14,
-                    ),
+                  ),
                 ),
               ),
             );

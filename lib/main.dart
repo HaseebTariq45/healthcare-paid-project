@@ -20,9 +20,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      // DEVELOPMENT MODE: Skipping splash screen and login/signup flow : const SplashScreen(),
+      // DEVELOPMENT MODE: Skipping splash screen and login/signup flow 
       // Change back to SplashScreen() when ready for production
-      home: BottomNavigationBarScreen(profileStatus: "complete"),
+      home: const SplashScreen(),
+      //  BottomNavigationBarScreen(profileStatus: "complete"),
     );
   }
 }
