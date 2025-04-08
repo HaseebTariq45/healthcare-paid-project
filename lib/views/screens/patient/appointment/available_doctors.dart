@@ -20,7 +20,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
   bool showOnlineOnly = false;
   bool sortByPriceLowToHigh = false;
   late TabController _tabController;
-  final List<String> _categories = ["All", "Cardiologist", "Dentist", "Orthopedic", "Neurologist"];
+  final List<String> _categories = ["All", "Cardiology", "Neurology", "Dermatology", "Pediatrics", "Orthopedics", "ENT", "Dentist"];
   int _selectedCategoryIndex = 0;
   
   // Add search controller and filtered doctors list
@@ -31,7 +31,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
   final List<Map<String, dynamic>> doctors = [
     {
       "name": "Dr. Rizwan Ahmed",
-      "specialty": "Cardiologist",
+      "specialty": "Cardiology",
       "rating": "4.7",
       "experience": "8 years",
       "fee": "Rs 1500",
@@ -51,7 +51,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     },
     {
       "name": "Dr. Asmara Malik",
-      "specialty": "Orthopedic",
+      "specialty": "Orthopedics",
       "rating": "4.8",
       "experience": "10 years",
       "fee": "Rs 1800",
@@ -61,7 +61,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     },
     {
       "name": "Dr. Tariq Mehmood",
-      "specialty": "Cardiologist",
+      "specialty": "Cardiology",
       "rating": "4.6",
       "experience": "15 years",
       "fee": "Rs 2500",
@@ -79,13 +79,75 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       "image": "assets/images/patient_5.png",
       "available": true
     },
+    {
+      "name": "Dr. Sarah Ahmed",
+      "specialty": "Neurology",
+      "rating": "4.9",
+      "experience": "11 years",
+      "fee": "Rs 2200",
+      "location": "Shifa International Hospital",
+      "image": "assets/images/patient_1.png",
+      "available": true
+    },
+    {
+      "name": "Dr. Ali Hassan",
+      "specialty": "Dermatology",
+      "rating": "4.7",
+      "experience": "9 years",
+      "fee": "Rs 1900",
+      "location": "Quaid-e-Azam International Hospital",
+      "image": "assets/images/patient_2.png",
+      "available": true
+    },
+    {
+      "name": "Dr. Amina Batool",
+      "specialty": "Pediatrics",
+      "rating": "4.8",
+      "experience": "14 years",
+      "fee": "Rs 1700",
+      "location": "Pakistan Institute of Medical Sciences",
+      "image": "assets/images/patient_3.png",
+      "available": true
+    },
+    {
+      "name": "Dr. Naveed Khan",
+      "specialty": "ENT",
+      "rating": "4.6",
+      "experience": "12 years",
+      "fee": "Rs 2100",
+      "location": "Maroof International Hospital",
+      "image": "assets/images/patient_4.png",
+      "available": true
+    }
   ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _categories.length, vsync: this);
+    
+    // Initialize with filtered doctors if specialty is provided
+    if (widget.specialty != null) {
+      // Find the category index for the specialty
+      int specialtyIndex = _categories.indexOf(widget.specialty!);
+      if (specialtyIndex != -1) {
+        _selectedCategoryIndex = specialtyIndex;
+        _tabController.animateTo(specialtyIndex);
+        
+        // Explicitly set the selectedSpeciality for filtering
+        selectedSpeciality = widget.specialty;
+        
+        // Log the specialty for debugging
+        print("Selected specialty: ${widget.specialty}");
+        print("Selected category index: $specialtyIndex");
+      } else {
+        print("Specialty not found in categories: ${widget.specialty}");
+      }
+    }
+    
+    // Apply initial filters
     _filteredDoctors = List.from(doctors);
+    _applyFilters();
     
     // Add listener to search controller
     _searchController.addListener(_filterDoctors);
@@ -185,7 +247,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
           ),
           SizedBox(height: 20),
           Text(
-            "Find Your Doctor",
+            widget.specialty ?? "Find Your Doctor",
             style: GoogleFonts.poppins(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -305,8 +367,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
               setState(() {
                 _selectedCategoryIndex = index;
                 _tabController.animateTo(index);
-                _filterDoctors(); // Filter doctors when category changes
               });
+              // Call filter after state update for consistency
+              _filterDoctors();
             },
             child: Container(
               margin: EdgeInsets.only(right: 10),
@@ -498,6 +561,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
           MaterialPageRoute(
             builder: (context) => AppointmentBookingFlow(
               specialty: widget.specialty,
+              preSelectedDoctor: doctor,
             ),
           ),
         );
@@ -667,7 +731,16 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                   Spacer(),
                   ElevatedButton(
                     onPressed: () {
-                      _showAppointmentConfirmationDialog(context, doctor);
+                      // Navigate directly to appointment booking flow without showing dialog
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AppointmentBookingFlow(
+                            specialty: widget.specialty,
+                            preSelectedDoctor: doctor,
+                          ),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF3366CC),
@@ -724,251 +797,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     );
   }
 
-  void _showAppointmentConfirmationDialog(BuildContext context, Map<String, dynamic> doctor) {
-    // Generate a random appointment date (next 7 days)
-    final now = DateTime.now();
-    final randomDays = 1 + (now.millisecondsSinceEpoch % 7); // Random number between 1-7
-    final appointmentDate = now.add(Duration(days: randomDays));
-    
-    // Generate a random appointment time (9 AM to 5 PM)
-    final randomHour = 9 + (now.millisecondsSinceEpoch % 8); // Random number between 9-16 (9 AM to 4 PM)
-    final appointmentTime = TimeOfDay(hour: randomHour, minute: 0);
-    
-    // Format date and time
-    final dateString = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
-    final timeString = "${appointmentTime.hour}:${appointmentTime.minute.toString().padLeft(2, '0')} ${appointmentTime.hour >= 12 ? 'PM' : 'AM'}";
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Success icon
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: Color(0xFF4CAF50).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    LucideIcons.check,
-                    color: Color(0xFF4CAF50),
-                    size: 40,
-                  ),
-                ),
-                SizedBox(height: 20),
-                
-                // Success message
-                Text(
-                  "Appointment Booked!",
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 10),
-                
-                // Doctor info card
-                Container(
-                  margin: EdgeInsets.symmetric(vertical: 15),
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFF5F8FF),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: Color(0xFFE6EFFF),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      // Doctor image
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          image: DecorationImage(
-                            image: AssetImage(doctor["image"]),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 15),
-                      
-                      // Doctor info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              doctor["name"],
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              doctor["specialty"],
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Appointment details
-                Container(
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFF0F7FF),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: Color(0xFFD6E4FF),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildAppointmentDetailRow(
-                        LucideIcons.calendar,
-                        "Date",
-                        dateString,
-                        Color(0xFF3366CC),
-                      ),
-                      SizedBox(height: 12),
-                      _buildAppointmentDetailRow(
-                        LucideIcons.clock,
-                        "Time",
-                        timeString,
-                        Color(0xFF3366CC),
-                      ),
-                      SizedBox(height: 12),
-                      _buildAppointmentDetailRow(
-                        LucideIcons.mapPin,
-                        "Location",
-                        doctor["location"],
-                        Color(0xFF3366CC),
-                      ),
-                      SizedBox(height: 12),
-                      _buildAppointmentDetailRow(
-                        LucideIcons.creditCard,
-                        "Fee",
-                        doctor["fee"],
-                        Color(0xFF3366CC),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                SizedBox(height: 20),
-                
-                // Done button
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF3366CC),
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    "Done",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-  
-  Widget _buildAppointmentDetailRow(IconData icon, String label, String value, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 16,
-          ),
-        ),
-        SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // Filter doctors based on search query and selected category
+  // Filter doctors based on search query and other filters
   void _filterDoctors() {
     setState(() {
       _searchQuery = _searchController.text.toLowerCase();
       
-      // Start with all doctors
-      _filteredDoctors = List.from(doctors);
+      // Apply all base filters first
+      _applyFilters();
       
-      // Filter by category if a specific one is selected
-      if (_selectedCategoryIndex != 0) {
-        String selectedCategory = _categories[_selectedCategoryIndex];
-        _filteredDoctors = _filteredDoctors.where((doctor) {
-          return doctor["specialty"] == selectedCategory;
-        }).toList();
-      }
-      
-      // Filter by search query
+      // Then filter by search query if needed
       if (_searchQuery.isNotEmpty) {
         _filteredDoctors = _filteredDoctors.where((doctor) {
           return doctor["name"].toLowerCase().contains(_searchQuery) ||
@@ -976,38 +813,54 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                  doctor["location"].toLowerCase().contains(_searchQuery);
         }).toList();
       }
-      
-      // Filter by rating
-      if (selectedRating == "4+") {
-        _filteredDoctors = _filteredDoctors.where((doctor) {
-          return double.parse(doctor["rating"]) >= 4.0;
-        }).toList();
-      }
-      
-      // Filter by location
-      if (selectedLocation != null) {
-        _filteredDoctors = _filteredDoctors.where((doctor) {
-          return doctor["location"].contains(selectedLocation!);
-        }).toList();
-      }
-      
-      // Filter by online availability
-      if (showOnlineOnly) {
-        _filteredDoctors = _filteredDoctors.where((doctor) {
-          return doctor["available"];
-        }).toList();
-      }
-      
-      // Sort by price (low to high)
-      if (sortByPriceLowToHigh) {
-        _filteredDoctors.sort((a, b) {
-          // Extract numeric value from fee strings like "Rs 1500"
-          int priceA = int.parse(a["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
-          int priceB = int.parse(b["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
-          return priceA.compareTo(priceB);
-        });
-      }
     });
+  }
+
+  // Apply filters based on the current states
+  void _applyFilters() {
+    // Start with all doctors
+    _filteredDoctors = List.from(doctors);
+    
+    // Filter by selected tab/category if a specific one is selected
+    if (_selectedCategoryIndex != 0) {
+      String selectedCategory = _categories[_selectedCategoryIndex];
+      _filteredDoctors = _filteredDoctors.where((doctor) {
+        return doctor["specialty"] == selectedCategory;
+      }).toList();
+    }
+    // Or filter by specialty parameter if it was passed directly
+    else if (widget.specialty != null) {
+      _filteredDoctors = _filteredDoctors.where((doctor) {
+        return doctor["specialty"] == widget.specialty;
+      }).toList();
+    }
+    
+    // Apply other filters if set
+    if (selectedRating == "4+") {
+      _filteredDoctors = _filteredDoctors.where((doctor) {
+        return double.parse(doctor["rating"]) >= 4.0;
+      }).toList();
+    }
+    
+    if (selectedLocation != null) {
+      _filteredDoctors = _filteredDoctors.where((doctor) {
+        return doctor["location"].contains(selectedLocation!);
+      }).toList();
+    }
+    
+    if (showOnlineOnly) {
+      _filteredDoctors = _filteredDoctors.where((doctor) {
+        return doctor["available"];
+      }).toList();
+    }
+    
+    if (sortByPriceLowToHigh) {
+      _filteredDoctors.sort((a, b) {
+        int priceA = int.parse(a["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
+        int priceB = int.parse(b["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
+        return priceA.compareTo(priceB);
+      });
+    }
   }
 }
 

@@ -469,7 +469,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     if (_isStepValid()) {
       setState(() {
         _errorMessage = null;
-        if (_currentStep < 4) {
+        // Check if doctor is pre-selected to determine the final step
+        int maxStep = widget.preSelectedDoctor == null ? 4 : 3;
+        if (_currentStep < maxStep) {
           _currentStep += 1;
         } else {
           _processPayment();
@@ -489,19 +491,36 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   GlobalKey _getCurrentStepKey() {
-    switch (_currentStep) {
-      case 0:
-        return _stepKeys['location']!;
-      case 1:
-        return _stepKeys['date']!;
-      case 2:
-        return _stepKeys['time']!;
-      case 3:
-        return _stepKeys['doctor']!;
-      case 4:
-        return _stepKeys['details']!;
-      default:
-        return _stepKeys['location']!;
+    if (widget.preSelectedDoctor != null) {
+      // Adjust step keys when doctor is pre-selected
+      switch (_currentStep) {
+        case 0:
+          return _stepKeys['location']!;
+        case 1:
+          return _stepKeys['date']!;
+        case 2:
+          return _stepKeys['time']!;
+        case 3:
+          return _stepKeys['details']!;
+        default:
+          return _stepKeys['location']!;
+      }
+    } else {
+      // Normal flow without pre-selected doctor
+      switch (_currentStep) {
+        case 0:
+          return _stepKeys['location']!;
+        case 1:
+          return _stepKeys['date']!;
+        case 2:
+          return _stepKeys['time']!;
+        case 3:
+          return _stepKeys['doctor']!;
+        case 4:
+          return _stepKeys['details']!;
+        default:
+          return _stepKeys['location']!;
+      }
     }
   }
 
@@ -572,36 +591,68 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   String _getValidationMessage() {
-    switch (_currentStep) {
-      case 0:
-        return 'Please select a location';
-      case 1:
-        return 'Please select a date';
-      case 2:
-        return 'Please select a time';
-      case 3:
-        return 'Please select a doctor';
-      case 4:
-        return 'Please provide appointment details';
-      default:
-        return 'Please complete this step';
+    // Adjust indexes when doctor is pre-selected
+    if (widget.preSelectedDoctor != null) {
+      switch (_currentStep) {
+        case 0:
+          return 'Please select a location';
+        case 1:
+          return 'Please select a date';
+        case 2:
+          return 'Please select a time';
+        case 3:
+          return 'Please select a reason for visit';
+        default:
+          return 'Please complete this step';
+      }
+    } else {
+      switch (_currentStep) {
+        case 0:
+          return 'Please select a location';
+        case 1:
+          return 'Please select a date';
+        case 2:
+          return 'Please select a time';
+        case 3:
+          return 'Please select a doctor';
+        case 4:
+          return 'Please select a reason for visit';
+        default:
+          return 'Please complete this step';
+      }
     }
   }
 
   bool _isStepValid() {
-    switch (_currentStep) {
-      case 0:
-        return _selectedLocation != null;
-      case 1:
-        return _selectedDate != null;
-      case 2:
-        return _selectedTime != null;
-      case 3:
-        return _selectedDoctor != null;
-      case 4:
-        return _selectedReason != null;
-      default:
-        return false;
+    // Adjust validation based on whether a doctor is pre-selected
+    if (widget.preSelectedDoctor != null) {
+      switch (_currentStep) {
+        case 0:
+          return _selectedLocation != null;
+        case 1:
+          return _selectedDate != null;
+        case 2:
+          return _selectedTime != null;
+        case 3:
+          return _selectedReason != null;
+        default:
+          return false;
+      }
+    } else {
+      switch (_currentStep) {
+        case 0:
+          return _selectedLocation != null;
+        case 1:
+          return _selectedDate != null;
+        case 2:
+          return _selectedTime != null;
+        case 3:
+          return _selectedDoctor != null;
+        case 4:
+          return _selectedReason != null;
+        default:
+          return false;
+      }
     }
   }
 
@@ -1500,6 +1551,16 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                     _selectedDoctor ?? 'Not selected',
                     Color(0xFFE91E63),
                   ),
+                ] else ...[
+                  SizedBox(height: 16),
+                  Divider(),
+                  SizedBox(height: 16),
+                  _buildSummaryItem(
+                    LucideIcons.stethoscope,
+                    'Doctor',
+                    widget.preSelectedDoctor!['name'],
+                    Color(0xFFE91E63),
+                  ),
                 ],
               ],
             ),
@@ -1540,7 +1601,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               ],
             ),
           ),
-          if (_selectedDoctor != null) ...[
+          if (_selectedDoctor != null || widget.preSelectedDoctor != null) ...[
             SizedBox(height: 24),
             AnimatedContainer(
               duration: Duration(milliseconds: 300),
@@ -1583,15 +1644,19 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                           tween: Tween<double>(begin: 0.8, end: 1.0),
                           duration: Duration(milliseconds: 300),
                           builder: (context, scale, child) {
-                            return Transform.scale(
-                              scale: scale,
-                              child: Text(
-                                _doctors
+                            final String fee = widget.preSelectedDoctor != null 
+                                ? widget.preSelectedDoctor!['fee']
+                                : _doctors
                                     .firstWhere(
                                       (d) => d['name'] == _selectedDoctor,
                                       orElse: () => {'fee': 'Not available'},
                                     )['fee']
-                                    .toString(),
+                                    .toString();
+                                
+                            return Transform.scale(
+                              scale: scale,
+                              child: Text(
+                                fee,
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
