@@ -6,6 +6,7 @@ import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
 import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
+import 'package:healthcare/views/screens/patient/dashboard/patient_profile_details.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientMenuScreen extends StatefulWidget {
@@ -221,6 +222,52 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // View detailed profile button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PatientDetailProfileScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              LucideIcons.user,
+                              color: Color(0xFF3366CC),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "View Medical Profile",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF3366CC),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
