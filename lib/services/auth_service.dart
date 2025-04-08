@@ -122,7 +122,6 @@ class AuthService {
     required String fullName,
     required String phoneNumber,
     required UserRole role,
-    String? professionalId,
   }) async {
     // Prepare role string for Firestore
     String roleStr;
@@ -141,12 +140,6 @@ class AuthService {
       'createdAt': FieldValue.serverTimestamp(),
       'profileComplete': false,
     };
-    
-    // Add professional ID for doctors and lady health workers
-    if (professionalId != null && 
-        (role == UserRole.doctor || role == UserRole.ladyHealthWorker)) {
-      userData['professionalId'] = professionalId;
-    }
     
     // Save user data to Firestore
     await _firestore.collection('users').doc(uid).set(userData);

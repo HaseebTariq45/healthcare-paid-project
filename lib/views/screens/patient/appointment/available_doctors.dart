@@ -277,7 +277,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                 ],
               ),
               child: Icon(
-                LucideIcons.filter,
+                Icons.filter_list,
                 color: isFilterVisible ? Colors.white : Color(0xFF3366CC),
                 size: 20,
               ),

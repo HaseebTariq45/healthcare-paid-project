@@ -5,6 +5,7 @@ import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
 import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
+import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientMenuScreen extends StatefulWidget {
@@ -436,7 +437,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                           Navigator.pop(context);
                           Navigator.pushReplacement(
                             context, 
-                            MaterialPageRoute(builder: (context) => const Onboarding3()),
+                            MaterialPageRoute(builder: (context) => SignUpOptions()),
                           );
                         },
                         style: ElevatedButton.styleFrom(

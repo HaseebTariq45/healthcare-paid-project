@@ -8,7 +8,6 @@ import 'package:healthcare/views/screens/patient/appointment/payment_options.dar
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:healthcare/services/auth_service.dart';
 
 class PatientHomeScreen extends StatefulWidget {
   final String profileStatus;
@@ -858,24 +857,17 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 void showPopup(BuildContext context) {
   showDialog(
     context: context,
-    barrierDismissible:
-        false, // Prevent closing the dialog when tapping outside
+    barrierDismissible: false,
     builder: (BuildContext context) {
       return Stack(
         children: [
-          // Blurred background effect
           BackdropFilter(
             filter: ImageFilter.blur(
               sigmaX: 5,
               sigmaY: 5,
-            ), // Adjust blur intensity
+            ),
             child: Container(
-              color: const Color.fromARGB(
-                30,
-                0,
-                0,
-                0,
-              ), // Darken background slightly
+              color: const Color.fromARGB(30, 0, 0, 0),
             ),
           ),
           AlertDialog(
@@ -896,7 +888,7 @@ void showPopup(BuildContext context) {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => ProfilePage1(userRole: UserRole.patient),
+                      builder: (context) => const CompleteProfilePatient1Screen(),
                     ),
                   );
                 },
@@ -914,7 +906,7 @@ void showPopup(BuildContext context) {
                       ],
                     ),
                     width: 100,
-                    padding: EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Center(
                       child: Text(
                         "Proceed",

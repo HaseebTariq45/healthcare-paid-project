@@ -15,16 +15,14 @@ class OTPVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String verificationId;
   final String? fullName;
-  final String? professionalId;
   final String? userType;
 
   const OTPVerificationScreen({
-    super.key, 
+    super.key,
     required this.text,
     required this.phoneNumber,
     required this.verificationId,
     this.fullName,
-    this.professionalId,
     this.userType,
   });
 
@@ -153,7 +151,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       fullName: widget.fullName!,
       phoneNumber: widget.phoneNumber,
       role: role,
-      professionalId: widget.professionalId,
     );
   }
 

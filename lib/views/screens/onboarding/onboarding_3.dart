@@ -15,8 +15,6 @@ class Onboarding3 extends StatelessWidget {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          // spacing: 16,
-          // mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               margin: const EdgeInsets.only(bottom: 76),
@@ -33,9 +31,9 @@ class Onboarding3 extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                NavButtons(destination: SignIN(), text: "SignIn"),
+                NavButtons(destination: SignIN(), text: "Sign In"),
                 const SizedBox(height: 16),
-                NavButtons(destination: SignUpOptions(), text: "SignUp"),
+                NavButtons(destination: SignUpOptions(), text: "Sign Up"),
               ],
             ),
           ],

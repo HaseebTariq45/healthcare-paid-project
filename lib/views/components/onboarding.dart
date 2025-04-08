@@ -240,16 +240,7 @@ class NavButtons extends StatelessWidget {
               offset: const Offset(0, 1),
             ),
           ],
-          color:
-              text == "SignIn" || text == "Patient"
-                  ? Color.fromRGBO(64, 124, 226, 1)
-                  : Colors.white,
-          border:
-              text == "SignUp" ||
-                      text == "Doctor" ||
-                      text == "Lady Health Worker"
-                  ? Border.all(color: Color.fromRGBO(64, 124, 226, 1))
-                  : null,
+          color: Color.fromRGBO(64, 124, 226, 1),
           borderRadius: BorderRadius.circular(32),
         ),
         child: Text(
@@ -257,10 +248,7 @@ class NavButtons extends StatelessWidget {
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color:
-                text == "SignIn" || text == "Patient"
-                    ? Colors.white
-                    : Color.fromRGBO(64, 124, 226, 1),
+            color: Colors.white,
           ),
         ),
       ),
