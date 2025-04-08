@@ -639,19 +639,29 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
               ),
               child: Row(
                 children: [
-                  Text(
-                    doctor["fee"],
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF3366CC),
-                    ),
-                  ),
-                  Text(
-                    " / Session",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
+                  Flexible(
+                    flex: 2,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          doctor["fee"],
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF3366CC),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          " / Session",
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Spacer(),
@@ -662,7 +672,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF3366CC),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -671,7 +681,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                     child: Text(
                       "Book Now",
                       style: GoogleFonts.poppins(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

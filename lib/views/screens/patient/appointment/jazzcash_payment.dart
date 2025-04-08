@@ -69,12 +69,12 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
           _isLoading = false;
         });
         
-        Navigator.push(
-          context,
-          MaterialPageRoute(
+      Navigator.push(
+        context,
+        MaterialPageRoute(
             builder: (context) => PatientAppointmentDetailsScreen(),
-          ),
-        );
+        ),
+      );
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,11 +119,11 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
               child: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                       // JazzCash Logo and Branding with enhanced design
-                      Center(
+            Center(
                         child: Container(
                           width: 140,
                           height: 140,
@@ -287,12 +287,12 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                           ],
                         ),
                         child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                           ),
-                          decoration: InputDecoration(
+              decoration: InputDecoration(
                             prefixIcon: Container(
                               padding: EdgeInsets.all(16),
                               margin: EdgeInsets.only(right: 8),
@@ -316,11 +316,11 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.grey[400],
                             ),
-                            filled: true,
+                filled: true,
                             fillColor: Colors.white,
-                            border: OutlineInputBorder(
+                border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
+                  borderSide: BorderSide.none,
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -336,10 +336,10 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                                 width: 2,
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                      
+                ),
+              ),
+            ),
+
                       SizedBox(height: 32),
                       
                       // Enhanced Security Message
@@ -389,15 +389,15 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+          ],
+        ),
+      ),
                       
                       SizedBox(height: 32),
-                      
+
                       // Enhanced Submit Button
                       Container(
-                        width: double.infinity,
+      width: double.infinity,
                         height: 56,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
@@ -409,12 +409,12 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                             ),
                           ],
                         ),
-                        child: ElevatedButton(
+      child: ElevatedButton(
                           onPressed: _isLoading ? null : _confirmPayment,
-                          style: ElevatedButton.styleFrom(
+        style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFFBA0000),
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
+          shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                             elevation: 0,
@@ -436,8 +436,8 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                                     SizedBox(width: 12),
                                     Text(
                                       "Confirm Payment",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),

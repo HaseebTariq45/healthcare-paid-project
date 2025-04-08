@@ -33,12 +33,12 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
           _isLoading = false;
         });
         
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PatientAppointmentDetailsScreen(),
-          ),
-        );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PatientAppointmentDetailsScreen(), 
+        ),
+      );
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -78,12 +78,12 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
         children: [
           SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                   // EasyPaisa Logo and Branding
-                  Center(
+            Center(
                     child: Container(
                       width: 120,
                       height: 120,
@@ -187,8 +187,8 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
                     ),
                   ),
                   SizedBox(height: 20),
-                  
-                  // Phone Number Input
+
+            // Phone Number Input
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15),
@@ -202,12 +202,12 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
                       ],
                     ),
                     child: TextField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                       ),
-                      decoration: InputDecoration(
+              decoration: InputDecoration(
                         prefixIcon: Container(
                           padding: EdgeInsets.all(12),
                           child: Text(
@@ -219,11 +219,11 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
                           ),
                         ),
                         hintText: "3XX XXXXXXX",
-                        filled: true,
+                filled: true,
                         fillColor: Colors.white,
-                        border: OutlineInputBorder(
+                border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
+                  borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
@@ -391,15 +391,15 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
                 children: [
                   Text(
                     "Confirm Payment",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
                       fontWeight: FontWeight.w600,
-                    ),
+          ),
                   ),
                   SizedBox(width: 8),
                   Icon(LucideIcons.arrowRight, size: 18),
                 ],
-              ),
+        ),
       ),
     );
   }

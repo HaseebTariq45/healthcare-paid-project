@@ -29,8 +29,13 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text("Dr. Rizwan",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text("Cardiologist", style: TextStyle(color: Colors.grey)),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      Text("Cardiologist", 
+                          style: TextStyle(color: Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                       SizedBox(height: 5),
                       Row(
                         children: [
@@ -44,7 +49,12 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
                         children: [
                           Icon(LucideIcons.mapPin, size: 14, color: Colors.grey),
                           SizedBox(width: 5),
-                          Text("CMH Rawalpindi", style: TextStyle(color: Colors.grey)),
+                          Expanded(
+                            child: Text("CMH Rawalpindi", 
+                                style: TextStyle(color: Colors.grey),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ),
                         ],
                       ),
                     ],
@@ -62,6 +72,8 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
                 fontSize: 14,
                 color: Colors.black54,
               ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
@@ -93,6 +105,8 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
                 fontSize: 14,
                 color: Colors.black54,
               ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(
@@ -131,16 +145,20 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
   // Small Info Chips (Rating, Fee)
   Widget _infoChip(IconData icon, String text) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: Colors.blue[100],
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.blue),
-          SizedBox(width: 5),
-          Text(text, style: TextStyle(color: Colors.blue, fontSize: 12)),
+          Icon(icon, size: 12, color: Colors.blue),
+          SizedBox(width: 3),
+          Text(text, 
+              style: TextStyle(color: Colors.blue, fontSize: 10),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -157,38 +175,41 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 16, color: Colors.white),
             SizedBox(width: 5),
-            Text(text, style: TextStyle(color: Colors.white, fontSize: 14)),
+            Text(text, 
+                style: TextStyle(color: Colors.white, fontSize: 14),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
     );
   }
-Widget _buildSubmitButton(String buttonText, VoidCallback onPressed) {
-  return SizedBox(
-    width: double.infinity,
-    height: 50,
-    child: ElevatedButton(
-      onPressed: onPressed, // Dynamically set action
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color.fromRGBO(64, 124, 226, 1),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
+
+  Widget _buildSubmitButton(String buttonText, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onPressed, // Dynamically set action
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color.fromRGBO(64, 124, 226, 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+        ),
+        child: Text(
+          buttonText, // Dynamically set text
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
       ),
-      child: Text(
-        buttonText, // Dynamically set text
-        style: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    ),
-  );
-}
-
-
+    );
+  }
 }

@@ -307,9 +307,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                         ),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                         Text(
                           "Payment Summary",
                           style: GoogleFonts.poppins(
@@ -342,10 +342,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  
+              ),
+            ),
+            SizedBox(height: 20),
+
                   // Card Name Field
                   _buildTextField(
                     controller: _cardNameController,
@@ -372,8 +372,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                   ),
                   
                   // Expiry Date and CVV Row
-                  Row(
-                    children: [
+            Row(
+              children: [
                       Expanded(
                         child: _buildTextField(
                           controller: _expiryDateController,
@@ -441,11 +441,11 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                       ],
                     ),
                   ),
-                  
-                  SizedBox(height: 30),
-                  
+
+            SizedBox(height: 30),
+
                   // Process Payment Button
-                  _buildSubmitButton(),
+            _buildSubmitButton(),
                   
                   SizedBox(height: 20),
                 ],
@@ -526,6 +526,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               Icon(
                 LucideIcons.wifi,
@@ -547,6 +549,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                   color: Colors.white,
                   letterSpacing: 2,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: 20),
               Row(
@@ -571,6 +575,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -593,6 +599,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                           fontWeight: FontWeight.w500,
                           color: Colors.white,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -643,18 +651,18 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 ),
               ],
             ),
-            child: TextField(
-              controller: controller,
-              keyboardType: keyboardType,
-              obscureText: obscureText,
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
               inputFormatters: inputFormatters,
               onEditingComplete: onEditingComplete,
               focusNode: focusNode,
               style: GoogleFonts.poppins(
                 fontSize: 15,
               ),
-              decoration: InputDecoration(
-                hintText: hint,
+        decoration: InputDecoration(
+          hintText: hint,
                 prefixIcon: Icon(
                   icon,
                   color: _getCardTypeColor(),
@@ -678,7 +686,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                     width: 1,
                   ),
                 ),
-                filled: true,
+          filled: true,
                 fillColor: Colors.white,
                 contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
               ),
@@ -703,10 +711,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
             child: Icon(
               icon,
               color: isAmount ? _getCardTypeColor() : Colors.grey.shade700,
-              size: 18,
+              size: 16,
             ),
           ),
-          SizedBox(width: 15),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,17 +722,21 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 Text(
                   label,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Colors.grey.shade600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   value,
                   style: GoogleFonts.poppins(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: isAmount ? FontWeight.w700 : FontWeight.w500,
                     color: isAmount ? _getCardTypeColor() : Colors.black87,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -758,15 +770,15 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 children: [
                   Text(
                     "Pay Now",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
                       fontWeight: FontWeight.w600,
-                    ),
+          ),
                   ),
                   SizedBox(width: 8),
                   Icon(LucideIcons.arrowRight, size: 18),
                 ],
-              ),
+        ),
       ),
     );
   }
