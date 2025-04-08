@@ -290,7 +290,7 @@ class _PatientPaymentScreenState extends State<PatientPaymentScreen> {
               ),
               if (selectedPaymentMethod == method)
                 Icon(
-                  LucideIcons.check,
+                  Icons.check_circle,
                   color: color,
                   size: 20,
                 ),

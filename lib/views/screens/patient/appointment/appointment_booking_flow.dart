@@ -44,7 +44,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     super.initState();
     if (widget.preSelectedDoctor != null) {
       _selectedDoctor = widget.preSelectedDoctor!['name'];
-      _currentStep = 1; // Skip doctor selection step
+      _currentStep = 0; // Start with date selection when doctor is pre-selected
     }
     
     _animationController = AnimationController(
@@ -59,7 +59,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       ),
     );
     
-    // Remove PageController initialization
     _animationController.forward();
   }
 
@@ -105,9 +104,20 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       'rating': 4.9,
       'experience': '15 years',
       'fee': 'Rs. 2000',
-      'availability': ['09:00 AM', '10:00 AM', '11:00 AM'],
       'languages': ['English', 'Urdu'],
       'qualifications': ['MBBS', 'FCPS', 'MRCP'],
+      'hospital_availability': [
+        {
+          'hospital': 'Aga Khan Hospital, Karachi',
+          'days': ['Monday', 'Wednesday', 'Friday'],
+          'times': ['09:00 AM', '10:00 AM', '11:00 AM']
+        },
+        {
+          'hospital': 'Liaquat National Hospital, Karachi',
+          'days': ['Tuesday', 'Thursday'],
+          'times': ['02:00 PM', '03:00 PM', '04:00 PM']
+        }
+      ]
     },
     {
       'name': 'Dr. John Miller',
@@ -116,78 +126,104 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       'rating': 4.8,
       'experience': '12 years',
       'fee': 'Rs. 2500',
-      'availability': ['02:00 PM', '03:00 PM', '04:00 PM'],
       'languages': ['English'],
       'qualifications': ['MBBS', 'MD', 'DM'],
-    },
+      'hospital_availability': [
+        {
+          'hospital': 'Shaukat Khanum Hospital, Lahore',
+          'days': ['Monday', 'Tuesday', 'Wednesday'],
+          'times': ['02:00 PM', '03:00 PM', '04:00 PM']
+        },
+        {
+          'hospital': 'Jinnah Hospital, Karachi',
+          'days': ['Thursday', 'Friday'],
+          'times': ['10:00 AM', '11:00 AM', '12:00 PM']
+        }
+      ]
+    }
   ];
 
   List<Step> _buildSteps() {
-    List<Step> steps = [
-      Step(
-        title: Text(
-          'Select Location',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+    // When doctor is pre-selected (coming from specialty)
+    if (widget.preSelectedDoctor != null) {
+      List<Step> steps = [
+        Step(
+          title: Text(
+            'Select Date',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          subtitle: _selectedDate != null
+              ? Text(
+                  '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildDateStep(),
+          isActive: _currentStep >= 0,
+          state: _currentStep > 0 ? StepState.complete : StepState.indexed,
         ),
-        subtitle: _selectedLocation != null
-            ? Text(
-                _selectedLocation!,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              )
-            : null,
-        content: _buildLocationStep(),
-        isActive: _currentStep >= 0,
-        state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-      ),
-      Step(
-        title: Text(
-          'Select Date',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+        Step(
+          title: Text(
+            'Select Hospital',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          subtitle: _selectedLocation != null
+              ? Text(
+                  _selectedLocation!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildLocationStep(),
+          isActive: _currentStep >= 1,
+          state: _currentStep > 1 ? StepState.complete : StepState.indexed,
         ),
-        subtitle: _selectedDate != null
-            ? Text(
-                '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              )
-            : null,
-        content: _buildDateStep(),
-        isActive: _currentStep >= 1,
-        state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-      ),
-      Step(
-        title: Text(
-          'Select Time',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+        Step(
+          title: Text(
+            'Select Time',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          subtitle: _selectedTime != null
+              ? Text(
+                  _selectedTime!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildTimeStep(),
+          isActive: _currentStep >= 2,
+          state: _currentStep > 2 ? StepState.complete : StepState.indexed,
         ),
-        subtitle: _selectedTime != null
-            ? Text(
-                _selectedTime!,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              )
-            : null,
-        content: _buildTimeStep(),
-        isActive: _currentStep >= 2,
-        state: _currentStep > 2 ? StepState.complete : StepState.indexed,
-      ),
-    ];
-
-    if (widget.preSelectedDoctor == null) {
-      steps.add(
+        Step(
+          title: Text(
+            'Appointment Details',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: _buildAppointmentDetailsStep(),
+          isActive: _currentStep >= 3,
+          state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+        ),
+      ];
+      return steps;
+    } 
+    // Normal flow when no doctor is pre-selected
+    else {
+      List<Step> steps = [
         Step(
           title: Text(
             'Select Doctor',
@@ -205,29 +241,83 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 )
               : null,
           content: _buildDoctorStep(),
+          isActive: _currentStep >= 0,
+          state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+        ),
+        Step(
+          title: Text(
+            'Select Date',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: _selectedDate != null
+              ? Text(
+                  '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildDateStep(),
+          isActive: _currentStep >= 1,
+          state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+        ),
+        Step(
+          title: Text(
+            'Select Hospital',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: _selectedLocation != null
+              ? Text(
+                  _selectedLocation!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildLocationStep(),
+          isActive: _currentStep >= 2,
+          state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+        ),
+        Step(
+          title: Text(
+            'Select Time',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: _selectedTime != null
+              ? Text(
+                  _selectedTime!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildTimeStep(),
           isActive: _currentStep >= 3,
           state: _currentStep > 3 ? StepState.complete : StepState.indexed,
         ),
-      );
-    }
-
-    steps.add(
-      Step(
-        title: Text(
-          'Appointment Details',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+        Step(
+          title: Text(
+            'Appointment Details',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          content: _buildAppointmentDetailsStep(),
+          isActive: _currentStep >= 4,
+          state: _currentStep > 4 ? StepState.complete : StepState.indexed,
         ),
-        content: _buildAppointmentDetailsStep(),
-        isActive: _currentStep >= (widget.preSelectedDoctor == null ? 4 : 3),
-        state: _currentStep > (widget.preSelectedDoctor == null ? 4 : 3) 
-            ? StepState.complete 
-            : StepState.indexed,
-      ),
-    );
-
-    return steps;
+      ];
+      return steps;
+    }
   }
 
   @override
@@ -495,31 +585,31 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       // Adjust step keys when doctor is pre-selected
       switch (_currentStep) {
         case 0:
-          return _stepKeys['location']!;
-        case 1:
           return _stepKeys['date']!;
+        case 1:
+          return _stepKeys['location']!;
         case 2:
           return _stepKeys['time']!;
         case 3:
           return _stepKeys['details']!;
         default:
-          return _stepKeys['location']!;
+          return _stepKeys['date']!;
       }
     } else {
       // Normal flow without pre-selected doctor
       switch (_currentStep) {
         case 0:
-          return _stepKeys['location']!;
+          return _stepKeys['doctor']!;
         case 1:
           return _stepKeys['date']!;
         case 2:
-          return _stepKeys['time']!;
+          return _stepKeys['location']!;
         case 3:
-          return _stepKeys['doctor']!;
+          return _stepKeys['time']!;
         case 4:
           return _stepKeys['details']!;
         default:
-          return _stepKeys['location']!;
+          return _stepKeys['doctor']!;
       }
     }
   }
@@ -595,9 +685,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     if (widget.preSelectedDoctor != null) {
       switch (_currentStep) {
         case 0:
-          return 'Please select a location';
-        case 1:
           return 'Please select a date';
+        case 1:
+          return 'Please select a location';
         case 2:
           return 'Please select a time';
         case 3:
@@ -608,13 +698,13 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     } else {
       switch (_currentStep) {
         case 0:
-          return 'Please select a location';
+          return 'Please select a doctor';
         case 1:
           return 'Please select a date';
         case 2:
-          return 'Please select a time';
+          return 'Please select a location';
         case 3:
-          return 'Please select a doctor';
+          return 'Please select a time';
         case 4:
           return 'Please select a reason for visit';
         default:
@@ -628,9 +718,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     if (widget.preSelectedDoctor != null) {
       switch (_currentStep) {
         case 0:
-          return _selectedLocation != null;
-        case 1:
           return _selectedDate != null;
+        case 1:
+          return _selectedLocation != null;
         case 2:
           return _selectedTime != null;
         case 3:
@@ -641,13 +731,13 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     } else {
       switch (_currentStep) {
         case 0:
-          return _selectedLocation != null;
+          return _selectedDoctor != null;
         case 1:
           return _selectedDate != null;
         case 2:
-          return _selectedTime != null;
+          return _selectedLocation != null;
         case 3:
-          return _selectedDoctor != null;
+          return _selectedTime != null;
         case 4:
           return _selectedReason != null;
         default:
@@ -657,15 +747,39 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildLocationStep() {
+    // Get available hospitals for the selected doctor
+    List<String> availableHospitals = [];
+    if (_selectedDoctor != null) {
+      final selectedDoctorData = _doctors.firstWhere(
+        (doctor) => doctor['name'] == _selectedDoctor,
+        orElse: () => widget.preSelectedDoctor ?? {},
+      );
+      
+      if (selectedDoctorData.containsKey('hospital_availability')) {
+        availableHospitals = (selectedDoctorData['hospital_availability'] as List)
+            .map((hospital) => hospital['hospital'] as String)
+            .toList();
+      }
+    } else if (widget.preSelectedDoctor != null) {
+      availableHospitals = (widget.preSelectedDoctor!['hospital_availability'] as List)
+          .map((hospital) => hospital['hospital'] as String)
+          .toList();
+    } else {
+      // If no doctor is selected yet, show all locations
+      availableHospitals = List.from(_locations);
+    }
+    
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == 0 ? 1.0 : 0.8,
+      opacity: _currentStep == (widget.preSelectedDoctor != null ? 1 : 2) ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['location'],
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Choose Hospital Location',
+            _selectedDoctor != null || widget.preSelectedDoctor != null
+                ? 'Choose Hospital for ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
+                : 'Choose Hospital Location',
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -674,109 +788,145 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
           SizedBox(height: 8),
           Text(
-            'Select the hospital where you would like to schedule your appointment',
+            _selectedDoctor != null || widget.preSelectedDoctor != null
+                ? 'Select the hospital where you would like to schedule your appointment with ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
+                : 'Select the hospital where you would like to schedule your appointment',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Colors.grey[600],
             ),
           ),
           SizedBox(height: 24),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: _locations.length,
-            itemBuilder: (context, index) {
-              final location = _locations[index];
-              final isSelected = location == _selectedLocation;
-              
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedLocation = location;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Color(0xFFEDF7FF) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: Color(0xFF2B8FEB).withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ]
-                          : [],
+          
+          if (availableHospitals.isEmpty) ...[
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.grey[400],
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No hospitals available for the selected doctor',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Color(0xFF2B8FEB).withOpacity(0.1)
-                                : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            LucideIcons.building2,
-                            color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
-                            size: 24,
-                          ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Please select a different doctor or try another date',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          ] else ...[
+            ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: availableHospitals.length,
+              itemBuilder: (context, index) {
+                final location = availableHospitals[index];
+                final isSelected = location == _selectedLocation;
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedLocation = location;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Color(0xFFEDF7FF) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
+                          width: isSelected ? 2 : 1,
                         ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                location.split(',')[0],
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: Color(0xFF2B8FEB).withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
                                 ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                location.split(',')[1].trim(),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isSelected)
+                              ]
+                            : [],
+                      ),
+                      child: Row(
+                        children: [
                           Container(
-                            padding: EdgeInsets.all(8),
+                            padding: EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Color(0xFF2B8FEB),
-                              shape: BoxShape.circle,
+                              color: isSelected
+                                  ? Color(0xFF2B8FEB).withOpacity(0.1)
+                                  : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              LucideIcons.check,
-                              color: Colors.white,
-                              size: 16,
+                              LucideIcons.building2,
+                              color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
+                              size: 24,
                             ),
                           ),
-                      ],
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  location.split(',')[0],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  location.split(',')[1].trim(),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2B8FEB),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -785,11 +935,103 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   Widget _buildDateStep() {
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == 1 ? 1.0 : 0.8,
+      opacity: _currentStep == (widget.preSelectedDoctor != null ? 0 : 1) ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['date'],
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.preSelectedDoctor != null) ...[
+            Container(
+              padding: EdgeInsets.all(16),
+              margin: EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Color(0xFFEDF7FF),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: AssetImage(widget.preSelectedDoctor!['image']),
+                        fit: BoxFit.cover,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.preSelectedDoctor!['name'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          widget.preSelectedDoctor!['specialty'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2B8FEB).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                widget.preSelectedDoctor!['fee'],
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF2B8FEB),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              widget.preSelectedDoctor!['experience'],
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Text(
             'Select Appointment Date',
             style: GoogleFonts.poppins(
@@ -800,7 +1042,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
           SizedBox(height: 8),
           Text(
-            'Choose your preferred date for the appointment',
+            widget.preSelectedDoctor != null
+                ? 'Choose your preferred date for the appointment with ${widget.preSelectedDoctor!['name']}'
+                : 'Choose your preferred date for the appointment',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Colors.grey[600],
@@ -942,9 +1186,56 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildTimeStep() {
+    // Get available time slots for the selected doctor at the selected hospital
+    List<String> availableTimes = [];
+    
+    if (_selectedDoctor != null && _selectedLocation != null) {
+      final selectedDoctorData = _doctors.firstWhere(
+        (doctor) => doctor['name'] == _selectedDoctor,
+        orElse: () => widget.preSelectedDoctor ?? {},
+      );
+      
+      if (selectedDoctorData.containsKey('hospital_availability')) {
+        final hospitalData = (selectedDoctorData['hospital_availability'] as List).firstWhere(
+          (hospital) => hospital['hospital'] == _selectedLocation,
+          orElse: () => {'times': []},
+        );
+        
+        if (hospitalData.containsKey('times')) {
+          availableTimes = List<String>.from(hospitalData['times']);
+        }
+      }
+    } else if (widget.preSelectedDoctor != null && _selectedLocation != null) {
+      final hospitalData = (widget.preSelectedDoctor!['hospital_availability'] as List).firstWhere(
+        (hospital) => hospital['hospital'] == _selectedLocation,
+        orElse: () => {'times': []},
+      );
+      
+      if (hospitalData.containsKey('times')) {
+        availableTimes = List<String>.from(hospitalData['times']);
+      }
+    } else {
+      // If no doctor or location is selected, show default times
+      availableTimes = List.from(_availableTimes);
+    }
+    
+    // Get day of week for selected date
+    String? dayOfWeek;
+    if (_selectedDate != null) {
+      switch (_selectedDate!.weekday) {
+        case 1: dayOfWeek = 'Monday'; break;
+        case 2: dayOfWeek = 'Tuesday'; break;
+        case 3: dayOfWeek = 'Wednesday'; break;
+        case 4: dayOfWeek = 'Thursday'; break;
+        case 5: dayOfWeek = 'Friday'; break;
+        case 6: dayOfWeek = 'Saturday'; break;
+        case 7: dayOfWeek = 'Sunday'; break;
+      }
+    }
+    
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == 2 ? 1.0 : 0.8,
+      opacity: _currentStep == (widget.preSelectedDoctor != null ? 2 : 3) ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['time'],
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,67 +1250,85 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
           SizedBox(height: 8),
           Text(
-            'Select your preferred time slot',
+            _selectedDate != null 
+                ? 'Select your preferred time slot for ${dayOfWeek}, ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                : 'Select your preferred time slot',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Colors.grey[600],
             ),
           ),
           SizedBox(height: 24),
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Morning Slots',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+          
+          if (availableTimes.isEmpty) ...[
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.grey[400],
                   ),
-                ),
-                SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: _availableTimes
-                      .where((time) => time.contains('AM'))
-                      .map((time) => _buildTimeSlot(time))
-                      .toList(),
-                ),
-                SizedBox(height: 24),
-                Text(
-                  'Afternoon Slots',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                  SizedBox(height: 16),
+                  Text(
+                    'No time slots available',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: _availableTimes
-                      .where((time) => time.contains('PM'))
-                      .map((time) => _buildTimeSlot(time))
-                      .toList(),
-                ),
-              ],
+                  SizedBox(height: 8),
+                  Text(
+                    'Please select a different date or hospital',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          ] else ...[
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Available Slots',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: availableTimes
+                        .map((time) => _buildTimeSlot(time))
+                        .toList(),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
+          
           if (_selectedTime != null) ...[
             SizedBox(height: 24),
             Container(
@@ -1171,7 +1480,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   Widget _buildDoctorStep() {
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == 3 ? 1.0 : 0.8,
+      opacity: _currentStep == 0 ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['doctor'],
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1311,7 +1620,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  LucideIcons.check,
+                                  Icons.check_circle,
                                   color: Colors.white,
                                   size: 16,
                                 ),

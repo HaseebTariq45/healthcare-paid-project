@@ -197,7 +197,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
         builder: (context) => AlertDialog(
           title: Row(
             children: [
-              Icon(LucideIcons.check, color: Colors.green),
+              Icon(Icons.check_circle, color: Colors.green),
               SizedBox(width: 10),
               Text("Payment Successful"),
             ],

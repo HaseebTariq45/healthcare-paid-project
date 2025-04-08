@@ -73,7 +73,7 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
           builder: (context) => AlertDialog(
             title: Row(
               children: [
-                Icon(LucideIcons.check, color: Colors.green),
+                Icon(Icons.check_circle, color: Colors.green),
                 SizedBox(width: 10),
                 Text("Payment Successful"),
               ],
@@ -430,7 +430,7 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  LucideIcons.check,
+                  Icons.check_circle,
                   color: cardColor,
                   size: 16,
                 ),
