@@ -10,6 +10,23 @@ import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+// Disease category model
+class DiseaseCategory {
+  final String name;
+  final String nameUrdu;
+  final IconData icon;
+  final Color color;
+  final String description;
+
+  DiseaseCategory({
+    required this.name,
+    required this.nameUrdu,
+    required this.icon,
+    required this.color,
+    required this.description,
+  });
+}
+
 class PatientHomeScreen extends StatefulWidget {
   final String profileStatus;
   const PatientHomeScreen({super.key, this.profileStatus = "incomplete"});
@@ -23,6 +40,52 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   late TabController _tabController;
   final List<String> _categories = ["All", "Upcoming", "Completed", "Cancelled"];
   int _selectedCategoryIndex = 0;
+
+  // Disease categories data
+  final List<DiseaseCategory> _diseaseCategories = [
+    DiseaseCategory(
+      name: "Cardiology",
+      nameUrdu: "امراض قلب",
+      icon: LucideIcons.heartPulse,
+      color: Color(0xFFF44336),
+      description: "Heart and cardiovascular system specialists",
+    ),
+    DiseaseCategory(
+      name: "Neurology",
+      nameUrdu: "امراض اعصاب",
+      icon: LucideIcons.brain,
+      color: Color(0xFF2196F3),
+      description: "Brain and nervous system specialists",
+    ),
+    DiseaseCategory(
+      name: "Dermatology",
+      nameUrdu: "جلدی امراض",
+      icon: LucideIcons.plus,
+      color: Color(0xFFFF9800),
+      description: "Skin and hair specialists",
+    ),
+    DiseaseCategory(
+      name: "Pediatrics",
+      nameUrdu: "اطفال",
+      icon: LucideIcons.users,
+      color: Color(0xFF4CAF50),
+      description: "Child health specialists",
+    ),
+    DiseaseCategory(
+      name: "Orthopedics",
+      nameUrdu: "ہڈیوں کے امراض",
+      icon: LucideIcons.bone,
+      color: Color(0xFF9C27B0),
+      description: "Bone and joint specialists",
+    ),
+    DiseaseCategory(
+      name: "ENT",
+      nameUrdu: "کان ناک گلے کے امراض",
+      icon: LucideIcons.ear,
+      color: Color(0xFF00BCD4),
+      description: "Ear, nose and throat specialists",
+    ),
+  ];
 
   // Sample doctors for quick access
   final List<Map<String, dynamic>> _quickAccessDoctors = [
@@ -80,11 +143,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     profileStatus = widget.profileStatus;
     _tabController = TabController(length: _categories.length, vsync: this);
     
-    // Show popup automatically if the profile is not complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print("Profile Status: $profileStatus"); // Debug print
       if (profileStatus.toLowerCase() != "complete") {
-        print("Showing popup for incomplete profile"); // Debug print
         showPopup(context);
       }
     });
@@ -106,8 +166,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
-              _buildBookAppointmentButton(),
-              _buildSearchBar(),
+              _buildBanner(),
+              _buildDiseaseCategories(),
               _buildAppointmentsSection(),
               _buildQuickAccessDoctors(),
               SizedBox(height: 20),
@@ -304,126 +364,195 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     );
   }
 
-  Widget _buildBookAppointmentButton() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
-      child: Container(
-                width: double.infinity,
-        height: 65,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF3366CC),
-              Color(0xFF5E8EF7),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xFF3366CC).withOpacity(0.3),
-              blurRadius: 10,
-              offset: Offset(0, 5),
-              spreadRadius: 0,
-            ),
+  Widget _buildBanner() {
+    return Container(
+      margin: EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF3366CC),
+            Color(0xFF5E8EF7),
           ],
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-                    Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => DoctorsScreen()),
-            );
-                  },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      LucideIcons.calendar,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  SizedBox(width: 15),
-                  Text(
-                    "Book an Appointment",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  Spacer(),
-                  Icon(
-                    LucideIcons.arrowRight,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF3366CC).withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Find Your Specialist",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    size: 20,
                   ),
-                ],
-              ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "Book appointments with top doctors in Pakistan",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => DoctorsScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Color(0xFF3366CC),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    "Book Now",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
+          SizedBox(width: 20),
+          Container(
+            height: 120,
+            width: 120,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              LucideIcons.stethoscope,
+              color: Colors.white,
+              size: 50,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildDiseaseCategories() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Specialties",
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 15),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 0.8,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: _diseaseCategories.length,
+            itemBuilder: (context, index) {
+              final category = _diseaseCategories[index];
+              return _buildDiseaseCategoryCard(category);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiseaseCategoryCard(DiseaseCategory category) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DoctorsScreen(specialty: category.name),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: Color(0xFFF5F8FF),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 12,
-              offset: Offset(0, 5),
-              spreadRadius: 1,
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 3),
             ),
           ],
           border: Border.all(
-            color: Color(0xFFE6EFFF),
+            color: Colors.grey.shade100,
             width: 1,
           ),
         ),
-        child: TextField(
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: Colors.black87,
-          ),
-          decoration: InputDecoration(
-            hintText: "Search doctors, medicines, etc.",
-            hintStyle: GoogleFonts.poppins(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            prefixIcon: Container(
-              padding: EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: category.color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(
-                LucideIcons.search,
-                color: Color(0xFF3366CC),
-                size: 20,
+                category.icon,
+                color: category.color,
+                size: 24,
               ),
             ),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          ),
+            SizedBox(height: 8),
+            Text(
+              category.name,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              category.nameUrdu,
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -435,9 +564,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
               Text(
                 "My Appointments",
                 style: GoogleFonts.poppins(
@@ -446,12 +575,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   color: Colors.black87,
                 ),
               ),
-              Text(
-                "See all",
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color.fromRGBO(64, 124, 226, 1),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AppointmentsScreen()),
+                  );
+                },
+                child: Text(
+                  "See all",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF3366CC),
+                  ),
                 ),
               ),
             ],
@@ -475,7 +612,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     padding: EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
                       color: _selectedCategoryIndex == index
-                          ? Color.fromRGBO(64, 124, 226, 1)
+                          ? Color(0xFF3366CC)
                           : Color(0xFFF5F7FF),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -532,8 +669,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 topRight: Radius.circular(18),
               ),
             ),
-        child: Row(
-          children: [
+            child: Row(
+              children: [
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -553,7 +690,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 SizedBox(width: 15),
                 Expanded(
                   child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Dr. Rizwan Ahmed",
@@ -844,9 +981,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                             ),
                           ],
                         ),
-            ),
-          ],
-        ),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),

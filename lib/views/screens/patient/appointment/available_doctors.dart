@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/appointment/set_location.dart';
+import 'package:healthcare/views/screens/patient/appointment/appointment_booking_flow.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class DoctorsScreen extends StatefulWidget {
+  final String? specialty;
+  const DoctorsScreen({super.key, this.specialty});
+
   @override
   _DoctorsScreenState createState() => _DoctorsScreenState();
 }
@@ -481,133 +485,196 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       itemCount: _filteredDoctors.length,
       itemBuilder: (context, index) {
         final doctor = _filteredDoctors[index];
-        return InkWell(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => DoctorDetailsScreen(),
-              ),
-            );
-          },
-          child: Container(
-            margin: EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 10,
-                  spreadRadius: 0,
-                  offset: Offset(0, 4),
-                ),
-              ],
+        return _buildDoctorCard(doctor);
+      },
+    );
+  }
+
+  Widget _buildDoctorCard(Map<String, dynamic> doctor) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AppointmentBookingFlow(
+              specialty: widget.specialty,
             ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
           children: [
-                      Container(
-                width: 80,
-                height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                          image: DecorationImage(
-                            image: AssetImage(doctor["image"]),
-                fit: BoxFit.cover,
-              ),
-            ),
-                      ),
-                      SizedBox(width: 16),
-            Expanded(
-              child: Column(
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    doctor["name"],
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                      image: DecorationImage(
+                        image: AssetImage(doctor["image"]),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                doctor["name"],
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
                                 ),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: doctor["available"] ? Color(0xFF4CAF50).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    doctor["available"] ? "Available" : "Busy",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: doctor["available"] ? Color(0xFF4CAF50) : Colors.orange,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              doctor["specialty"],
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            SizedBox(height: 8),
-                  Row(
-                    children: [
-                                _buildInfoBadge(
-                                  LucideIcons.star,
-                                  doctor["rating"],
-                                  Color(0xFFFFC107),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: doctor["available"] ? Color(0xFF4CAF50).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                doctor["available"] ? "Available" : "Busy",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: doctor["available"] ? Color(0xFF4CAF50) : Colors.orange,
                                 ),
-                                SizedBox(width: 8),
-                                _buildInfoBadge(
-                                  LucideIcons.briefcase,
-                                  doctor["experience"],
-                                  Color(0xFF3366CC),
-                                ),
-                              ],
+                              ),
                             ),
-                            SizedBox(height: 8),
-                  Row(
-                    children: [
-                                Icon(
-                                  LucideIcons.mapPin,
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          doctor["specialty"],
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _buildInfoBadge(
+                              LucideIcons.star,
+                              doctor["rating"],
+                              Color(0xFFFFC107),
+                            ),
+                            SizedBox(width: 8),
+                            _buildInfoBadge(
+                              LucideIcons.briefcase,
+                              doctor["experience"],
+                              Color(0xFF3366CC),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              LucideIcons.mapPin,
+                              color: Colors.grey.shade600,
+                              size: 14,
+                            ),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                doctor["location"],
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
                                   color: Colors.grey.shade600,
-                                  size: 14,
                                 ),
-                                SizedBox(width: 4),
-                      Expanded(
-                                  child: Text(
-                                    doctor["location"],
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Color(0xFFF5F8FF),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    doctor["fee"],
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3366CC),
+                    ),
+                  ),
+                  Text(
+                    " / Session",
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Spacer(),
+                  ElevatedButton(
+                    onPressed: () {
+                      _showAppointmentConfirmationDialog(context, doctor);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF3366CC),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      "Book Now",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -615,62 +682,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
           ],
         ),
       ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFF5F8FF),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        doctor["fee"],
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF3366CC),
-                        ),
-                      ),
-                      Text(
-                        " / Session",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      Spacer(),
-                      ElevatedButton(
-                        onPressed: () {
-                          _showAppointmentConfirmationDialog(context, doctor);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF3366CC),
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          "Book Now",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
