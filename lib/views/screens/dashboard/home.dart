@@ -7,11 +7,18 @@ import 'package:healthcare/views/screens/complete_profile/profile1.dart';
 import 'package:healthcare/views/screens/dashboard/analytics.dart';
 import 'package:healthcare/views/screens/dashboard/finances.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
+import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   final String profileStatus;
-  const HomeScreen({super.key, this.profileStatus = "incomplete"});
+  final String userType;
+  const HomeScreen({
+    super.key, 
+    this.profileStatus = "incomplete", 
+    this.userType = "Patient"
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -19,17 +26,106 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late String profileStatus;
+  late String userType;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     profileStatus = widget.profileStatus;
+    userType = widget.userType;
     // Show popup automatically if the profile is not complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (profileStatus != "complete") {
         showPopup(context);
       }
     });
+  }
+
+  void showPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible:
+          false, // Prevent closing the dialog when tapping outside
+      builder: (BuildContext context) {
+        return Stack(
+          children: [
+            // Blurred background effect
+            BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 5,
+                sigmaY: 5,
+              ), // Adjust blur intensity
+              child: Container(
+                color: const Color.fromARGB(
+                  30,
+                  0,
+                  0,
+                  0,
+                ), // Darken background slightly
+              ),
+            ),
+            AlertDialog(
+              backgroundColor: const Color.fromRGBO(64, 124, 226, 1),
+              title: Padding(
+                padding: const EdgeInsets.only(top: 30, bottom: 20),
+                child: Center(
+                  child: Text(
+                    "Please Complete Your Profile first",
+                    style: GoogleFonts.poppins(fontSize: 20, color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              actions: [
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => userType == "Doctor" 
+                          ? const DoctorProfilePage1Screen() 
+                          : const CompleteProfileScreen(),
+                      ),
+                    );
+                  },
+                  child: Center(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(32),
+                        color: const Color.fromRGBO(217, 217, 217, 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color.fromRGBO(0, 0, 0, 0.25),
+                            blurRadius: 4,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      width: 100,
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Center(
+                        child: Text(
+                          "Proceed",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _onItemTapped(int index) {
+    NavigationHelper.navigateToTab(context, index);
   }
 
   @override
@@ -98,10 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                       GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => MenuScreen()),
-                          );
+                          NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
                         },
                         child: Container(
               decoration: BoxDecoration(
@@ -172,12 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Spacer(),
                         IconButton(
                           onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FinancesScreen(),
-                              ),
-                            );
+                            NavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
                           },
                           icon: Icon(
                             LucideIcons.arrowRight,
@@ -207,12 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Schedule",
                         color: Color.fromRGBO(64, 124, 226, 1),
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AppointmentsScreen(),
-                            ),
-                          );
+                          _onItemTapped(1); // Navigate to Analytics (Appointments)
                         },
                       ),
                       _buildQuickActionButton(
@@ -220,7 +303,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "New Patient",
                         color: Color(0xFF4CAF50),
                         onTap: () {
-                          // Navigate to patient screen, assuming it exists
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -234,13 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Reports",
                         color: Color(0xFFF44336),
                         onTap: () {
-                          // Navigate to analytics screen
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AnalyticsScreen(),
-                            ),
-                          );
+                          _onItemTapped(1); // Navigate to Analytics
                         },
                       ),
                       _buildQuickActionButton(
@@ -248,13 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Menu",
                         color: Color(0xFFFF9800),
                         onTap: () {
-                          // Navigate to menu screen
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MenuScreen(),
-                            ),
-                          );
+                          _onItemTapped(3); // Navigate to Menu
                         },
                       ),
                     ],
@@ -362,12 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                       TextButton.icon(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AppointmentsScreen(),
-                      ),
-                    );
+                    NavigationHelper.navigateWithBottomBar(context, AppointmentsScreen());
                   },
                         icon: Icon(
                           LucideIcons.chevronRight,
@@ -518,84 +583,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-void showPopup(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierDismissible:
-        false, // Prevent closing the dialog when tapping outside
-    builder: (BuildContext context) {
-      return Stack(
-        children: [
-          // Blurred background effect
-          BackdropFilter(
-            filter: ImageFilter.blur(
-              sigmaX: 5,
-              sigmaY: 5,
-            ), // Adjust blur intensity
-            child: Container(
-              color: const Color.fromARGB(
-                30,
-                0,
-                0,
-                0,
-              ), // Darken background slightly
-            ),
-          ),
-          AlertDialog(
-            backgroundColor: const Color.fromRGBO(64, 124, 226, 1),
-            title: Padding(
-              padding: const EdgeInsets.only(top: 30, bottom: 20),
-              child: Center(
-                child: Text(
-                  "Please Complete Your Profile first",
-                  style: GoogleFonts.poppins(fontSize: 20, color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            actions: [
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const CompleteProfileScreen(),
-                    ),
-                  );
-                },
-                child: Center(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
-                      color: const Color.fromRGBO(217, 217, 217, 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color.fromRGBO(0, 0, 0, 0.25),
-                          blurRadius: 4,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    width: 100,
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: Center(
-                      child: Text(
-                        "Proceed",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    },
-  );
 }

@@ -188,7 +188,7 @@ class PatientOTPVerification extends StatefulWidget {
 
 class _PatientOTPVerificationState extends State<PatientOTPVerification> {
   final List<TextEditingController> _otpControllers = List.generate(
-    4,
+    6,
     (index) => TextEditingController(),
   );
 
@@ -228,7 +228,7 @@ class _PatientOTPVerificationState extends State<PatientOTPVerification> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Enter the 4-digit code sent to',
+                        'Enter the 6-digit code sent to',
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           color: Colors.grey.shade600,
@@ -251,9 +251,9 @@ class _PatientOTPVerificationState extends State<PatientOTPVerification> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(
-                      4,
+                      6,
                       (index) => SizedBox(
-                        width: 65,
+                        width: 50,
                         height: 65,
                         child: TextField(
                           controller: _otpControllers[index],
@@ -279,7 +279,7 @@ class _PatientOTPVerificationState extends State<PatientOTPVerification> {
                             fontWeight: FontWeight.bold,
                           ),
                           onChanged: (value) {
-                            if (value.isNotEmpty && index < 3) {
+                            if (value.isNotEmpty && index < 5) {
                               FocusScope.of(context).nextFocus();
                             }
                           },

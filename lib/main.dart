@@ -22,8 +22,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       // DEVELOPMENT MODE: Skipping splash screen and login/signup flow 
       // Change back to SplashScreen() when ready for production
-      home: const SplashScreen(),
-      //  BottomNavigationBarScreen(profileStatus: "complete"),
+      home: SplashScreen(),
+      // home: BottomNavigationBarScreen(profileStatus: "complete"),
     );
   }
 }

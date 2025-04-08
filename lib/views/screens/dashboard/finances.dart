@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../models/transaction_model.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
 
 class FinancesScreen extends StatelessWidget {
   final List<TransactionItem> transactions = [
@@ -214,7 +215,9 @@ class FinancesScreen extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      NavigationHelper.navigateWithBottomBar(context, FinancesScreen());
+                    },
                     child: Text(
                       "See All",
                       style: GoogleFonts.poppins(

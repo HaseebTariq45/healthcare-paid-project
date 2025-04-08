@@ -9,6 +9,7 @@ import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String text;
@@ -178,7 +179,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (context) => BottomNavigationBarPatientScreen(profileStatus: "complete"),
+              builder: (context) => BottomNavigationBarPatientScreen(
+                key: BottomNavigationBarPatientScreen.navigatorKey,
+                profileStatus: "complete"
+              ),
             ),
             (route) => false,
           );
@@ -201,7 +205,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (context) => BottomNavigationBarScreen(profileStatus: "complete"),
+              builder: (context) => BottomNavigationBarScreen(
+                key: BottomNavigationBarScreen.navigatorKey,
+                profileStatus: "complete"
+              ),
             ),
             (route) => false,
           );

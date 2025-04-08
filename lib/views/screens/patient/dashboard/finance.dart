@@ -263,6 +263,7 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
           color: Color(0xFF0167FF),
           borderRadius: BorderRadius.circular(8),
         ),
+        indicatorSize: TabBarIndicatorSize.tab,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.black87,
         labelStyle: GoogleFonts.poppins(

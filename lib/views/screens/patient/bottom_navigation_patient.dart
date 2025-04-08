@@ -6,11 +6,31 @@ import 'package:healthcare/views/screens/patient/dashboard/profile.dart';
 
 class BottomNavigationBarPatientScreen extends StatefulWidget {
   final String profileStatus;
+
+  // Add static key to access navigator state
+  static final GlobalKey<_BottomNavigationBarPatientScreenState> navigatorKey = GlobalKey<_BottomNavigationBarPatientScreenState>();
+
   const BottomNavigationBarPatientScreen({super.key, required this.profileStatus});
 
   @override
-  State<BottomNavigationBarPatientScreen> createState() =>
-      _BottomNavigationBarPatientScreenState();
+  State<BottomNavigationBarPatientScreen> createState() => _BottomNavigationBarPatientScreenState();
+
+  // Static method that can be called from anywhere to change the active tab
+  static void navigateTo(BuildContext context, int index) {
+    if (navigatorKey.currentState != null) {
+      navigatorKey.currentState!._onItemTapped(index);
+    } else {
+      // Fallback if navigatorKey isn't available
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BottomNavigationBarPatientScreen(
+            profileStatus: "complete",
+          ),
+        ),
+      );
+    }
+  }
 }
 
 class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPatientScreen> {

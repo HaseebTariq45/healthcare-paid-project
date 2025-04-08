@@ -6,6 +6,7 @@ import 'package:healthcare/views/screens/analytics/patients.dart';
 import 'package:healthcare/views/screens/analytics/performance_analysis.dart';
 import 'package:healthcare/views/screens/analytics/reports.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -134,12 +135,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       bgColor: Color(0xFFE3F2FD),
                       iconColor: Color(0xFF2196F3),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PerformanceAnalysis(),
-                    ),
-                  );
+                  NavigationHelper.navigateWithBottomBar(context, PerformanceAnalysis());
                 },
               ),
               _buildAnalyticsCard(
@@ -149,12 +145,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       bgColor: Color(0xFFE1F5FE),
                       iconColor: Color(0xFF03A9F4),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FinancialAnalyticsScreen(),
-                    ),
-                  );
+                  NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
                 },
               ),
               _buildAnalyticsCard(
@@ -164,10 +155,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       bgColor: Color(0xFFE8F5E9),
                       iconColor: Color(0xFF4CAF50),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => PatientsScreen()),
-                  );
+                  NavigationHelper.navigateWithBottomBar(context, PatientsScreen());
                 },
               ),
               _buildAnalyticsCard(
@@ -177,10 +165,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       bgColor: Color(0xFFFFF3E0),
                       iconColor: Color(0xFFFF9800),
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ReportsScreen()),
-                  );
+                  NavigationHelper.navigateWithBottomBar(context, ReportsScreen());
                 },
               ),
             ],

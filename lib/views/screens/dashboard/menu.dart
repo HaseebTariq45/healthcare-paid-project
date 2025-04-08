@@ -10,6 +10,7 @@ import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
 import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
 
 enum UserType { doctor, patient }
 
@@ -396,54 +397,47 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Widget _buildMenuItem(MenuItem item) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          if (item.title == "Logout") {
-            _showLogoutDialog();
-          } else if (item.navigationScreen != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => item.navigationScreen!),
-            );
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  item.icon,
-                  color: const Color(0xFF3366CC),
-                  size: 20,
-                ),
+    return GestureDetector(
+      onTap: item.navigationScreen != null
+          ? () {
+              NavigationHelper.navigateWithBottomBar(context, item.navigationScreen!);
+            }
+          : () {
+              _showLogoutDialog();
+            },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F7FF),
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: 15),
-              Text(
-                item.title,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-              const Spacer(),
-              Icon(
-                LucideIcons.chevronRight,
-                color: Colors.grey.shade400,
+              child: Icon(
+                item.icon,
+                color: const Color(0xFF3366CC),
                 size: 20,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 15),
+            Text(
+              item.title,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            const Spacer(),
+            Icon(
+              LucideIcons.chevronRight,
+              color: Colors.grey.shade400,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );

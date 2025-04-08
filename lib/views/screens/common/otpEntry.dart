@@ -7,7 +7,7 @@ import 'package:healthcare/views/components/signup.dart';
 import 'package:healthcare/views/screens/dashboard/home.dart';
 
 class OTPScreen extends StatefulWidget {
-  final String text;
+  final String text; // Contains "Sign Up as a Doctor" or "Sign Up as a Patient"
   const OTPScreen({super.key, required this.text});
 
   @override
@@ -16,6 +16,7 @@ class OTPScreen extends StatefulWidget {
 
 class _OTPScreenState extends State<OTPScreen> {
   late String text;
+  late String userType;
 
   Timer? _timer;
   int _start = 60;
@@ -30,6 +31,8 @@ class _OTPScreenState extends State<OTPScreen> {
   void initState() {
     super.initState();
     text = widget.text;
+    // Extract user type from text (e.g., "Sign Up as a Doctor" -> "Doctor")
+    userType = text.contains("Doctor") ? "Doctor" : "Patient";
     startTimer();
   }
 
@@ -172,7 +175,8 @@ class _OTPScreenState extends State<OTPScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => HomeScreen(
-                        profileStatus: "in complete",
+                        profileStatus: "incomplete",
+                        userType: userType,
                       ),
                     ),
                   );
