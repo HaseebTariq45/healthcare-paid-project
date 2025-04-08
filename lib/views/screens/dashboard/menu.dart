@@ -54,7 +54,6 @@ class _MenuScreenState extends State<MenuScreen> {
       menuItems = [
         MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen(), category: "Account"),
         MenuItem("Medical Records", LucideIcons.fileText, null, category: "Health"),
-        MenuItem("Book Appointment", LucideIcons.calendarPlus, DoctorsScreen(), category: "Appointment"),
         MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen(), category: "Appointment"),
         MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen(), category: "Payment"),
         MenuItem("FAQs", LucideIcons.info, const FAQScreen(), category: "Support"),
@@ -195,18 +194,6 @@ class _MenuScreenState extends State<MenuScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  LucideIcons.settings,
-                  color: Colors.white,
-                  size: 20,
                 ),
               ),
             ],

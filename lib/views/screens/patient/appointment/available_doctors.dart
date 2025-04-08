@@ -163,14 +163,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                   ),
                 ),
               ),
-              Text(
-                "Book Appointment",
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
               SizedBox(width: 40),
             ],
           ),
@@ -592,11 +584,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                       Spacer(),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => DoctorDetailsScreen(),
-                            ),
-                          );
+                          _showAppointmentConfirmationDialog(context, doctor);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF3366CC),
@@ -652,6 +640,234 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
           ),
         ],
       ),
+    );
+  }
+
+  void _showAppointmentConfirmationDialog(BuildContext context, Map<String, dynamic> doctor) {
+    // Generate a random appointment date (next 7 days)
+    final now = DateTime.now();
+    final randomDays = 1 + (now.millisecondsSinceEpoch % 7); // Random number between 1-7
+    final appointmentDate = now.add(Duration(days: randomDays));
+    
+    // Generate a random appointment time (9 AM to 5 PM)
+    final randomHour = 9 + (now.millisecondsSinceEpoch % 8); // Random number between 9-16 (9 AM to 4 PM)
+    final appointmentTime = TimeOfDay(hour: randomHour, minute: 0);
+    
+    // Format date and time
+    final dateString = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
+    final timeString = "${appointmentTime.hour}:${appointmentTime.minute.toString().padLeft(2, '0')} ${appointmentTime.hour >= 12 ? 'PM' : 'AM'}";
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Success icon
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF4CAF50).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    LucideIcons.check,
+                    color: Color(0xFF4CAF50),
+                    size: 40,
+                  ),
+                ),
+                SizedBox(height: 20),
+                
+                // Success message
+                Text(
+                  "Appointment Booked!",
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 10),
+                
+                // Doctor info card
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: 15),
+                  padding: EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFF5F8FF),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: Color(0xFFE6EFFF),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Doctor image
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          image: DecorationImage(
+                            image: AssetImage(doctor["image"]),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 15),
+                      
+                      // Doctor info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              doctor["name"],
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              doctor["specialty"],
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Appointment details
+                Container(
+                  padding: EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFF0F7FF),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: Color(0xFFD6E4FF),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildAppointmentDetailRow(
+                        LucideIcons.calendar,
+                        "Date",
+                        dateString,
+                        Color(0xFF3366CC),
+                      ),
+                      SizedBox(height: 12),
+                      _buildAppointmentDetailRow(
+                        LucideIcons.clock,
+                        "Time",
+                        timeString,
+                        Color(0xFF3366CC),
+                      ),
+                      SizedBox(height: 12),
+                      _buildAppointmentDetailRow(
+                        LucideIcons.mapPin,
+                        "Location",
+                        doctor["location"],
+                        Color(0xFF3366CC),
+                      ),
+                      SizedBox(height: 12),
+                      _buildAppointmentDetailRow(
+                        LucideIcons.creditCard,
+                        "Fee",
+                        doctor["fee"],
+                        Color(0xFF3366CC),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                SizedBox(height: 20),
+                
+                // Done button
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF3366CC),
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    "Done",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildAppointmentDetailRow(IconData icon, String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 16,
+          ),
+        ),
+        SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

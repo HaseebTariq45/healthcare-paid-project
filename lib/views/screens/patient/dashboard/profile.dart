@@ -5,7 +5,6 @@ import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
 import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
-import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientMenuScreen extends StatefulWidget {
@@ -33,32 +32,13 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   
   void _initializeMenuItems() {
     menuItems = [
-      MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen(), category: "Account"),
-      MenuItem("Medical Records", LucideIcons.fileText, null, category: "Health"),
-      MenuItem("Book Appointment", LucideIcons.calendarPlus, DoctorsScreen(), category: "Appointment"),
-      MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-      MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen(), category: "Payment"),
-      MenuItem("FAQs", LucideIcons.info, const FAQScreen(), category: "Support"),
-      MenuItem("Help Center", LucideIcons.headphones, null, category: "Support"),
-      MenuItem("Logout", LucideIcons.logOut, null, category: ""),
+      MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen()),
+      MenuItem("Medical Records", LucideIcons.fileText, null),
+      MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen()),
+      MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen()),
+      MenuItem("FAQs", LucideIcons.info, const FAQScreen()),
+      MenuItem("Help Center", LucideIcons.headphones, null),
     ];
-  }
-
-  // Group the menu items by category
-  Map<String, List<MenuItem>> get _groupedMenuItems {
-    final Map<String, List<MenuItem>> result = {};
-    
-    for (var item in menuItems) {
-      if (item.category.isEmpty) continue; // Skip the logout item for grouping
-      
-      if (!result.containsKey(item.category)) {
-        result[item.category] = [];
-      }
-      
-      result[item.category]!.add(item);
-    }
-    
-    return result;
   }
 
   @override
@@ -78,12 +58,22 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 25),
-                      // Build each category section
-                      ..._groupedMenuItems.entries.map((entry) => 
-                        _buildCategorySection(entry.key, entry.value)
-                      ).toList(),
                       
-                      // Logout button at the bottom
+                      Text(
+                        "Settings",
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Menu items
+                      ...menuItems.map((item) => _buildMenuItem(item)).toList(),
+                      
+                      // Logout button
                       _buildLogoutButton(),
                       
                       const SizedBox(height: 25),
@@ -177,18 +167,6 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                   color: Colors.white,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  LucideIcons.settings,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 15),
@@ -254,110 +232,67 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     );
   }
 
-  Widget _buildCategorySection(String category, List<MenuItem> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12, top: 5),
-          child: Text(
-            category,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                spreadRadius: 0,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            children: items.asMap().entries.map((entry) {
-              final int index = entry.key;
-              final MenuItem item = entry.value;
-              final bool isLast = index == items.length - 1;
-              
-              return Column(
-                children: [
-                  _buildMenuItem(item),
-                  if (!isLast)
-                    Divider(
-                      height: 1,
-                      thickness: 1,
-                      indent: 65,
-                      endIndent: 20,
-                      color: Colors.grey.shade100,
-                    ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 25),
-      ],
-    );
-  }
-
   Widget _buildMenuItem(MenuItem item) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          if (item.title == "Logout") {
-            _showLogoutDialog();
-          } else if (item.screen != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => item.screen!),
-            );
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FF),
-                  borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            if (item.screen != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => item.screen!),
+              );
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F7FF),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    item.icon,
+                    color: const Color(0xFF3366CC),
+                    size: 20,
+                  ),
                 ),
-                child: Icon(
-                  item.icon,
-                  color: const Color(0xFF3366CC),
+                const SizedBox(width: 15),
+                Text(
+                  item.title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  LucideIcons.chevronRight,
+                  color: Colors.grey.shade400,
                   size: 20,
                 ),
-              ),
-              const SizedBox(width: 15),
-              Text(
-                item.title,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
-                ),
-              ),
-              const Spacer(),
-              Icon(
-                LucideIcons.chevronRight,
-                color: Colors.grey.shade400,
-                size: 20,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -537,7 +472,6 @@ class MenuItem {
   final String title;
   final IconData icon;
   final Widget? screen;
-  final String category;
 
-  MenuItem(this.title, this.icon, this.screen, {this.category = ""});
+  MenuItem(this.title, this.icon, this.screen);
 }

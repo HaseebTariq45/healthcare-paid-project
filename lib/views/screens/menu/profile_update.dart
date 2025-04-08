@@ -154,19 +154,6 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: _saveProfile,
-            child: Text(
-              "Save",
-              style: GoogleFonts.poppins(
-                color: Color.fromRGBO(64, 124, 226, 1),
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Form(
         key: _formKey,
@@ -207,7 +194,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                       tag: 'profileImage',
                       child: Stack(
                         alignment: Alignment.bottomRight,
-                    children: [
+                        children: [
                           Container(
                             height: 110,
                             width: 110,
@@ -252,9 +239,9 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                           ),
                         ],
                       ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
               ),
               
               // Form fields
@@ -262,7 +249,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                 padding: EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  children: [
                     Text(
                       "Personal Information",
                       style: GoogleFonts.poppins(
@@ -344,32 +331,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                     ),
                     
                     SizedBox(height: 30),
-                    
-                    // Save Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color.fromRGBO(64, 124, 226, 1),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                    shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading 
-                          ? CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              "Save Changes",
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                      ),
-                    ),
+                    _buildSaveButton(),
                   ],
                 ),
               ),
@@ -416,11 +378,11 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
         return Transform.translate(
           offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
           child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Color(0xFF666666),
@@ -789,5 +751,34 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     
     // For now, just print the data that would be saved
     print('User data that would be saved to Firestore: $userData');
+  }
+
+  // Add save button widget
+  Widget _buildSaveButton() {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 20),
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _saveProfile,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color.fromRGBO(64, 124, 226, 1),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: _isLoading 
+          ? CircularProgressIndicator(color: Colors.white)
+          : Text(
+              "Save Changes",
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+      ),
+    );
   }
 }
