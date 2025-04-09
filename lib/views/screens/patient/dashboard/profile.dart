@@ -40,7 +40,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   void _initializeMenuItems() {
     menuItems = [
       MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen()),
-      MenuItem("Medical Records", LucideIcons.fileText, null),
+      // MenuItem("Medical Records", LucideIcons.fileText, null),
       MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen()),
       MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen()),
       MenuItem("FAQs", LucideIcons.info, const FAQScreen()),
