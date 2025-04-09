@@ -52,7 +52,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   final List<String> _categories = ["All", "Upcoming", "Completed", "Cancelled"];
   int _selectedCategoryIndex = 0;
 
-  // Disease categories data
+  // Updated disease categories data with 12 specialties
   final List<DiseaseCategory> _diseaseCategories = [
     DiseaseCategory(
       name: "Cardiology",
@@ -71,14 +71,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     DiseaseCategory(
       name: "Dermatology",
       nameUrdu: "جلدی امراض",
-      icon: LucideIcons.plus,
+      icon: Icons.face_retouching_natural,
       color: Color(0xFFFF9800),
       description: "Skin and hair specialists",
     ),
     DiseaseCategory(
       name: "Pediatrics",
       nameUrdu: "اطفال",
-      icon: LucideIcons.users,
+      icon: Icons.child_care,
       color: Color(0xFF4CAF50),
       description: "Child health specialists",
     ),
@@ -96,57 +96,320 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
       color: Color(0xFF00BCD4),
       description: "Ear, nose and throat specialists",
     ),
+    DiseaseCategory(
+      name: "Gynecology",
+      nameUrdu: "نسائی امراض",
+      icon: Icons.pregnant_woman,
+      color: Color(0xFFE91E63),
+      description: "Women's health specialists",
+    ),
+    DiseaseCategory(
+      name: "Ophthalmology",
+      nameUrdu: "آنکھوں کے امراض",
+      icon: LucideIcons.eye,
+      color: Color(0xFF3F51B5),
+      description: "Eye care specialists",
+    ),
+    DiseaseCategory(
+      name: "Dentistry",
+      nameUrdu: "دانتوں کے امراض",
+      icon: Icons.emoji_emotions,
+      color: Color(0xFF607D8B),
+      description: "Dental care specialists",
+    ),
+    DiseaseCategory(
+      name: "Psychiatry",
+      nameUrdu: "نفسیاتی امراض",
+      icon: LucideIcons.brain,
+      color: Color(0xFF795548),
+      description: "Mental health specialists",
+    ),
+    DiseaseCategory(
+      name: "Pulmonology",
+      nameUrdu: "پھیپھڑوں کے امراض",
+      icon: Icons.air_rounded,
+      color: Color(0xFF009688),
+      description: "Lung and respiratory specialists",
+    ),
+    DiseaseCategory(
+      name: "Gastrology",
+      nameUrdu: "معدے کے امراض",
+      icon: Icons.medical_services,
+      color: Color(0xFFFF5722),
+      description: "Digestive system specialists",
+    ),
   ];
 
-  // Sample doctors for quick access
-  final List<Map<String, dynamic>> _quickAccessDoctors = [
-    {
-      'name': 'Dr. Sarah Ahmed',
-      'specialty': 'Cardiologist',
-      'image': 'assets/images/User.png',
-      'rating': 4.9,
-    },
-    {
-      'name': 'Dr. John Miller',
-      'specialty': 'Neurologist',
-      'image': 'assets/images/User.png',
-      'rating': 4.8,
-    },
-    {
-      'name': 'Dr. Amina Khan',
-      'specialty': 'Dermatologist',
-      'image': 'assets/images/User.png',
-      'rating': 4.7,
-    },
-  ];
+  // Sample doctors by specialty for quick access
+  final Map<String, List<Map<String, dynamic>>> _doctorsBySpecialty = {
+    "Cardiology": [
+      {
+        "name": "Dr. Arshad Khan",
+        "specialty": "Cardiology",
+        "rating": "4.9",
+        "experience": "15 years",
+        "fee": "Rs 2500",
+        "location": "Shifa International Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Saima Malik",
+        "specialty": "Cardiology",
+        "rating": "4.7",
+        "experience": "12 years",
+        "fee": "Rs 2200",
+        "location": "Pakistan Institute of Medical Sciences",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Neurology": [
+      {
+        "name": "Dr. Imran Rashid",
+        "specialty": "Neurology",
+        "rating": "4.8",
+        "experience": "10 years",
+        "fee": "Rs 2000",
+        "location": "Agha Khan Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Nadia Ahmed",
+        "specialty": "Neurology",
+        "rating": "4.6",
+        "experience": "8 years",
+        "fee": "Rs 1800",
+        "location": "CMH Rawalpindi",
+        "image": "assets/images/User.png",
+        "available": false
+      },
+    ],
+    "Dermatology": [
+      {
+        "name": "Dr. Amina Khan",
+        "specialty": "Dermatology",
+        "rating": "4.7",
+        "experience": "9 years",
+        "fee": "Rs 1900",
+        "location": "Quaid-e-Azam International Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Hassan Ali",
+        "specialty": "Dermatology",
+        "rating": "4.5",
+        "experience": "7 years",
+        "fee": "Rs 1700",
+        "location": "Maroof International Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Pediatrics": [
+      {
+        "name": "Dr. Fatima Zaidi",
+        "specialty": "Pediatrics",
+        "rating": "4.9",
+        "experience": "14 years",
+        "fee": "Rs 2300",
+        "location": "Children's Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Adeel Raza",
+        "specialty": "Pediatrics",
+        "rating": "4.8",
+        "experience": "11 years",
+        "fee": "Rs 2100",
+        "location": "Shifa International Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Orthopedics": [
+      {
+        "name": "Dr. Farhan Khan",
+        "specialty": "Orthopedics",
+        "rating": "4.8",
+        "experience": "13 years",
+        "fee": "Rs 2200",
+        "location": "Shaukat Khanum Memorial Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Sana Siddiqui",
+        "specialty": "Orthopedics",
+        "rating": "4.7",
+        "experience": "10 years",
+        "fee": "Rs 1900",
+        "location": "PIMS Islamabad",
+        "image": "assets/images/User.png",
+        "available": false
+      },
+    ],
+    "ENT": [
+      {
+        "name": "Dr. Ahmad Raza",
+        "specialty": "ENT",
+        "rating": "4.6",
+        "experience": "9 years",
+        "fee": "Rs 1800",
+        "location": "KRL Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Zainab Tariq",
+        "specialty": "ENT",
+        "rating": "4.5",
+        "experience": "8 years",
+        "fee": "Rs 1700",
+        "location": "Holy Family Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Gynecology": [
+      {
+        "name": "Dr. Samina Khan",
+        "specialty": "Gynecology",
+        "rating": "4.9",
+        "experience": "15 years",
+        "fee": "Rs 2400",
+        "location": "Lady Reading Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Ayesha Malik",
+        "specialty": "Gynecology",
+        "rating": "4.8",
+        "experience": "12 years",
+        "fee": "Rs 2200",
+        "location": "Shifa International Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Ophthalmology": [
+      {
+        "name": "Dr. Zulfiqar Ali",
+        "specialty": "Ophthalmology",
+        "rating": "4.7",
+        "experience": "11 years",
+        "fee": "Rs 1900",
+        "location": "Al-Shifa Eye Trust Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Maryam Aziz",
+        "specialty": "Ophthalmology",
+        "rating": "4.6",
+        "experience": "9 years",
+        "fee": "Rs 1700",
+        "location": "LRBT Eye Hospital",
+        "image": "assets/images/User.png",
+        "available": false
+      },
+    ],
+    "Dentistry": [
+      {
+        "name": "Dr. Faisal Khan",
+        "specialty": "Dentistry",
+        "rating": "4.8",
+        "experience": "10 years",
+        "fee": "Rs 1800",
+        "location": "Islamabad Dental Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Hina Nasir",
+        "specialty": "Dentistry",
+        "rating": "4.7",
+        "experience": "8 years",
+        "fee": "Rs 1600",
+        "location": "Pearl Dental Clinic",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Psychiatry": [
+      {
+        "name": "Dr. Sohail Ahmed",
+        "specialty": "Psychiatry",
+        "rating": "4.8",
+        "experience": "12 years",
+        "fee": "Rs 2100",
+        "location": "Institute of Psychiatry",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Nazia Hameed",
+        "specialty": "Psychiatry",
+        "rating": "4.7",
+        "experience": "9 years",
+        "fee": "Rs 1900",
+        "location": "Fountain House",
+        "image": "assets/images/User.png",
+        "available": false
+      },
+    ],
+    "Pulmonology": [
+      {
+        "name": "Dr. Tariq Mehmood",
+        "specialty": "Pulmonology",
+        "rating": "4.8",
+        "experience": "13 years",
+        "fee": "Rs 2200",
+        "location": "National Institute of Chest Diseases",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Sadia Khan",
+        "specialty": "Pulmonology",
+        "rating": "4.6",
+        "experience": "10 years",
+        "fee": "Rs 2000",
+        "location": "Gulab Devi Chest Hospital",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+    ],
+    "Gastrology": [
+      {
+        "name": "Dr. Adnan Qureshi",
+        "specialty": "Gastrology",
+        "rating": "4.7",
+        "experience": "11 years",
+        "fee": "Rs 2100",
+        "location": "Pakistan Kidney and Liver Institute",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "name": "Dr. Rabia Saleem",
+        "specialty": "Gastrology",
+        "rating": "4.6",
+        "experience": "9 years",
+        "fee": "Rs 1900",
+        "location": "Shifa International Hospital",
+        "image": "assets/images/User.png",
+        "available": false
+      },
+    ],
+  };
 
-  // Sample health stats
-  final List<Map<String, dynamic>> _healthStats = [
-    {
-      'icon': LucideIcons.heartPulse,
-      'title': 'Heart Rate',
-      'value': '72 bpm',
-      'color': Color(0xFFF44336),
-    },
-    {
-      'icon': LucideIcons.wind,
-      'title': 'Oxygen',
-      'value': '98%',
-      'color': Color(0xFF2196F3),
-    },
-    {
-      'icon': LucideIcons.thermometer,
-      'title': 'Temperature',
-      'value': '36.5°C',
-      'color': Color(0xFFFF9800),
-    },
-    {
-      'icon': LucideIcons.bedDouble,
-      'title': 'Sleep',
-      'value': '7.5h',
-      'color': Color(0xFF673AB7),
-    },
-  ];
+  // Quick access doctors list
+  List<Map<String, dynamic>> _quickAccessDoctors = [];
 
   @override
   void initState() {
@@ -155,6 +418,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     suppressProfilePrompt = widget.suppressProfilePrompt;
     profileCompletionPercentage = widget.profileCompletionPercentage;
     _tabController = TabController(length: _categories.length, vsync: this);
+    
+    // Initialize quick access doctors with a selection from different specialties
+    _initializeQuickAccessDoctors();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (profileStatus.toLowerCase() != "complete" && !suppressProfilePrompt) {
@@ -166,6 +432,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         );
       }
     });
+  }
+
+  void _initializeQuickAccessDoctors() {
+    // Get one doctor from each of the top 3 specialties
+    _quickAccessDoctors = [
+      _doctorsBySpecialty["Cardiology"]![0],
+      _doctorsBySpecialty["Gynecology"]![0],
+      _doctorsBySpecialty["Pediatrics"]![0],
+    ];
   }
 
   @override
@@ -622,10 +897,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   Widget _buildDiseaseCategoryCard(DiseaseCategory category) {
     return InkWell(
       onTap: () {
+        // Navigate to doctors screen with the selected specialty
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DoctorsScreen(specialty: category.name),
+            builder: (context) => DoctorsScreen(
+              specialty: category.name,
+              doctors: _doctorsBySpecialty[category.name] ?? [],
+            ),
           ),
         );
       },
@@ -1012,7 +1291,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => DoctorsScreen()),
+                    MaterialPageRoute(builder: (context) => DoctorsScreen(
+                      doctors: _getAllDoctors(),
+                    )),
                   );
                 },
                 child: Text(
@@ -1064,7 +1345,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         child: Center(
                           child: CircleAvatar(
                             radius: 35,
-                            backgroundImage: AssetImage(doctor['image']),
+                            backgroundImage: AssetImage(doctor["image"]),
                           ),
                         ),
                       ),
@@ -1073,7 +1354,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         child: Column(
                           children: [
                             Text(
-                              doctor['name'],
+                              doctor["name"],
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -1083,7 +1364,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                               textAlign: TextAlign.center,
                             ),
                             Text(
-                              doctor['specialty'],
+                              doctor["specialty"],
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 color: Colors.grey.shade600,
@@ -1101,7 +1382,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                 ),
                                 SizedBox(width: 5),
                                 Text(
-                                  doctor['rating'].toString(),
+                                  doctor["rating"].toString(),
                                   style: GoogleFonts.poppins(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
@@ -1122,6 +1403,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         ],
       ),
     );
+  }
+
+  // Helper method to get all doctors from all specialties
+  List<Map<String, dynamic>> _getAllDoctors() {
+    List<Map<String, dynamic>> allDoctors = [];
+    _doctorsBySpecialty.forEach((specialty, doctors) {
+      allDoctors.addAll(doctors);
+    });
+    return allDoctors;
   }
 }
 

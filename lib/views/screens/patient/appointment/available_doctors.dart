@@ -1,34 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:healthcare/views/screens/patient/appointment/set_location.dart';
 import 'package:healthcare/views/screens/patient/appointment/appointment_booking_flow.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+// Material Icons is already imported as part of Flutter Material package
 
 class DoctorsScreen extends StatefulWidget {
   final String? specialty;
-  const DoctorsScreen({super.key, this.specialty});
+  final List<Map<String, dynamic>> doctors;
+
+  const DoctorsScreen({
+    Key? key, 
+    this.specialty,
+    this.doctors = const [],
+  }) : super(key: key);
 
   @override
   _DoctorsScreenState createState() => _DoctorsScreenState();
 }
 
-class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProviderStateMixin {
-  String? selectedRating;
-  String? selectedLocation;
-  String? selectedSpeciality;
-  bool isFilterVisible = false;
-  bool showOnlineOnly = false;
-  bool sortByPriceLowToHigh = false;
-  late TabController _tabController;
-  final List<String> _categories = ["All", "Cardiology", "Neurology", "Dermatology", "Pediatrics", "Orthopedics", "ENT", "Dentist"];
-  int _selectedCategoryIndex = 0;
-  
-  // Add search controller and filtered doctors list
+class _DoctorsScreenState extends State<DoctorsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
-  List<Map<String, dynamic>> _filteredDoctors = [];
+  late List<Map<String, dynamic>> filteredDoctors;
+  
+  // Filtering options
+  int _selectedCategoryIndex = 0;
+  String? selectedRating;
+  String? selectedLocation;
+  bool showOnlineOnly = false;
+  bool sortByPriceLowToHigh = false;
+  
+  // Available filter categories
+  final List<String> _categories = ["All", "Cardiology", "Neurology", "Dermatology", "Orthopedics", "ENT", "Pediatrics", "Gynecology", "Ophthalmology", "Dentistry", "Psychiatry", "Pulmonology", "Gastrology"];
 
-  final List<Map<String, dynamic>> doctors = [
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+    
+    // Apply initial filters
+    filteredDoctors = widget.doctors.isNotEmpty ? 
+      List.from(widget.doctors) : 
+      _getDefaultDoctors();
+      
+    if (widget.specialty != null && !_categories.contains(widget.specialty)) {
+      // Add the specialty to the categories list if it's not already there
+      _categories.add(widget.specialty!);
+    }
+    
+    if (widget.specialty != null) {
+      // Find the index of the specialty in the categories list
+      _selectedCategoryIndex = _categories.indexOf(widget.specialty!);
+      if (_selectedCategoryIndex == -1) {
+        _selectedCategoryIndex = 0; // Set to "All" if not found
+      }
+    }
+    
+    _applyFilters();
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+      _applyFilters();
+    });
+  }
+
+  List<Map<String, dynamic>> _getDefaultDoctors() {
+    // Default list of doctors if none provided
+    return [
     {
       "name": "Dr. Rizwan Ahmed",
       "specialty": "Cardiology",
@@ -36,7 +83,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       "experience": "8 years",
       "fee": "Rs 1500",
       "location": "CMH Rawalpindi",
-      "image": "assets/images/patient_1.png",
+        "image": "assets/images/User.png",
       "available": true
     },
     {
@@ -46,7 +93,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       "experience": "12 years",
       "fee": "Rs 2000",
       "location": "PAF Hospital Unit-2",
-      "image": "assets/images/patient_2.png",
+        "image": "assets/images/User.png",
       "available": true
     },
     {
@@ -56,7 +103,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       "experience": "10 years",
       "fee": "Rs 1800",
       "location": "KRL Hospital G9, Islamabad",
-      "image": "assets/images/patient_3.png",
+        "image": "assets/images/User.png",
       "available": false
     },
     {
@@ -66,128 +113,25 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
       "experience": "15 years",
       "fee": "Rs 2500",
       "location": "Maaroof International Hospital",
-      "image": "assets/images/patient_4.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Fahad Akram",
-      "specialty": "Eye Specialist",
-      "rating": "4.5",
-      "experience": "6 years",
-      "fee": "Rs 1200",
-      "location": "LRBT Shahpur Saddar, Sargodha",
-      "image": "assets/images/patient_5.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Sarah Ahmed",
-      "specialty": "Neurology",
-      "rating": "4.9",
-      "experience": "11 years",
-      "fee": "Rs 2200",
-      "location": "Shifa International Hospital",
-      "image": "assets/images/patient_1.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Ali Hassan",
-      "specialty": "Dermatology",
-      "rating": "4.7",
-      "experience": "9 years",
-      "fee": "Rs 1900",
-      "location": "Quaid-e-Azam International Hospital",
-      "image": "assets/images/patient_2.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Amina Batool",
-      "specialty": "Pediatrics",
-      "rating": "4.8",
-      "experience": "14 years",
-      "fee": "Rs 1700",
-      "location": "Pakistan Institute of Medical Sciences",
-      "image": "assets/images/patient_3.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Naveed Khan",
-      "specialty": "ENT",
-      "rating": "4.6",
-      "experience": "12 years",
-      "fee": "Rs 2100",
-      "location": "Maroof International Hospital",
-      "image": "assets/images/patient_4.png",
+        "image": "assets/images/User.png",
       "available": true
     }
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _categories.length, vsync: this);
-    
-    // Initialize with filtered doctors if specialty is provided
-    if (widget.specialty != null) {
-      // Find the category index for the specialty
-      int specialtyIndex = _categories.indexOf(widget.specialty!);
-      if (specialtyIndex != -1) {
-        _selectedCategoryIndex = specialtyIndex;
-        _tabController.animateTo(specialtyIndex);
-        
-        // Explicitly set the selectedSpeciality for filtering
-        selectedSpeciality = widget.specialty;
-        
-        // Log the specialty for debugging
-        print("Selected specialty: ${widget.specialty}");
-        print("Selected category index: $specialtyIndex");
-      } else {
-        print("Specialty not found in categories: ${widget.specialty}");
-      }
-    }
-    
-    // Apply initial filters
-    _filteredDoctors = List.from(doctors);
-    _applyFilters();
-    
-    // Add listener to search controller
-    _searchController.addListener(_filterDoctors);
-  }
-
-  @override
-  void dispose() {
-    _searchController.removeListener(_filterDoctors);
-    _searchController.dispose();
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _toggleFilterVisibility() {
-    setState(() {
-      isFilterVisible = !isFilterVisible;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF8FAFF),
+      backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildSearchAndFilterRow(),
-                  SizedBox(height: 16),
-                  _buildCategoryTabs(),
-                  SizedBox(height: 10),
-                  if (isFilterVisible) _buildFilterOptions(),
+            _buildSearchBar(),
+            _buildCategoryTabs(),
                   Expanded(
                     child: _buildDoctorsList(),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -197,154 +141,51 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
 
   Widget _buildHeader() {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 15, 20, 25),
+      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF3366CC),
-            Color(0xFF5E8EF7),
-          ],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFF3366CC).withOpacity(0.3),
-            blurRadius: 15,
-            offset: Offset(0, 8),
-            spreadRadius: 1,
-          ),
-        ],
+        color: const Color(0xFF3366CC),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-              InkWell(
+          GestureDetector(
                 onTap: () => Navigator.pop(context),
-                borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
+              child: const Icon(
                     LucideIcons.arrowLeft,
                     color: Colors.white,
                     size: 20,
                   ),
                 ),
               ),
-              SizedBox(width: 40),
-            ],
-          ),
-          SizedBox(height: 20),
-          Text(
-            widget.specialty ?? "Find Your Doctor",
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(
+              widget.specialty != null ? "${widget.specialty} Specialists" : "Available Doctors",
             style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               color: Colors.white,
+              ),
             ),
           ),
-          SizedBox(height: 5),
-          Text(
-            "Book appointments with the best specialists",
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.9),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchAndFilterRow() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-      child: Row(
-        children: [
-            Expanded(
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
+            child: InkWell(
+              onTap: () {
+                _showFilterDialog();
+              },
+              child: const Icon(
+                LucideIcons.settings,
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-                decoration: InputDecoration(
-                  hintText: "Search doctors or specialties",
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey.shade400,
-                  ),
-                  prefixIcon: Padding(
-                    padding: EdgeInsets.all(12.0),
-                    child: Icon(
-                      LucideIcons.search,
-                      color: Color(0xFF3366CC),
-                      size: 20,
-                    ),
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty 
-                    ? IconButton(
-                        icon: Icon(LucideIcons.x, size: 16),
-                        onPressed: () {
-                          _searchController.clear();
-                        },
-                      ) 
-                    : null,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 15),
-                ),
-                onChanged: (value) {
-                  // This is redundant since we have a listener, but it provides immediate feedback
-                  _filterDoctors();
-                },
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          InkWell(
-            onTap: _toggleFilterVisibility,
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              height: 50,
-              width: 50,
-              decoration: BoxDecoration(
-                color: isFilterVisible ? Color(0xFF3366CC) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.filter_list,
-                color: isFilterVisible ? Colors.white : Color(0xFF3366CC),
                 size: 20,
               ),
             ),
@@ -354,46 +195,83 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3366CC),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+              offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+            hintText: "Search doctors...",
+            prefixIcon: Icon(LucideIcons.search, color: Colors.grey.shade600),
+            suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                    icon: const Icon(LucideIcons.x, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                        },
+                      ) 
+                    : null,
+                  border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCategoryTabs() {
     return Container(
-      height: 40,
-      margin: EdgeInsets.only(left: 20),
+      height: 50,
+      margin: const EdgeInsets.only(top: 10),
               child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 15),
         itemCount: _categories.length,
                 itemBuilder: (context, index) {
-                  return GestureDetector(
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: GestureDetector(
                     onTap: () {
               setState(() {
                 _selectedCategoryIndex = index;
-                _tabController.animateTo(index);
+                  _applyFilters();
               });
-              // Call filter after state update for consistency
-              _filterDoctors();
             },
             child: Container(
-              margin: EdgeInsets.only(right: 10),
-              padding: EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: _selectedCategoryIndex == index
-                    ? Color(0xFF3366CC)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
                   color: _selectedCategoryIndex == index
-                      ? Color(0xFF3366CC)
-                      : Colors.grey.shade300,
-                  width: 1,
-                ),
+                      ? const Color(0xFF3366CC)
+                      : const Color(0xFFF5F7FF),
+                  borderRadius: BorderRadius.circular(20),
                 boxShadow: _selectedCategoryIndex == index
                     ? [
                         BoxShadow(
-                          color: Color(0xFF3366CC).withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ]
-                    : [],
+                            color: const Color(0xFF3366CC).withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
               ),
               alignment: Alignment.center,
               child: Text(
@@ -403,7 +281,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                   fontWeight: FontWeight.w500,
                   color: _selectedCategoryIndex == index
                       ? Colors.white
-                      : Colors.grey.shade700,
+                        : Colors.grey.shade600,
+                  ),
                 ),
               ),
                     ),
@@ -413,125 +292,29 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildFilterOptions() {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Filters",
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              _buildFilterChip("Rating 4+", selectedRating == "4+", () {
-                setState(() => selectedRating = selectedRating == "4+" ? null : "4+");
-              }),
-              SizedBox(width: 8),
-              _buildFilterChip("Online Now", false, () {}),
-              SizedBox(width: 8),
-              _buildFilterChip("Low to High", false, () {}),
-            ],
-          ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              _buildFilterChip("Islamabad", selectedLocation == "Islamabad", () {
-                setState(() => selectedLocation = selectedLocation == "Islamabad" ? null : "Islamabad");
-              }),
-              SizedBox(width: 8),
-              _buildFilterChip("Rawalpindi", selectedLocation == "Rawalpindi", () {
-                setState(() => selectedLocation = selectedLocation == "Rawalpindi" ? null : "Rawalpindi");
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Color(0xFF3366CC).withOpacity(0.1) : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Color(0xFF3366CC) : Colors.grey.shade300,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Color(0xFF3366CC) : Colors.grey.shade700,
-              ),
-            ),
-            if (isSelected) ...[
-              SizedBox(width: 4),
-              Icon(
-                LucideIcons.check,
-                size: 14,
-                color: Color(0xFF3366CC),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildDoctorsList() {
     // Show a message when no doctors match the search criteria
-    if (_filteredDoctors.isEmpty) {
+    if (filteredDoctors.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               LucideIcons.searchX,
-              size: 70,
-              color: Colors.grey.shade300,
+              size: 60,
+              color: Colors.grey.shade400,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               "No doctors found",
               style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontSize: 16,
                 color: Colors.grey.shade600,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              "Try adjusting your search or filters",
+              "Try adjusting your filters",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Colors.grey.shade500,
@@ -543,75 +326,76 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
     }
     
     return ListView.builder(
-      physics: BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(20, 10, 20, 20),
-      itemCount: _filteredDoctors.length,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      itemCount: filteredDoctors.length,
       itemBuilder: (context, index) {
-        final doctor = _filteredDoctors[index];
+        final doctor = filteredDoctors[index];
         return _buildDoctorCard(doctor);
       },
     );
   }
 
   Widget _buildDoctorCard(Map<String, dynamic> doctor) {
-    return GestureDetector(
+    // Format doctor data to handle both string and numeric values for rating
+    String ratingStr = doctor["rating"] is String ? 
+        doctor["rating"] : doctor["rating"].toString();
+        
+    String experienceStr = doctor["experience"] is String ? 
+        doctor["experience"] : "${doctor["experience"]} years";
+    
+    // Set default values for missing fields to ensure UI doesn't break
+    bool isAvailable = doctor["available"] ?? true;
+    String fee = doctor["fee"] ?? "Rs 2000";
+    String location = doctor["location"] ?? "Not specified";
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade100,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
       onTap: () {
+            // Navigate to appointment booking
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => AppointmentBookingFlow(
-              specialty: widget.specialty,
               preSelectedDoctor: doctor,
+                  specialty: doctor["specialty"],
             ),
           ),
         );
       },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              spreadRadius: 0,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                      image: DecorationImage(
-                        image: AssetImage(doctor["image"]),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 16),
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: AssetImage(doctor["image"]),
+                ),
+                const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
                               child: Text(
@@ -620,28 +404,46 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black87,
-                                ),
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                          ),
+                          if (isAvailable) // Check if doctor is available
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: doctor["available"] ? Color(0xFF4CAF50).withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
+                                  width: 1,
+                                ),
                               ),
-                              child: Text(
-                                doctor["available"] ? "Available" : "Busy",
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Online",
                                 style: GoogleFonts.poppins(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
-                                  color: doctor["available"] ? Color(0xFF4CAF50) : Colors.orange,
+                                      color: Colors.green,
+                                    ),
                                 ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 4),
+                      const SizedBox(height: 4),
                         Text(
                           doctor["specialty"],
                           style: GoogleFonts.poppins(
@@ -649,38 +451,73 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                             color: Colors.grey.shade600,
                           ),
                         ),
-                        SizedBox(height: 8),
+                      const SizedBox(height: 8),
                         Row(
                           children: [
-                            _buildInfoBadge(
+                          Icon(
                               LucideIcons.star,
-                              doctor["rating"],
-                              Color(0xFFFFC107),
+                            color: Colors.amber,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            ratingStr,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
                             ),
-                            SizedBox(width: 8),
-                            _buildInfoBadge(
+                          ),
+                          const SizedBox(width: 16),
+                          Icon(
                               LucideIcons.briefcase,
-                              doctor["experience"],
-                              Color(0xFF3366CC),
+                            color: const Color(0xFF3366CC),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            experienceStr,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
                             ),
                           ],
                         ),
-                        SizedBox(height: 8),
+                      
+                      const SizedBox(height: 8),
                         Row(
                           children: [
                             Icon(
-                              LucideIcons.mapPin,
-                              color: Colors.grey.shade600,
-                              size: 14,
+                            LucideIcons.banknote,
+                            color: Colors.green.shade600,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            fee,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.green.shade700,
                             ),
-                            SizedBox(width: 4),
+                          ),
+                          
+                          const SizedBox(width: 16),
+                          Icon(
+                            LucideIcons.mapPin,
+                            color: Colors.red.shade400,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                doctor["location"],
+                              location,
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
                                 ),
+                              maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -692,175 +529,265 @@ class _DoctorsScreenState extends State<DoctorsScreen> with SingleTickerProvider
                 ],
               ),
             ),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Color(0xFFF5F8FF),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Flexible(
-                    flex: 2,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          doctor["fee"],
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF3366CC),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          " / Session",
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Spacer(),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Navigate directly to appointment booking flow without showing dialog
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AppointmentBookingFlow(
-                            specialty: widget.specialty,
-                            preSelectedDoctor: doctor,
-                          ),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF3366CC),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      "Book Now",
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoBadge(IconData icon, String text, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+  void _showFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 14,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                        "Filter Doctors",
+                          style: GoogleFonts.poppins(
+                          fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(LucideIcons.x),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  
+                  // Rating filter
+                  Text(
+                    "Rating",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: [
+                      _buildFilterChip(
+                        "All",
+                        selectedRating == null,
+                        () => setState(() {
+                          selectedRating = null;
+                        }),
+                      ),
+                      _buildFilterChip(
+                        "4+",
+                        selectedRating == "4+",
+                        () => setState(() {
+                          selectedRating = "4+";
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  
+                  // Online/In-person filter
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: showOnlineOnly,
+                        onChanged: (value) => setState(() {
+                          showOnlineOnly = value!;
+                        }),
+                        activeColor: const Color(0xFF3366CC),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      Text(
+                        "Show online doctors only",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  
+                  // Sort by price
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: sortByPriceLowToHigh,
+                        onChanged: (value) => setState(() {
+                          sortByPriceLowToHigh = value!;
+                        }),
+                        activeColor: const Color(0xFF3366CC),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      Text(
+                        "Sort by price: Low to High",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Apply button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _applyFilters();
+                    },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3366CC),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        ),
+                    ),
+                    child: Text(
+                        "Apply Filters",
+                      style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF3366CC) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF3366CC) : Colors.grey.shade300,
+            width: 1,
           ),
-          SizedBox(width: 4),
-          Text(
-            text,
+        ),
+        child: Text(
+          label,
             style: GoogleFonts.poppins(
-              fontSize: 12,
+            fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: color,
-            ),
+            color: isSelected ? Colors.white : Colors.black87,
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // Filter doctors based on search query and other filters
-  void _filterDoctors() {
+  void _applyFilters() {
     setState(() {
-      _searchQuery = _searchController.text.toLowerCase();
+      // Start with all doctors
+      filteredDoctors = widget.doctors.isNotEmpty ? 
+        List.from(widget.doctors) : 
+        _getDefaultDoctors();
       
-      // Apply all base filters first
-      _applyFilters();
+      // Filter by selected tab/category if a specific one is selected
+      if (_selectedCategoryIndex != 0) {
+        String selectedCategory = _categories[_selectedCategoryIndex];
+        filteredDoctors = filteredDoctors.where((doctor) {
+          return doctor["specialty"] == selectedCategory;
+        }).toList();
+      }
+      // Or filter by specialty parameter if it was passed directly
+      else if (widget.specialty != null) {
+        filteredDoctors = filteredDoctors.where((doctor) {
+          return doctor["specialty"] == widget.specialty;
+        }).toList();
+      }
       
       // Then filter by search query if needed
       if (_searchQuery.isNotEmpty) {
-        _filteredDoctors = _filteredDoctors.where((doctor) {
+        filteredDoctors = filteredDoctors.where((doctor) {
           return doctor["name"].toLowerCase().contains(_searchQuery) ||
                  doctor["specialty"].toLowerCase().contains(_searchQuery) ||
-                 doctor["location"].toLowerCase().contains(_searchQuery);
-        }).toList();
-      }
-    });
-  }
-
-  // Apply filters based on the current states
-  void _applyFilters() {
-    // Start with all doctors
-    _filteredDoctors = List.from(doctors);
-    
-    // Filter by selected tab/category if a specific one is selected
-    if (_selectedCategoryIndex != 0) {
-      String selectedCategory = _categories[_selectedCategoryIndex];
-      _filteredDoctors = _filteredDoctors.where((doctor) {
-        return doctor["specialty"] == selectedCategory;
-      }).toList();
-    }
-    // Or filter by specialty parameter if it was passed directly
-    else if (widget.specialty != null) {
-      _filteredDoctors = _filteredDoctors.where((doctor) {
-        return doctor["specialty"] == widget.specialty;
+                 (doctor["location"] != null && doctor["location"].toLowerCase().contains(_searchQuery));
       }).toList();
     }
     
     // Apply other filters if set
     if (selectedRating == "4+") {
-      _filteredDoctors = _filteredDoctors.where((doctor) {
-        return double.parse(doctor["rating"]) >= 4.0;
+        filteredDoctors = filteredDoctors.where((doctor) {
+          // Handle both string and numeric rating
+          var rating = doctor["rating"];
+          double ratingValue;
+          
+          if (rating is String) {
+            ratingValue = double.tryParse(rating) ?? 0.0;
+          } else if (rating is num) {
+            ratingValue = rating.toDouble();
+          } else {
+            ratingValue = 0.0;
+          }
+          
+          return ratingValue >= 4.0;
       }).toList();
     }
     
     if (selectedLocation != null) {
-      _filteredDoctors = _filteredDoctors.where((doctor) {
-        return doctor["location"].contains(selectedLocation!);
+        filteredDoctors = filteredDoctors.where((doctor) {
+          return doctor["location"] != null && doctor["location"].contains(selectedLocation!);
       }).toList();
     }
     
     if (showOnlineOnly) {
-      _filteredDoctors = _filteredDoctors.where((doctor) {
-        return doctor["available"];
+        filteredDoctors = filteredDoctors.where((doctor) {
+          return doctor["available"] == true;
       }).toList();
     }
     
     if (sortByPriceLowToHigh) {
-      _filteredDoctors.sort((a, b) {
-        int priceA = int.parse(a["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
-        int priceB = int.parse(b["fee"].toString().replaceAll(RegExp(r'[^0-9]'), ''));
+        try {
+          filteredDoctors.sort((a, b) {
+            if (!a.containsKey("fee") || !b.containsKey("fee")) {
+              return 0;
+            }
+            String feeA = a["fee"].toString();
+            String feeB = b["fee"].toString();
+            
+            int priceA = int.parse(feeA.replaceAll(RegExp(r'[^0-9]'), ''));
+            int priceB = int.parse(feeB.replaceAll(RegExp(r'[^0-9]'), ''));
         return priceA.compareTo(priceB);
       });
+        } catch (e) {
+          print("Error sorting by price: $e");
+        }
     }
+    });
   }
 }
 
