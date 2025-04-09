@@ -24,10 +24,34 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
-  final TextEditingController _stateController = TextEditingController();
-  final TextEditingController _countryController = TextEditingController();
-  final TextEditingController _zipCodeController = TextEditingController();
+  
+  // Selected city from dropdown
+  String? _selectedCity;
+  
+  // List of Pakistani cities in alphabetical order
+  final List<String> _pakistaniCities = [
+    "Abbottabad", "Adilpur", "Ahmadpur East", "Alipur", "Arifwala", "Attock",
+    "Badin", "Bahawalnagar", "Bahawalpur", "Bannu", "Battagram", "Bhakkar", "Bhalwal", "Bhera", "Bhimbar", "Bhit Shah", "Bhopalwala", "Burewala",
+    "Chaman", "Charsadda", "Chichawatni", "Chiniot", "Chishtian", "Chitral", "Chunian",
+    "Dadu", "Daharki", "Daska", "Dera Ghazi Khan", "Dera Ismail Khan", "Dinga", "Dipalpur", "Duki",
+    "Faisalabad", "Fateh Jang", "Fazilpur", "Fort Abbas",
+    "Gambat", "Ghotki", "Gilgit", "Gojra", "Gwadar",
+    "Hafizabad", "Hala", "Hangu", "Haripur", "Haroonabad", "Hasilpur", "Haveli Lakha", "Hazro", "Hub", "Hyderabad",
+    "Islamabad", 
+    "Jacobabad", "Jahanian", "Jalalpur Jattan", "Jampur", "Jamshoro", "Jatoi", "Jauharabad", "Jhelum",
+    "Kabirwala", "Kahror Pakka", "Kalat", "Kamalia", "Kamoke", "Kandhkot", "Karachi", "Karak", "Kasur", "Khairpur", "Khanewal", "Khanpur", "Kharian", "Khushab", "Kohat", "Kot Addu", "Kotri", "Kumbar", "Kunri",
+    "Lahore", "Laki Marwat", "Larkana", "Layyah", "Liaquatpur", "Lodhran", "Loralai",
+    "Mailsi", "Malakwal", "Mandi Bahauddin", "Mansehra", "Mardan", "Mastung", "Matiari", "Mian Channu", "Mianwali", "Mingora", "Mirpur", "Mirpur Khas", "Multan", "Muridke", "Muzaffarabad", "Muzaffargarh",
+    "Narowal", "Nawabshah", "Nowshera",
+    "Okara",
+    "Pakpattan", "Pasrur", "Pattoki", "Peshawar", "Pir Mahal",
+    "Quetta",
+    "Rahimyar Khan", "Rajanpur", "Rani Pur", "Rawalpindi", "Rohri", "Risalpur",
+    "Sadiqabad", "Sahiwal", "Saidu Sharif", "Sakrand", "Samundri", "Sanghar", "Sargodha", "Sheikhupura", "Shikarpur", "Sialkot", "Sibi", "Sukkur", "Swabi", "Swat",
+    "Talagang", "Tandlianwala", "Tando Adam", "Tando Allahyar", "Tando Muhammad Khan", "Tank", "Taunsa", "Taxila", "Toba Tek Singh", "Turbat",
+    "Vehari",
+    "Wah Cantonment", "Wazirabad"
+  ];
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -92,6 +116,115 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
+      ),
+    );
+  }
+  
+  // Text area widget for address
+  Widget _buildTextArea({
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: 3,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.poppins(
+            color: Colors.grey.shade600,
+            fontSize: 14,
+          ),
+          prefixIcon: Container(
+            padding: const EdgeInsets.all(12),
+            alignment: Alignment.topCenter,
+            child: Icon(
+              icon,
+              color: const Color(0xFF3366CC),
+              size: 20,
+            ),
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
+  }
+  
+  // City dropdown widget
+  Widget _buildCityDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _selectedCity,
+        isExpanded: true,
+        decoration: InputDecoration(
+          hintText: "Select City",
+          hintStyle: GoogleFonts.poppins(
+            color: Colors.grey.shade600,
+            fontSize: 14,
+          ),
+          prefixIcon: Container(
+            padding: const EdgeInsets.all(12),
+            child: Icon(
+              LucideIcons.building2,
+              color: const Color(0xFF3366CC),
+              size: 20,
+            ),
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        items: _pakistaniCities.map((String city) {
+          return DropdownMenuItem<String>(
+            value: city,
+            child: Text(
+              city,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).toList(),
+        onChanged: (String? newValue) {
+          setState(() {
+            _selectedCity = newValue;
+          });
+        },
       ),
     );
   }
@@ -471,31 +604,12 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                      hint: "Address",
+                    _buildTextArea(
+                      hint: "Complete Address",
                       icon: LucideIcons.building,
                       controller: _addressController,
                     ),
-                    _buildTextField(
-                      hint: "City",
-                      icon: LucideIcons.building2,
-                      controller: _cityController,
-                    ),
-                    _buildTextField(
-                      hint: "State",
-                      icon: LucideIcons.map,
-                      controller: _stateController,
-                    ),
-                    _buildTextField(
-                      hint: "Country",
-                      icon: LucideIcons.globe,
-                      controller: _countryController,
-                    ),
-                    _buildTextField(
-                      hint: "Zip Code",
-                      icon: LucideIcons.mapPin,
-                      controller: _zipCodeController,
-                    ),
+                    _buildCityDropdown(),
                   ],
                 ),
               ),
