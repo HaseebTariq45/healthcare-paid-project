@@ -44,7 +44,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     super.initState();
     if (widget.preSelectedDoctor != null) {
       _selectedDoctor = widget.preSelectedDoctor!['name'];
-      _currentStep = 0; // Start with date selection when doctor is pre-selected
+      _currentStep = 0; // Start with hospital selection when doctor is pre-selected
     }
     
     _animationController = AnimationController(
@@ -149,26 +149,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       List<Step> steps = [
         Step(
           title: Text(
-            'Select Date',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          subtitle: _selectedDate != null
-              ? Text(
-                  '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                )
-              : null,
-          content: _buildDateStep(),
-          isActive: _currentStep >= 0,
-          state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-        ),
-        Step(
-          title: Text(
             'Select Hospital',
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w600,
@@ -184,6 +164,26 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 )
               : null,
           content: _buildLocationStep(),
+          isActive: _currentStep >= 0,
+          state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+        ),
+        Step(
+          title: Text(
+            'Select Date',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: _selectedDate != null
+              ? Text(
+                  '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildDateStep(),
           isActive: _currentStep >= 1,
           state: _currentStep > 1 ? StepState.complete : StepState.indexed,
         ),
@@ -246,26 +246,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         ),
         Step(
           title: Text(
-            'Select Date',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          subtitle: _selectedDate != null
-              ? Text(
-                  '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                )
-              : null,
-          content: _buildDateStep(),
-          isActive: _currentStep >= 1,
-          state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-        ),
-        Step(
-          title: Text(
             'Select Hospital',
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w600,
@@ -281,6 +261,26 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 )
               : null,
           content: _buildLocationStep(),
+          isActive: _currentStep >= 1,
+          state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+        ),
+        Step(
+          title: Text(
+            'Select Date',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: _selectedDate != null
+              ? Text(
+                  '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildDateStep(),
           isActive: _currentStep >= 2,
           state: _currentStep > 2 ? StepState.complete : StepState.indexed,
         ),
@@ -585,9 +585,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       // Adjust step keys when doctor is pre-selected
       switch (_currentStep) {
         case 0:
-          return _stepKeys['date']!;
-        case 1:
           return _stepKeys['location']!;
+        case 1:
+          return _stepKeys['date']!;
         case 2:
           return _stepKeys['time']!;
         case 3:
@@ -601,9 +601,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         case 0:
           return _stepKeys['doctor']!;
         case 1:
-          return _stepKeys['date']!;
-        case 2:
           return _stepKeys['location']!;
+        case 2:
+          return _stepKeys['date']!;
         case 3:
           return _stepKeys['time']!;
         case 4:
@@ -685,9 +685,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     if (widget.preSelectedDoctor != null) {
       switch (_currentStep) {
         case 0:
-          return 'Please select a date';
-        case 1:
           return 'Please select a location';
+        case 1:
+          return 'Please select a date';
         case 2:
           return 'Please select a time';
         case 3:
@@ -700,9 +700,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         case 0:
           return 'Please select a doctor';
         case 1:
-          return 'Please select a date';
-        case 2:
           return 'Please select a location';
+        case 2:
+          return 'Please select a date';
         case 3:
           return 'Please select a time';
         case 4:
@@ -718,9 +718,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     if (widget.preSelectedDoctor != null) {
       switch (_currentStep) {
         case 0:
-          return _selectedDate != null;
-        case 1:
           return _selectedLocation != null;
+        case 1:
+          return _selectedDate != null;
         case 2:
           return _selectedTime != null;
         case 3:
@@ -733,9 +733,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         case 0:
           return _selectedDoctor != null;
         case 1:
-          return _selectedDate != null;
-        case 2:
           return _selectedLocation != null;
+        case 2:
+          return _selectedDate != null;
         case 3:
           return _selectedTime != null;
         case 4:
@@ -771,7 +771,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == (widget.preSelectedDoctor != null ? 1 : 2) ? 1.0 : 0.8,
+      opacity: _currentStep == (widget.preSelectedDoctor != null ? 0 : 1) ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['location'],
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -935,7 +935,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   Widget _buildDateStep() {
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == (widget.preSelectedDoctor != null ? 0 : 1) ? 1.0 : 0.8,
+      opacity: _currentStep == (widget.preSelectedDoctor != null ? 1 : 2) ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['date'],
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1787,7 +1787,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   Widget _buildAppointmentDetailsStep() {
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
-      opacity: _currentStep == 4 ? 1.0 : 0.8,
+      opacity: _currentStep == (widget.preSelectedDoctor != null ? 3 : 4) ? 1.0 : 0.8,
       child: Column(
         key: _stepKeys['details'],
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1824,6 +1824,27 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
             ),
             child: Column(
               children: [
+                if (widget.preSelectedDoctor == null) ...[
+                  _buildSummaryItem(
+                    LucideIcons.stethoscope,
+                    'Doctor',
+                    _selectedDoctor ?? 'Not selected',
+                    Color(0xFFE91E63),
+                  ),
+                  SizedBox(height: 16),
+                  Divider(),
+                  SizedBox(height: 16),
+                ] else ...[
+                  _buildSummaryItem(
+                    LucideIcons.stethoscope,
+                    'Doctor',
+                    widget.preSelectedDoctor!['name'],
+                    Color(0xFFE91E63),
+                  ),
+                  SizedBox(height: 16),
+                  Divider(),
+                  SizedBox(height: 16),
+                ],
                 _buildSummaryItem(
                   LucideIcons.building2,
                   'Hospital',
@@ -1850,27 +1871,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   _selectedTime ?? 'Not selected',
                   Color(0xFFFFA000),
                 ),
-                if (widget.preSelectedDoctor == null) ...[
-                  SizedBox(height: 16),
-                  Divider(),
-                  SizedBox(height: 16),
-                  _buildSummaryItem(
-                    LucideIcons.stethoscope,
-                    'Doctor',
-                    _selectedDoctor ?? 'Not selected',
-                    Color(0xFFE91E63),
-                  ),
-                ] else ...[
-                  SizedBox(height: 16),
-                  Divider(),
-                  SizedBox(height: 16),
-                  _buildSummaryItem(
-                    LucideIcons.stethoscope,
-                    'Doctor',
-                    widget.preSelectedDoctor!['name'],
-                    Color(0xFFE91E63),
-                  ),
-                ],
               ],
             ),
           ),
