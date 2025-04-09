@@ -6,17 +6,20 @@ import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
 import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
+import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/patient/dashboard/patient_profile_details.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientMenuScreen extends StatefulWidget {
   final String name;
   final String role;
+  final int profileCompletionPercentage;
   
   const PatientMenuScreen({
     super.key,
     this.name = "Amna",
     this.role = "Patient",
+    this.profileCompletionPercentage = 0,
   });
 
   @override
@@ -25,11 +28,13 @@ class PatientMenuScreen extends StatefulWidget {
 
 class _PatientMenuScreenState extends State<PatientMenuScreen> {
   late List<MenuItem> menuItems;
+  late int profileCompletionPercentage;
   
   @override
   void initState() {
     super.initState();
     _initializeMenuItems();
+    profileCompletionPercentage = widget.profileCompletionPercentage;
   }
   
   void _initializeMenuItems() {
@@ -48,68 +53,76 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 25),
-                      
-                      Text(
-                        "Settings",
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          letterSpacing: 0.5,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildProfileHeader(),
+                
+                // Add profile completion card if not 100% complete
+                if (profileCompletionPercentage < 100)
+                  _buildProfileCompletionCard(),
+                
+                SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 25),
+                        
+                        Text(
+                          "Settings",
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Menu items
-                      ...menuItems.map((item) => _buildMenuItem(item)).toList(),
-                      
-                      // Logout button
-                      _buildLogoutButton(),
-                      
-                      const SizedBox(height: 25),
-                      
-                      // App version info
-                      Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              "HealthCare App",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3366CC),
+                        const SizedBox(height: 16),
+                        
+                        // Menu items
+                        ...menuItems.map((item) => _buildMenuItem(item)).toList(),
+                        
+                        // Logout button
+                        _buildLogoutButton(),
+                        
+                        const SizedBox(height: 25),
+                        
+                        // App version info
+                        Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                "HealthCare App",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF3366CC),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Version 1.0.0",
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+                              const SizedBox(height: 4),
+                              Text(
+                                "Version 1.0.0",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -524,6 +537,137 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
           ),
         );
       },
+    );
+  }
+
+  // New widget for profile completion card
+  Widget _buildProfileCompletionCard() {
+    return Container(
+      margin: EdgeInsets.only(top: 10, bottom: 10),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: Color(0xFF3366CC).withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                LucideIcons.userCheck,
+                size: 16,
+                color: Color(0xFF3366CC),
+              ),
+              SizedBox(width: 6),
+              Text(
+                "Profile Completion",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+              ),
+              Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: profileCompletionPercentage >= 70
+                      ? Color(0xFF4CAF50).withOpacity(0.1)
+                      : profileCompletionPercentage >= 30
+                          ? Color(0xFFFFA726).withOpacity(0.1)
+                          : Color(0xFFF44336).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "$profileCompletionPercentage%",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: profileCompletionPercentage >= 70
+                        ? Color(0xFF4CAF50)
+                        : profileCompletionPercentage >= 30
+                            ? Color(0xFFFFA726)
+                            : Color(0xFFF44336),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: profileCompletionPercentage / 100,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                profileCompletionPercentage >= 70
+                    ? Color(0xFF4CAF50)
+                    : profileCompletionPercentage >= 30
+                        ? Color(0xFFFFA726)
+                        : Color(0xFFF44336),
+              ),
+              minHeight: 6,
+            ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CompleteProfilePatient1Screen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Ink(
+                    padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF3366CC),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.user,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "Complete Profile",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

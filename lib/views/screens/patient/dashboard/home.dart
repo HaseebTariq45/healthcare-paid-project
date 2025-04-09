@@ -31,11 +31,13 @@ class DiseaseCategory {
 class PatientHomeScreen extends StatefulWidget {
   final String profileStatus;
   final bool suppressProfilePrompt;
+  final int profileCompletionPercentage;
   
   const PatientHomeScreen({
     super.key, 
     this.profileStatus = "incomplete",
     this.suppressProfilePrompt = false,
+    this.profileCompletionPercentage = 0,
   });
 
   @override
@@ -45,6 +47,7 @@ class PatientHomeScreen extends StatefulWidget {
 class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTickerProviderStateMixin {
   late String profileStatus;
   late bool suppressProfilePrompt;
+  late int profileCompletionPercentage;
   late TabController _tabController;
   final List<String> _categories = ["All", "Upcoming", "Completed", "Cancelled"];
   int _selectedCategoryIndex = 0;
@@ -150,6 +153,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     super.initState();
     profileStatus = widget.profileStatus;
     suppressProfilePrompt = widget.suppressProfilePrompt;
+    profileCompletionPercentage = widget.profileCompletionPercentage;
     _tabController = TabController(length: _categories.length, vsync: this);
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -180,6 +184,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
+              
+              // Show profile completion banner if not 100% complete
+              if (profileCompletionPercentage < 100 && profileCompletionPercentage > 0)
+                _buildProfileCompletionBanner(),
+                
               _buildBanner(),
               _buildDiseaseCategories(),
               _buildAppointmentsSection(),
@@ -293,7 +302,118 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
             ],
           ),
-          SizedBox(height: 25),
+          SizedBox(height: 20),
+          
+          // Profile Completion Tab - Only show when not 100% complete
+          if (profileCompletionPercentage < 100)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFFFA726),
+                    Color(0xFFFF7043),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFFFF7043).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      LucideIcons.userCheck,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              "Profile Completion",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Spacer(),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                "$profileCompletionPercentage%",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFFF7043),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: profileCompletionPercentage / 100,
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            minHeight: 4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CompleteProfilePatient1Screen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        LucideIcons.arrowRight,
+                        color: Color(0xFFFF7043),
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
+          SizedBox(height: 20),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
@@ -381,7 +501,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   Widget _buildBanner() {
     return Container(
       margin: EdgeInsets.fromLTRB(20, 20, 20, 0),
-      padding: EdgeInsets.all(20),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -409,20 +529,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 Text(
                   "Find Your Specialist",
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: 6),
                 Text(
                   "Book appointments with top doctors in Pakistan",
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 10),
                 ElevatedButton(
                   onPressed: () {
                     Navigator.push(
@@ -433,7 +553,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Color(0xFF3366CC),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -442,16 +562,17 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     "Book Now",
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(width: 20),
+          SizedBox(width: 16),
           Container(
-            height: 120,
-            width: 120,
+            height: 100,
+            width: 100,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
@@ -459,7 +580,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             child: Icon(
               LucideIcons.stethoscope,
               color: Colors.white,
-              size: 50,
+              size: 40,
             ),
           ),
         ],
@@ -1001,6 +1122,138 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 );
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // New widget for profile completion banner
+  Widget _buildProfileCompletionBanner() {
+    return Container(
+      margin: EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFA726),
+            Color(0xFFFF7043),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFFFF7043).withOpacity(0.2),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  LucideIcons.user,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Complete Your Profile",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "$profileCompletionPercentage%",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFFF7043),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: profileCompletionPercentage / 100,
+              backgroundColor: Colors.white.withOpacity(0.3),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              minHeight: 6,
+            ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CompleteProfilePatient1Screen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Complete Now",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFFFF7043),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        LucideIcons.arrowRight,
+                        size: 14,
+                        color: Color(0xFFFF7043),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

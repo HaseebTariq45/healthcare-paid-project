@@ -8,7 +8,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
 
 class CompleteProfilePatient2Screen extends StatefulWidget {
-  const CompleteProfilePatient2Screen({super.key});
+  final Map<String, dynamic>? profileData;
+  
+  const CompleteProfilePatient2Screen({
+    super.key,
+    this.profileData,
+  });
 
   @override
   State<CompleteProfilePatient2Screen> createState() => _CompleteProfilePatient2ScreenState();
@@ -24,6 +29,16 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
   List<String> selectedAllergies = [];
   String searchQuery = '';
   String allergySearchQuery = '';
+
+  double _completionPercentage = 0.0;
+  Map<String, dynamic> _profileData = {};
+  
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  
+  final int _totalFieldsPage2 = 6;
 
   final List<String> bloodGroups = ["A-", "A+", "B-", "B+", "AB", "AB-"];
   
@@ -703,20 +718,62 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     return filteredGroups.entries.toList();
   }
 
+  // Modified method to handle adding/removing a disease and updating completion percentage
+  void toggleDisease(String disease) {
+    setState(() {
+      if (selectedDiseases.contains(disease)) {
+        selectedDiseases.remove(disease);
+      } else {
+        selectedDiseases.add(disease);
+      }
+    });
+    _calculateCompletionPercentage();
+  }
+
+  // Modified method to handle adding/removing an allergy and updating completion percentage
+  void toggleAllergy(String allergy) {
+    setState(() {
+      if (selectedAllergies.contains(allergy)) {
+        selectedAllergies.remove(allergy);
+      } else {
+        selectedAllergies.add(allergy);
+      }
+    });
+    _calculateCompletionPercentage();
+  }
+
+  // Modified method for handling medical report uploads
   Future<void> _pickFile(bool isFirstReport) async {
+    print("Starting file picker for medical report ${isFirstReport ? '1' : '2'}");
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      print("File selected: ${pickedFile.path}");
       setState(() {
         if (isFirstReport) {
           _medicalReport1 = File(pickedFile.path);
+          print("Set _medicalReport1: ${_medicalReport1?.path}");
         } else {
           _medicalReport2 = File(pickedFile.path);
+          print("Set _medicalReport2: ${_medicalReport2?.path}");
         }
       });
+      
+      // Explicitly recalculate percentage after state update
+      Future.delayed(Duration(milliseconds: 100), () {
+        print("Recalculating completion percentage after file upload");
+        _calculateCompletionPercentage();
+      });
+    } else {
+      print("No file was selected");
     }
   }
 
-  Widget _buildDropdown({required String hint, required List<String> items, required String? value, required void Function(String?) onChanged}) {
+  Widget _buildDropdown({
+    required String hint, 
+    required List<String> items, 
+    required String? value, 
+    required void Function(String?) onChanged
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -759,23 +816,23 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
             ),
           ),
           Expanded(
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: value,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: value,
                 hint: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-            hint,
-            style: GoogleFonts.poppins(
-              color: Colors.grey.shade600,
-              fontSize: 14,
+                    hint,
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
                     ),
-            ),
-          ),
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
+                  ),
+                ),
+                items: items.map((String item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
@@ -805,26 +862,29 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                           ),
                           const SizedBox(width: 12),
                           Text(
-                item,
-                style: GoogleFonts.poppins(
+                            item,
+                            style: GoogleFonts.poppins(
                               color: value == item ? const Color(0xFF3366CC) : Colors.black87,
-                  fontSize: 14,
+                              fontSize: 14,
                               fontWeight: value == item ? FontWeight.w500 : FontWeight.normal,
                             ),
                           ),
                         ],
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: onChanged,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  onChanged(newValue);
+                  _calculateCompletionPercentage();
+                },
                 icon: Padding(
                   padding: const EdgeInsets.only(right: 16),
                   child: Icon(
-            LucideIcons.chevronDown,
-            color: const Color(0xFF3366CC),
-          ),
-        ),
+                    LucideIcons.chevronDown,
+                    color: const Color(0xFF3366CC),
+                  ),
+                ),
                 dropdownColor: Colors.white,
                 menuMaxHeight: 300,
                 borderRadius: BorderRadius.circular(16),
@@ -1022,9 +1082,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                         deleteIconColor: Colors.white.withOpacity(0.9),
                         deleteIcon: const Icon(LucideIcons.x, size: 14),
                         onDeleted: () {
-                          setState(() {
-                            selectedDiseases.remove(disease);
-                          });
+                          toggleDisease(disease);
                         },
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -1153,13 +1211,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                                 final isSelected = selectedDiseases.contains(disease);
                                 return InkWell(
                                   onTap: () {
-                                    setState(() {
-                                      if (isSelected) {
-                                        selectedDiseases.remove(disease);
-                                      } else {
-                                        selectedDiseases.add(disease);
-                                      }
-                                    });
+                                    toggleDisease(disease);
                                   },
                                   borderRadius: BorderRadius.circular(8),
                                   child: Padding(
@@ -1444,9 +1496,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                         deleteIconColor: Colors.white.withOpacity(0.9),
                         deleteIcon: const Icon(LucideIcons.x, size: 14),
                         onDeleted: () {
-                          setState(() {
-                            selectedAllergies.remove(allergy);
-                          });
+                          toggleAllergy(allergy);
                         },
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -1575,13 +1625,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                                 final isSelected = selectedAllergies.contains(allergy);
                                 return InkWell(
                                   onTap: () {
-                                    setState(() {
-                                      if (isSelected) {
-                                        selectedAllergies.remove(allergy);
-                                      } else {
-                                        selectedAllergies.add(allergy);
-                                      }
-                                    });
+                                    toggleAllergy(allergy);
                                   },
                                   borderRadius: BorderRadius.circular(8),
                                   child: Padding(
@@ -1670,6 +1714,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
   Widget _buildTextField({
     required String hint,
     required IconData icon,
+    required TextEditingController controller,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -1706,18 +1751,23 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
+        controller: controller,
       ),
     );
   }
 
   Widget _buildUploadBox({required String label, required bool isFirstReport}) {
+    // Determine if the file is already selected
+    final File? selectedFile = isFirstReport ? _medicalReport1 : _medicalReport2;
+    final bool isFileSelected = selectedFile != null;
+    
     return GestureDetector(
       onTap: () => _pickFile(isFirstReport),
       child: Container(
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isFileSelected ? const Color(0xFF3366CC).withOpacity(0.05) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -1727,82 +1777,376 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
             ),
           ],
           border: Border.all(
-            color: (isFirstReport ? _medicalReport1 : _medicalReport2) == null 
-                ? Colors.grey.shade300 
-                : const Color(0xFF3366CC).withOpacity(0.3),
+            color: isFileSelected
+                ? const Color(0xFF3366CC)
+                : Colors.grey.shade300,
             width: 1.5,
           ),
         ),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF3366CC).withOpacity(0.1),
-                    const Color(0xFF3366CC).withOpacity(0.2),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                LucideIcons.fileText,
-                color: const Color(0xFF3366CC),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      fontSize: 15,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF3366CC).withOpacity(0.1),
+                        const Color(0xFF3366CC).withOpacity(0.2),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    ".pdf, .png, .jpg, .jpeg (Max: 5MB)",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
+                  child: Icon(
+                    isFileSelected ? LucideIcons.fileCheck : LucideIcons.fileText,
+                    color: const Color(0xFF3366CC),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isFileSelected 
+                            ? "File selected" 
+                            : ".pdf, .png, .jpg, .jpeg (Max: 5MB)",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: isFileSelected 
+                              ? const Color(0xFF3366CC)
+                              : Colors.grey.shade600,
+                          fontWeight: isFileSelected 
+                              ? FontWeight.w500
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF3366CC).withOpacity(0.1),
+                        const Color(0xFF3366CC).withOpacity(0.2),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFileSelected
+                        ? LucideIcons.check
+                        : LucideIcons.upload,
+                    color: const Color(0xFF3366CC),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+            
+            // Show filename if available
+            if (isFileSelected && selectedFile != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.file,
+                      size: 14,
                       color: Colors.grey.shade600,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF3366CC).withOpacity(0.1),
-                    const Color(0xFF3366CC).withOpacity(0.2),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        selectedFile.path.split('/').last,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isFirstReport) {
+                            _medicalReport1 = null;
+                          } else {
+                            _medicalReport2 = null;
+                          }
+                          _calculateCompletionPercentage();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.x,
+                          size: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
                   ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
-                shape: BoxShape.circle,
               ),
-              child: Icon(
-                (isFirstReport ? _medicalReport1 : _medicalReport2) == null
-                    ? LucideIcons.upload
-                    : LucideIcons.check,
-                color: const Color(0xFF3366CC),
-                size: 20,
-              ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  // Create a specific widget for text area notes
+  Widget _buildTextArea({
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: controller.text.isNotEmpty 
+              ? const Color(0xFF3366CC).withOpacity(0.3)
+              : Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: 4,
+        textAlignVertical: TextAlignVertical.top,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.poppins(
+            color: Colors.grey.shade600,
+            fontSize: 14,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 8, top: 12),
+            child: Icon(
+              icon,
+              color: const Color(0xFF3366CC),
+              size: 20,
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        ),
+        onChanged: (text) {
+          // Ensure the controller has the updated text
+          controller.text = text;
+          // Explicitly recalculate when text changes
+          _calculateCompletionPercentage();
+          // Print debug info
+          print("Text area changed: '$text'");
+        },
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize profile data from previous screen
+    if (widget.profileData != null) {
+      _profileData = widget.profileData!;
+      _completionPercentage = _profileData['completionPercentage'] ?? 0.0;
+    }
+    
+    // Add listeners to all text controllers to update completion percentage
+    _ageController.addListener(_updateCompletionPercentage);
+    _heightController.addListener(_updateCompletionPercentage);
+    _weightController.addListener(_updateCompletionPercentage);
+    _notesController.addListener(_handleNotesChange);
+    
+    // For multi-select fields, we'll update in their respective selection methods
+  }
+  
+  @override
+  void dispose() {
+    // Remove listeners
+    _ageController.removeListener(_updateCompletionPercentage);
+    _heightController.removeListener(_updateCompletionPercentage);
+    _weightController.removeListener(_updateCompletionPercentage);
+    _notesController.removeListener(_handleNotesChange);
+    
+    // Dispose controllers
+    _ageController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+  
+  void _updateCompletionPercentage() {
+    _calculateCompletionPercentage();
+  }
+  
+  void _calculateCompletionPercentage() {
+    int filledFields = 0;
+    int totalFields = _totalFieldsPage2 + 3; // Base fields + notes + 2 medical reports
+    
+    // Debug info
+    print("--- Profile Completion Calculation ---");
+    
+    // Check if profile image was provided in page 1
+    bool hasProfileImage = _profileData['hasProfileImage'] == true;
+    
+    // Check each field on this page
+    if (_ageController.text.isNotEmpty) {
+      filledFields++;
+      print("Age field: filled");
+    } else {
+      print("Age field: empty");
+    }
+    
+    if (selectedBloodGroup != null) {
+      filledFields++;
+      print("Blood group: selected ($selectedBloodGroup)");
+    } else {
+      print("Blood group: not selected");
+    }
+    
+    if (selectedAllergies.isNotEmpty) {
+      filledFields++;
+      print("Allergies: ${selectedAllergies.length} selected");
+    } else {
+      print("Allergies: none selected");
+    }
+    
+    if (selectedDiseases.isNotEmpty) {
+      filledFields++;
+      print("Diseases: ${selectedDiseases.length} selected");
+    } else {
+      print("Diseases: none selected");
+    }
+    
+    if (_heightController.text.isNotEmpty) {
+      filledFields++;
+      print("Height field: filled");
+    } else {
+      print("Height field: empty");
+    }
+    
+    if (_weightController.text.isNotEmpty) {
+      filledFields++;
+      print("Weight field: filled");
+    } else {
+      print("Weight field: empty");
+    }
+    
+    if (_notesController.text.isNotEmpty) {
+      filledFields++;
+      print("Notes field: filled");
+    } else {
+      print("Notes field: empty");
+    }
+    
+    // Medical reports - count as separate fields that contribute to completion
+    print("Checking medical reports...");
+    
+    // Medical report 1
+    if (_medicalReport1 != null) {
+      filledFields++;
+      print("Medical report 1: uploaded");
+    } else {
+      print("Medical report 1: not uploaded");
+    }
+    
+    // Medical report 2
+    if (_medicalReport2 != null) {
+      filledFields++;
+      print("Medical report 2: uploaded");
+    } else {
+      print("Medical report 2: not uploaded");
+    }
+    
+    // Calculate page 2's contribution (45% of total)
+    double page2Percentage = (filledFields / totalFields) * 45.0;
+    
+    // Get page 1's contribution (50% max)
+    double previousPercentage = _profileData['completionPercentage'] ?? 0.0;
+    
+    // Calculate the combined percentage
+    double newPercentage = previousPercentage + page2Percentage;
+    
+    // If no profile image, cap at 95% - but we need to ensure it can reach 95%
+    if (!hasProfileImage) {
+      // If all other fields are complete, set to exactly 95%
+      if (filledFields == totalFields) {
+        newPercentage = 95.0;
+      } else if (newPercentage > 95.0) {
+        newPercentage = 95.0;
+      }
+      print("Profile image: Missing");
+    } else {
+      print("Profile image: Provided");
+      // With profile image, cap at 100%
+      if (newPercentage > 100) newPercentage = 100.0;
+    }
+    
+    print("Fields filled: $filledFields/$totalFields");
+    print("Page 2 contribution: ${page2Percentage.toStringAsFixed(1)}%");
+    print("Previous percentage: ${previousPercentage.toStringAsFixed(1)}%");
+    print("New total percentage: ${newPercentage.toStringAsFixed(1)}%");
+    print("-----------------------------------");
+    
+    setState(() {
+      _completionPercentage = newPercentage;
+    });
+  }
+  
+  void onBloodGroupChanged(String? value) {
+    setState(() {
+      selectedBloodGroup = value;
+    });
+    _calculateCompletionPercentage();
+  }
+
+  // Add a method to handle notes changes explicitly
+  void _handleNotesChange() {
+    print("Notes changed: ${_notesController.text.length} characters");
+    _calculateCompletionPercentage();
   }
 
   @override
@@ -1827,9 +2171,10 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const BottomNavigationBarPatientScreen(
+                  builder: (context) => BottomNavigationBarPatientScreen(
                     profileStatus: "incomplete",
                     suppressProfilePrompt: true,
+                    profileCompletionPercentage: _completionPercentage.toInt(),
                   ),
                 ),
               );
@@ -1854,6 +2199,66 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Completion Progress Bar
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF3366CC).withOpacity(0.1),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Profile Completion",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          "${_completionPercentage.toStringAsFixed(0)}%",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF3366CC),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: _completionPercentage / 100,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF3366CC)),
+                        minHeight: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "You're almost there! Fill in your medical details",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -1900,15 +2305,22 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                       hint: "Select Blood Group",
                       items: bloodGroups,
                       value: selectedBloodGroup,
-                      onChanged: (value) {
-                        setState(() {
-                          selectedBloodGroup = value;
-                        });
-                      },
+                      onChanged: onBloodGroupChanged,
                     ),
                     _buildTextField(
-                      hint: "Disability (If Any)",
-                      icon: LucideIcons.userCog,
+                      hint: "Age",
+                      icon: LucideIcons.user,
+                      controller: _ageController,
+                    ),
+                    _buildTextField(
+                      hint: "Height (cm)",
+                      icon: LucideIcons.ruler,
+                      controller: _heightController,
+                    ),
+                    _buildTextField(
+                      hint: "Weight (kg)",
+                      icon: LucideIcons.scale,
+                      controller: _weightController,
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -1982,9 +2394,10 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                     const SizedBox(height: 16),
                     _buildUploadBox(label: "Medical Report 1", isFirstReport: true),
                     _buildUploadBox(label: "Medical Report 2", isFirstReport: false),
-                    _buildTextField(
+                    _buildTextArea(
                       hint: "Additional Notes",
                       icon: LucideIcons.fileText,
+                      controller: _notesController,
                     ),
                   ],
                 ),
@@ -2005,7 +2418,9 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () => popUpSuccess(context),
+                    onPressed: () {
+                      _saveProfileAndShowSuccess(context);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3366CC),
                       foregroundColor: Colors.white,
@@ -2037,79 +2452,135 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       ),
     );
   }
-}
-
-void popUpSuccess(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      Timer(
-        const Duration(seconds: 3),
-        () => Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const BottomNavigationBarPatientScreen(
-              profileStatus: "complete"
-            ),
-          ),
-        ),
-      );
-
-      return Stack(
-        children: [
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              color: const Color.fromARGB(30, 0, 0, 0),
-            ),
-          ),
-          AlertDialog(
-            backgroundColor: const Color(0xFF3366CC),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Padding(
-              padding: const EdgeInsets.only(top: 30, bottom: 20),
-              child: Center(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withOpacity(0.2),
-                            Colors.white.withOpacity(0.3),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        LucideIcons.check,
-                        size: 50,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "Profile Completed Successfully",
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+  
+  void _saveProfileAndShowSuccess(BuildContext context) {
+    // First, recalculate the percentage to ensure it's up to date
+    _calculateCompletionPercentage();
+    
+    // Check if profile image was provided
+    bool hasProfileImage = _profileData['hasProfileImage'] == true;
+    
+    // Set completion percentage based on profile image
+    double finalPercentage = hasProfileImage ? 100.0 : 95.0;
+    
+    setState(() {
+      _completionPercentage = finalPercentage;
+    });
+    
+    // Here you would normally save all profile data to Firebase/database
+    // Combine data from both screens
+    Map<String, dynamic> completeProfile = {
+      ..._profileData,
+      'age': _ageController.text,
+      'bloodGroup': selectedBloodGroup,
+      'allergies': selectedAllergies,
+      'diseases': selectedDiseases,
+      'height': _heightController.text,
+      'weight': _weightController.text,
+      'notes': _notesController.text,
+      'completionPercentage': finalPercentage, // Set based on profile image
+      'medicalReport1Path': _medicalReport1?.path,
+      'medicalReport2Path': _medicalReport2?.path,
+      'isProfileComplete': true,
+    };
+    
+    print("Profile saved with completion: ${finalPercentage.toStringAsFixed(1)}%");
+    if (!hasProfileImage) {
+      print("Note: Profile image is missing - completion capped at 95%");
+    }
+    
+    // In a real app, you would save this data to Firebase/database here
+    // For example:
+    // FirebaseFirestore.instance.collection('users').doc(userId).update(completeProfile);
+    
+    // Show success popup
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        Timer(
+          const Duration(seconds: 3),
+          () => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BottomNavigationBarPatientScreen(
+                profileStatus: "complete",
+                profileCompletionPercentage: finalPercentage.toInt(), // Use calculated percentage
               ),
             ),
           ),
-        ],
-      );
-    },
-  );
+        );
+
+        return Stack(
+          children: [
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                color: const Color.fromARGB(30, 0, 0, 0),
+              ),
+            ),
+            AlertDialog(
+              backgroundColor: const Color(0xFF3366CC),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Padding(
+                padding: const EdgeInsets.only(top: 30, bottom: 20),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.2),
+                              Colors.white.withOpacity(0.3),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          LucideIcons.check,
+                          size: 50,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        hasProfileImage 
+                            ? "Profile Completed Successfully" 
+                            : "Profile Almost Complete",
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (!hasProfileImage)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            "Add a profile photo later to reach 100%",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
+

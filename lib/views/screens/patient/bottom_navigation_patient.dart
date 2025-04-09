@@ -7,6 +7,7 @@ import 'package:healthcare/views/screens/patient/dashboard/profile.dart';
 class BottomNavigationBarPatientScreen extends StatefulWidget {
   final String profileStatus;
   final bool suppressProfilePrompt;
+  final int profileCompletionPercentage;
 
   // Add static key to access navigator state
   static final GlobalKey<_BottomNavigationBarPatientScreenState> navigatorKey = GlobalKey<_BottomNavigationBarPatientScreenState>();
@@ -15,6 +16,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
     super.key, 
     required this.profileStatus,
     this.suppressProfilePrompt = false,
+    this.profileCompletionPercentage = 0,
   });
 
   @override
@@ -31,6 +33,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
         MaterialPageRoute(
           builder: (context) => BottomNavigationBarPatientScreen(
             profileStatus: "complete",
+            profileCompletionPercentage: 100,
           ),
         ),
       );
@@ -41,6 +44,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
 class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPatientScreen> {
   late String profileStatus;
   late bool suppressProfilePrompt;
+  late int profileCompletionPercentage;
   int _selectedIndex = 0;
 
   @override
@@ -48,16 +52,20 @@ class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPa
     super.initState();
     profileStatus = widget.profileStatus;
     suppressProfilePrompt = widget.suppressProfilePrompt;
+    profileCompletionPercentage = widget.profileCompletionPercentage;
   }
 
   List<Widget> _widgetOptions() => <Widget>[
     PatientHomeScreen(
       profileStatus: profileStatus,
       suppressProfilePrompt: suppressProfilePrompt,
+      profileCompletionPercentage: profileCompletionPercentage,
     ),
     ReportsScreen(),
     PatientFinancesScreen(),
-    PatientMenuScreen(),
+    PatientMenuScreen(
+      profileCompletionPercentage: profileCompletionPercentage,
+    ),
   ];
 
   void _onItemTapped(int index) {
