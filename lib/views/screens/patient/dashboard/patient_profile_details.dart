@@ -176,13 +176,8 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
               ),
               GestureDetector(
                 onTap: () {
-                  // Navigate to complete profile flow
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CompleteProfilePatient1Screen(),
-                    ),
-                  );
+                  // Show edit options dialog instead of directly navigating to profile completion
+                  _showEditOptionsDialog();
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -191,7 +186,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
-                    LucideIcons.pencil,
+                    LucideIcons.settings,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -1681,5 +1676,59 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
       default:
         return LucideIcons.plus;
     }
+  }
+
+  // New method to show edit options dialog
+  void _showEditOptionsDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Profile Options",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                ListTile(
+                  leading: const Icon(LucideIcons.camera, color: Color(0xFF3366CC)),
+                  title: Text(
+                    "Change Profile Photo",
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Add photo changing functionality here
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(LucideIcons.fileText, color: Color(0xFF3366CC)),
+                  title: Text(
+                    "Manage Documents",
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Set active tab to documents
+                    _tabController.animateTo(2);
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 } 

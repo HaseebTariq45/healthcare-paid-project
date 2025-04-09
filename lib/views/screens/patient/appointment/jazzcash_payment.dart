@@ -123,50 +123,57 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
                       // JazzCash Logo and Branding with enhanced design
-            Center(
-                        child: Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFFBA0000).withOpacity(0.1),
-                                Color(0xFFBA0000).withOpacity(0.05),
-                              ],
+            Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFFF5F5),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFFBA0000).withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
                             ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(0xFFBA0000).withOpacity(0.2),
-                                blurRadius: 20,
-                                offset: Offset(0, 10),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFBA0000).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                              child: Icon(
+                                LucideIcons.wallet,
+                                color: Color(0xFFBA0000),
+                                size: 32,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Image.asset(
-                                  "assets/jazzcash.png",
-                                  width: 70,
-                                  height: 70,
-                                  fit: BoxFit.contain,
-                                ),
-                                SizedBox(height: 8),
                                 Text(
                                   "JazzCash",
                                   style: GoogleFonts.poppins(
-                                    fontSize: 18,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFFBA0000),
                                   ),
                                 ),
+                                SizedBox(height: 4),
+                                Text(
+                                  "Mobile Wallet Payment",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
                               ],
                             ),
-                          ),
+                          ],
                         ),
                       ),
                       

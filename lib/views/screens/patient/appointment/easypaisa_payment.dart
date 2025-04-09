@@ -83,44 +83,57 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
                   // EasyPaisa Logo and Branding
-            Center(
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF5FFF5),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
-                            spreadRadius: 1,
-                            blurRadius: 5,
-                            offset: Offset(0, 3),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF5FFF5),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF4CAF50).withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF4CAF50).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          child: Icon(
+                            LucideIcons.wallet,
+                            color: Color(0xFF4CAF50),
+                            size: 32,
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Image.asset(
-                              "assets/images/easypaisa.png",
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.contain,
-                            ),
-                            SizedBox(height: 8),
                             Text(
                               "EasyPaisa",
                               style: GoogleFonts.poppins(
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF4CAF50),
                               ),
                             ),
+                            SizedBox(height: 4),
+                            Text(
+                              "Mobile Wallet Payment",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
                           ],
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   

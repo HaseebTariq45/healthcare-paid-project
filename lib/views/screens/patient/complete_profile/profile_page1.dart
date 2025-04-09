@@ -207,7 +207,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       ),
     );
   }
-  
+
   // Text area widget for address
   Widget _buildTextArea({
     required String hint,
@@ -215,20 +215,20 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     required TextEditingController controller,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3366CC).withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3366CC).withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
           color: Colors.grey.shade300,
-          width: 1.5,
+            width: 1.5,
         ),
       ),
       child: TextField(
@@ -298,7 +298,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
             fontSize: 14,
           ),
           prefixIcon: Container(
-            padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
             child: Icon(
               LucideIcons.creditCard,
               color: const Color(0xFF3366CC),
@@ -393,7 +393,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                 padding: const EdgeInsets.all(12),
                 child: Stack(
                   alignment: Alignment.center,
-                  children: [
+                children: [
                     if (_selectedCity != null)
                       Container(
                         width: 32,
@@ -474,8 +474,8 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                           ),
                           child: Text(
                             city[0],
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
                               color: const Color(0xFF3366CC),
                               fontWeight: FontWeight.bold,
                             ),
@@ -524,11 +524,11 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                                 : FontWeight.normal,
                           ),
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
               );
             }).toList(),
             onChanged: (String? newValue) {
@@ -564,10 +564,10 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const BottomNavigationBarPatientScreen(
+                  builder: (context) => BottomNavigationBarPatientScreen(
                     profileStatus: "incomplete",
                     suppressProfilePrompt: true,
-                    profileCompletionPercentage: 0,
+                    profileCompletionPercentage: _completionPercentage.toInt(),
                   ),
                 ),
               );

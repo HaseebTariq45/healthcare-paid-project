@@ -60,9 +60,8 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
               children: [
                 _buildProfileHeader(),
                 
-                // Add profile completion card if not 100% complete
-                if (profileCompletionPercentage < 100)
-                  _buildProfileCompletionCard(),
+                // Always show profile completion card
+                _buildProfileCompletionCard(),
                 
                 SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -543,51 +542,64 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   // New widget for profile completion card
   Widget _buildProfileCompletionCard() {
     return Container(
-      margin: EdgeInsets.only(top: 10, bottom: 10),
+      margin: EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: profileCompletionPercentage < 100
+              ? [Color(0xFFFFA726), Color(0xFFFF7043)]
+              : [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+        ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: (profileCompletionPercentage < 100
+                    ? Color(0xFFFF7043)
+                    : Color(0xFF4CAF50))
+                .withOpacity(0.2),
             blurRadius: 6,
             offset: Offset(0, 2),
           ),
         ],
-        border: Border.all(
-          color: Color(0xFF3366CC).withOpacity(0.15),
-          width: 1,
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                LucideIcons.userCheck,
-                size: 16,
-                color: Color(0xFF3366CC),
-              ),
-              SizedBox(width: 6),
-              Text(
-                "Profile Completion",
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black87,
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  profileCompletionPercentage < 100
+                      ? LucideIcons.user
+                      : LucideIcons.userCheck,
+                  color: Colors.white,
+                  size: 16,
                 ),
               ),
-              Spacer(),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  profileCompletionPercentage < 100
+                      ? "Complete Your Profile"
+                      : "Profile Complete",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: profileCompletionPercentage >= 70
-                      ? Color(0xFF4CAF50).withOpacity(0.1)
-                      : profileCompletionPercentage >= 30
-                          ? Color(0xFFFFA726).withOpacity(0.1)
-                          : Color(0xFFF44336).withOpacity(0.1),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -595,11 +607,9 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: profileCompletionPercentage >= 70
-                        ? Color(0xFF4CAF50)
-                        : profileCompletionPercentage >= 30
-                            ? Color(0xFFFFA726)
-                            : Color(0xFFF44336),
+                    color: profileCompletionPercentage < 100
+                        ? Color(0xFFFF7043)
+                        : Color(0xFF4CAF50),
                   ),
                 ),
               ),
@@ -607,65 +617,65 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
           ),
           SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
               value: profileCompletionPercentage / 100,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                profileCompletionPercentage >= 70
-                    ? Color(0xFF4CAF50)
-                    : profileCompletionPercentage >= 30
-                        ? Color(0xFFFFA726)
-                        : Color(0xFFF44336),
-              ),
+              backgroundColor: Colors.white.withOpacity(0.3),
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               minHeight: 6,
             ),
           ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
+          if (profileCompletionPercentage < 100) ...[
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const CompleteProfilePatient1Screen(),
+                        builder: (context) => CompleteProfilePatient1Screen(),
                       ),
                     );
                   },
-                  borderRadius: BorderRadius.circular(6),
-                  child: Ink(
+                  child: Container(
                     padding: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Color(0xFF3366CC),
-                      borderRadius: BorderRadius.circular(6),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          LucideIcons.user,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                        SizedBox(width: 4),
                         Text(
-                          "Complete Profile",
+                          "Complete Now",
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white,
+                            color: Color(0xFFFF7043),
                           ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          LucideIcons.arrowRight,
+                          size: 14,
+                          color: Color(0xFFFF7043),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );

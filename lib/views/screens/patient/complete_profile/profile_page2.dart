@@ -2460,8 +2460,17 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     // Check if profile image was provided
     bool hasProfileImage = _profileData['hasProfileImage'] == true;
     
-    // Set completion percentage based on profile image
-    double finalPercentage = hasProfileImage ? 100.0 : 95.0;
+    // Set completion percentage based on actual calculated value
+    // Keep the existing calculation but remove hard-coding of 95%
+    double finalPercentage = _completionPercentage;
+    
+    // If user has a profile image and all other fields, we can set to 100%
+    if (hasProfileImage && finalPercentage >= 95.0) {
+      finalPercentage = 100.0;
+    } else if (!hasProfileImage && finalPercentage > 95.0) {
+      // Cap at 95% if no profile image
+      finalPercentage = 95.0;
+    }
     
     setState(() {
       _completionPercentage = finalPercentage;
@@ -2478,7 +2487,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       'height': _heightController.text,
       'weight': _weightController.text,
       'notes': _notesController.text,
-      'completionPercentage': finalPercentage, // Set based on profile image
+      'completionPercentage': finalPercentage, // Set based on calculated value
       'medicalReport1Path': _medicalReport1?.path,
       'medicalReport2Path': _medicalReport2?.path,
       'isProfileComplete': true,

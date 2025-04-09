@@ -101,7 +101,7 @@ class _PatientPaymentScreenState extends State<PatientPaymentScreen> {
                   _buildPaymentOption(
                     "JazzCash",
                     "Pay using JazzCash wallet or mobile account",
-                    LucideIcons.phone,
+                    LucideIcons.wallet,
                     Color(0xFFF44336),
                   ),
                   _buildPaymentOption(
