@@ -9,7 +9,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 // Document type enum for upload functionality
 enum DocumentType { identification, medical }
@@ -1175,13 +1177,17 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
         pickedFile = File(image.path);
       }
     } else if (source == 'file') {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      final XTypeGroup typeGroup = XTypeGroup(
+        label: 'Documents',
+        extensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+      
+      final XFile? result = await openFile(
+        acceptedTypeGroups: [typeGroup],
       );
       
       if (result != null) {
-        pickedFile = File(result.files.single.path!);
+        pickedFile = File(result.path);
       }
     }
     
