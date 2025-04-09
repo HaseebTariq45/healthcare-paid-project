@@ -5,6 +5,7 @@ import 'package:healthcare/views/components/signup.dart';
 import 'package:healthcare/views/screens/common/otpentry.dart';
 import 'package:healthcare/views/screens/common/signin.dart';
 import 'package:healthcare/views/screens/patient/dashboard/home.dart';
+import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientSignUp extends StatefulWidget {
@@ -318,11 +319,11 @@ class _PatientOTPVerificationState extends State<PatientOTPVerification> {
                   margin: const EdgeInsets.symmetric(vertical: 24),
                   child: InkWell(
                     onTap: () {
-                      // Navigate directly to patient home screen
+                      // Navigate directly to profile completion screen
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const PatientHomeScreen(profileStatus: "incomplete"),
+                          builder: (context) => const CompleteProfilePatient1Screen(),
                         ),
                         (route) => false, // This clears the navigation stack
                       );

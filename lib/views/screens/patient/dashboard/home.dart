@@ -154,7 +154,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (profileStatus.toLowerCase() != "complete" && !suppressProfilePrompt) {
-        showPopup(context);
+        // Directly navigate to profile completion screen instead of showing popup
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const CompleteProfilePatient1Screen(),
+          ),
+        );
       }
     });
   }
