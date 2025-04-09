@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page2.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,13 +18,12 @@ class CompleteProfilePatient1Screen extends StatefulWidget {
 
 class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1Screen> {
   File? _image;
-  File? _cnicFront;
-  File? _cnicBack;
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cnicController = TextEditingController();
   
   // Selected city from dropdown
   String? _selectedCity;
@@ -62,23 +62,12 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     }
   }
 
-  Future<void> _pickDocument(String type) async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        if (type == 'cnicFront') {
-          _cnicFront = File(pickedFile.path);
-        } else if (type == 'cnicBack') {
-          _cnicBack = File(pickedFile.path);
-        }
-      });
-    }
-  }
-
   Widget _buildTextField({
     required String hint,
     required IconData icon,
     required TextEditingController controller,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -99,6 +88,8 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       ),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.poppins(
@@ -146,30 +137,38 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       child: TextField(
         controller: controller,
         maxLines: 3,
+        textAlignVertical: TextAlignVertical.top,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          color: Colors.black87,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.poppins(
             color: Colors.grey.shade600,
             fontSize: 14,
           ),
-          prefixIcon: Container(
-            padding: const EdgeInsets.all(12),
-            alignment: Alignment.topCenter,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 8, top: 16),
             child: Icon(
               icon,
               color: const Color(0xFF3366CC),
               size: 20,
             ),
           ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         ),
       ),
     );
   }
   
-  // City dropdown widget
-  Widget _buildCityDropdown() {
+  // Pakistani CNIC input field with formatted mask (00000-0000000-0)
+  Widget _buildCnicField() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -187,11 +186,16 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           width: 1.5,
         ),
       ),
-      child: DropdownButtonFormField<String>(
-        value: _selectedCity,
-        isExpanded: true,
+      child: TextField(
+        controller: _cnicController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(13),
+          _CnicFormatter(),
+        ],
         decoration: InputDecoration(
-          hintText: "Select City",
+          hintText: "CNIC (00000-0000000-0)",
           hintStyle: GoogleFonts.poppins(
             color: Colors.grey.shade600,
             fontSize: 14,
@@ -199,7 +203,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           prefixIcon: Container(
             padding: const EdgeInsets.all(12),
             child: Icon(
-              LucideIcons.building2,
+              LucideIcons.creditCard,
               color: const Color(0xFF3366CC),
               size: 20,
             ),
@@ -207,116 +211,235 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        items: _pakistaniCities.map((String city) {
-          return DropdownMenuItem<String>(
-            value: city,
-            child: Text(
-              city,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        }).toList(),
-        onChanged: (String? newValue) {
-          setState(() {
-            _selectedCity = newValue;
-          });
-        },
       ),
     );
   }
-
-  Widget _buildUploadBox({required String label, required String type, required File? file}) {
-    return GestureDetector(
-      onTap: () => _pickDocument(type),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF3366CC).withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(
-            color: file == null 
-                ? Colors.grey.shade300 
-                : const Color(0xFF3366CC).withOpacity(0.3),
-            width: 1.5,
+  
+  // City dropdown widget with enhanced design
+  Widget _buildCityDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
+        ],
+        border: Border.all(
+          color: _selectedCity != null 
+              ? const Color(0xFF3366CC)
+              : Colors.grey.shade300,
+          width: 1.5,
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF3366CC).withOpacity(0.1),
-                    const Color(0xFF3366CC).withOpacity(0.2),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                LucideIcons.fileText,
-                color: const Color(0xFF3366CC),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    ".pdf, .png, .jpg, .jpeg (Max: 5MB)",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
+        gradient: _selectedCity != null 
+            ? LinearGradient(
+                colors: [
+                  Colors.white,
+                  const Color(0xFF3366CC).withOpacity(0.05),
                 ],
-              ),
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              )
+            : null,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          // Customize dropdown appearance
+          popupMenuTheme: PopupMenuThemeData(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            Container(
+          ),
+          canvasColor: Colors.white,
+          dividerColor: Colors.transparent,
+          shadowColor: const Color(0xFF3366CC).withOpacity(0.2),
+        ),
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButtonFormField<String>(
+            value: _selectedCity,
+            isExpanded: true,
+            isDense: false,
+            icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF3366CC).withOpacity(0.1),
-                    const Color(0xFF3366CC).withOpacity(0.2),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: _selectedCity != null
+                    ? const Color(0xFF3366CC).withOpacity(0.15)
+                    : const Color(0xFF3366CC).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                file == null ? LucideIcons.upload : LucideIcons.check,
-                color: file == null ? Colors.grey.shade400 : const Color(0xFF3366CC),
-                size: 20,
+                LucideIcons.chevronDown,
+                color: _selectedCity != null
+                    ? const Color(0xFF3366CC)
+                    : const Color(0xFF3366CC).withOpacity(0.7),
+                size: 16,
               ),
             ),
-          ],
+            dropdownColor: Colors.white,
+            menuMaxHeight: 350,
+            itemHeight: 50,
+            elevation: 8,
+            borderRadius: BorderRadius.circular(16),
+            decoration: InputDecoration(
+              hintText: "Select City",
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+              prefixIcon: Container(
+                padding: const EdgeInsets.all(12),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (_selectedCity != null)
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3366CC).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    Icon(
+                      LucideIcons.building2,
+                      color: const Color(0xFF3366CC),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+              suffixIcon: _selectedCity != null
+                  ? GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCity = null;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 46),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.x,
+                          color: Colors.grey.shade700,
+                          size: 12,
+                        ),
+                      ),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            selectedItemBuilder: (BuildContext context) {
+              return _pakistaniCities.map<Widget>((String city) {
+                return Container(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    city,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList();
+            },
+            items: _pakistaniCities.map((String city) {
+              // Group cities by first letter for better organization
+              bool isFirstWithLetter = _pakistaniCities.indexOf(city) == 0 || 
+                  _pakistaniCities[_pakistaniCities.indexOf(city) - 1][0] != city[0];
+              
+              return DropdownMenuItem<String>(
+                value: city,
+                // Use a Row instead of Column to avoid vertical overflow
+                child: SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      // Section for the letter grouping indicator (if first letter)
+                      if (isFirstWithLetter)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3366CC).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            city[0],
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: const Color(0xFF3366CC),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      
+                      // Checkbox indicator
+                      Container(
+                        width: 16,
+                        height: 16,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: _selectedCity == city
+                              ? const Color(0xFF3366CC)
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: _selectedCity == city
+                                ? const Color(0xFF3366CC)
+                                : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: _selectedCity == city
+                            ? const Center(
+                                child: Icon(
+                                  Icons.check,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
+                      
+                      // City name
+                      Expanded(
+                        child: Text(
+                          city,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: _selectedCity == city
+                                ? const Color(0xFF3366CC)
+                                : Colors.black87,
+                            fontWeight: _selectedCity == city
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedCity = newValue;
+              });
+            },
+          ),
         ),
       ),
     );
@@ -509,55 +632,9 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                       hint: "Phone Number",
                       icon: LucideIcons.phone,
                       controller: _phoneController,
+                      keyboardType: TextInputType.phone,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF3366CC).withOpacity(0.1),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3366CC).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            LucideIcons.fileText,
-                            color: const Color(0xFF3366CC),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          "CNIC Documents",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildUploadBox(label: "CNIC Front", type: "cnicFront", file: _cnicFront),
-                    _buildUploadBox(label: "CNIC Back", type: "cnicBack", file: _cnicBack),
+                    _buildCnicField(),
                   ],
                 ),
               ),
@@ -666,6 +743,32 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
             ),
         ),
       ),
+    );
+  }
+}
+
+// Custom formatter for Pakistani CNIC format (00000-0000000-0)
+class _CnicFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    final newText = StringBuffer();
+    final String rawText = newValue.text.replaceAll('-', '');
+    
+    for (int i = 0; i < rawText.length; i++) {
+      if (i == 5 || i == 12) {
+        newText.write('-');
+      }
+      newText.write(rawText[i]);
+    }
+
+    return TextEditingValue(
+      text: newText.toString(),
+      selection: TextSelection.collapsed(offset: newText.length),
     );
   }
 }
