@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:healthcare/services/doctor_availability_service.dart';
+import 'package:healthcare/utils/date_formatter.dart';
+import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
 
 class DoctorAvailabilityScreen extends StatefulWidget {
   const DoctorAvailabilityScreen({super.key});
@@ -15,16 +18,15 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
   late AnimationController _animationController;
   DateTime _selectedDay = DateTime.now();
   String? _selectedHospital;
+  String? _selectedHospitalId;
   Map<String, bool> _selectedTimeSlots = {};
   bool _isLoading = false;
+  bool _isInitializing = true;
   
-  // Sample data - In production, this would come from a database
-  final List<String> _hospitals = [
-    "Aga Khan Hospital, Karachi",
-    "Shaukat Khanum Hospital, Lahore",
-    "Jinnah Hospital, Karachi",
-    "Liaquat National Hospital, Karachi",
-  ];
+  // For hospitals and availability
+  final DoctorAvailabilityService _availabilityService = DoctorAvailabilityService();
+  List<Map<String, dynamic>> _hospitals = [];
+  Map<String, Map<String, List<String>>> _doctorSchedule = {};
 
   final List<String> _timeSlots = [
     "09:00 AM",
@@ -39,18 +41,6 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     "08:00 PM",
   ];
   
-  // Mock data for existing availability
-  final Map<String, Map<String, List<String>>> _doctorSchedule = {
-    "Aga Khan Hospital, Karachi": {
-      "2023-10-15": ["09:00 AM", "10:00 AM", "02:00 PM"],
-      "2023-10-16": ["11:00 AM", "01:00 PM"],
-    },
-    "Shaukat Khanum Hospital, Lahore": {
-      "2023-10-18": ["09:00 AM", "04:00 PM", "07:00 PM"],
-      "2023-10-20": ["02:00 PM", "03:00 PM"],
-    }
-  };
-  
   @override
   void initState() {
     super.initState();
@@ -59,17 +49,69 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
       duration: Duration(milliseconds: 800),
     )..forward();
     
-    // Set default hospital
-    if (_hospitals.isNotEmpty) {
-      _selectedHospital = _hospitals[0];
-      _loadTimeSlots();
-    }
+    // Load data
+    _loadHospitals();
   }
   
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  // Load hospitals where doctor works
+  Future<void> _loadHospitals() async {
+    setState(() {
+      _isInitializing = true;
+    });
+    
+    try {
+      final hospitals = await _availabilityService.getDoctorHospitals();
+      
+      if (hospitals.isNotEmpty) {
+        setState(() {
+          _hospitals = hospitals;
+          _selectedHospital = hospitals[0]['hospitalName'];
+          _selectedHospitalId = hospitals[0]['hospitalId'];
+        });
+        
+        // Load availability for the selected hospital
+        await _loadAvailability();
+      }
+    } catch (e) {
+      _showErrorMessage('Failed to load hospitals: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isInitializing = false;
+      });
+    }
+  }
+  
+  // Load availability for selected hospital
+  Future<void> _loadAvailability() async {
+    if (_selectedHospitalId == null) return;
+    
+    try {
+      final availability = await _availabilityService.getDoctorAvailability(
+        hospitalId: _selectedHospitalId!,
+      );
+      
+      setState(() {
+        if (!_doctorSchedule.containsKey(_selectedHospital)) {
+          _doctorSchedule[_selectedHospital!] = {};
+        }
+        
+        // Update the schedule with fetched data
+        availability.forEach((date, slots) {
+          _doctorSchedule[_selectedHospital!]![date] = slots;
+        });
+      });
+      
+      // Now load time slots for selected date
+      _loadTimeSlots();
+    } catch (e) {
+      _showErrorMessage('Failed to load availability: ${e.toString()}');
+    }
   }
 
   void _loadTimeSlots() {
@@ -81,7 +123,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     });
     
     // Convert date to string format for lookup
-    String dateStr = "${_selectedDay.year}-${_selectedDay.month.toString().padLeft(2, '0')}-${_selectedDay.day.toString().padLeft(2, '0')}";
+    String dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
     
     // Check if doctor has availability for this date at this hospital
     if (_doctorSchedule.containsKey(_selectedHospital) && 
@@ -104,48 +146,137 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     }
   }
 
+  // Navigate to manage hospitals screen
+  void _navigateToManageHospitals() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ManageHospitalsScreen()),
+    );
+    
+    // Reload hospitals when returning from manage hospitals screen
+    _loadHospitals();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Introduction
-                      _buildIntroSection(),
-                      
-                      SizedBox(height: 24),
-                      
-                      // Hospital Selection
-                      _buildHospitalSelection(),
-                      
-                      SizedBox(height: 24),
-                      
-                      // Calendar
-                      _buildCalendarSection(),
-                      
-                      SizedBox(height: 24),
-                      
-                      // Time Slots
-                      _buildTimeSlotsSection(),
-                      
-                      SizedBox(height: 30),
-                      
-                      // Save Button
-                      _buildSaveButton(),
-                      
-                      SizedBox(height: 30),
-                    ],
+        child: _isInitializing 
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Color(0xFF2B8FEB),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      "Loading your hospitals...",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: _hospitals.isEmpty
+                        ? _buildNoHospitalsView()
+                        : SingleChildScrollView(
+                            physics: BouncingScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Introduction
+                                  _buildIntroSection(),
+                                  
+                                  SizedBox(height: 24),
+                                  
+                                  // Hospital Selection
+                                  _buildHospitalSelection(),
+                                  
+                                  SizedBox(height: 24),
+                                  
+                                  // Calendar
+                                  _buildCalendarSection(),
+                                  
+                                  SizedBox(height: 24),
+                                  
+                                  // Time Slots
+                                  _buildTimeSlotsSection(),
+                                  
+                                  SizedBox(height: 30),
+                                  
+                                  // Save Button
+                                  _buildSaveButton(),
+                                  
+                                  SizedBox(height: 30),
+                                ],
+                              ),
+                            ),
+                          ),
                   ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildNoHospitalsView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Color(0xFFE6F2FF),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.business,
+                color: Color(0xFF3366CC),
+                size: 60,
+              ),
+            ),
+            SizedBox(height: 20),
+            Text(
+              "No Hospitals Found",
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              "You don't have any hospitals assigned to your profile. Please add a hospital to manage your availability.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: _navigateToManageHospitals,
+              icon: Icon(Icons.add),
+              label: Text("Add Hospitals"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF3366CC),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -172,7 +303,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
       child: Row(
         children: [
           IconButton(
-            icon: Icon(LucideIcons.arrowLeft, color: Colors.black),
+            icon: Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () => Navigator.pop(context),
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(),
@@ -194,7 +325,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              LucideIcons.calendar,
+              Icons.calendar_month,
               color: Color.fromRGBO(64, 124, 226, 1),
             ),
           ),
@@ -282,13 +413,31 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Select Hospital",
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF333333),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Select Hospital",
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _navigateToManageHospitals,
+                  icon: Icon(Icons.edit, size: 18),
+                  label: Text("Manage"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Color(0xFF2B8FEB),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    backgroundColor: Color(0xFFEDF7FF),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: 8),
             Text(
@@ -324,13 +473,15 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
                 ),
                 itemBuilder: (context, index) {
                   final hospital = _hospitals[index];
-                  final isSelected = hospital == _selectedHospital;
+                  final hospitalName = hospital['hospitalName'] as String;
+                  final isSelected = hospitalName == _selectedHospital;
                   
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        _selectedHospital = hospital;
-                        _loadTimeSlots();
+                        _selectedHospital = hospitalName;
+                        _selectedHospitalId = hospital['hospitalId'];
+                        _loadAvailability();
                       });
                     },
                     child: Container(
@@ -350,33 +501,20 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              LucideIcons.building2,
+                              Icons.business,
                               color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
                               size: 24,
                             ),
                           ),
                           SizedBox(width: 16),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  hospital.split(',')[0],
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  hospital.split(',')[1].trim(),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              hospitalName,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
                             ),
                           ),
                           if (isSelected)
@@ -549,7 +687,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
   Widget _buildAvailabilityStatus() {
     if (_selectedHospital == null) return SizedBox.shrink();
     
-    String dateStr = "${_selectedDay.year}-${_selectedDay.month.toString().padLeft(2, '0')}-${_selectedDay.day.toString().padLeft(2, '0')}";
+    String dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
     bool hasExistingSlots = _doctorSchedule.containsKey(_selectedHospital) && 
                            _doctorSchedule[_selectedHospital]!.containsKey(dateStr);
     
@@ -760,7 +898,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
 
   // Save the doctor's availability
   Future<void> _saveAvailability() async {
-    if (_selectedHospital == null) {
+    if (_selectedHospitalId == null || _selectedHospital == null) {
       _showErrorMessage("Please select a hospital");
       return;
     }
@@ -781,34 +919,40 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     });
     
     try {
-      // Simulate network delay
-      await Future.delayed(Duration(seconds: 1));
-      
-      // Format the date to string for storage
-      String dateStr = "${_selectedDay.year}-${_selectedDay.month.toString().padLeft(2, '0')}-${_selectedDay.day.toString().padLeft(2, '0')}";
-      
-      // In a real app, you would save this to Firestore or another backend
-      // For demo purposes, we'll just update our local mock data
-      if (!_doctorSchedule.containsKey(_selectedHospital)) {
-        _doctorSchedule[_selectedHospital!] = {};
-      }
-      
-      _doctorSchedule[_selectedHospital!]![dateStr] = selectedTimes;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Availability saved successfully for ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year} at $_selectedHospital',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: EdgeInsets.all(10),
-        ),
+      final result = await _availabilityService.saveDoctorAvailability(
+        hospitalId: _selectedHospitalId!,
+        hospitalName: _selectedHospital!,
+        date: _selectedDay,
+        timeSlots: selectedTimes,
       );
+      
+      if (result['success']) {
+        // Update local cache
+        final dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
+        
+        if (!_doctorSchedule.containsKey(_selectedHospital)) {
+          _doctorSchedule[_selectedHospital!] = {};
+        }
+        
+        _doctorSchedule[_selectedHospital!]![dateStr] = selectedTimes;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Availability saved successfully',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: EdgeInsets.all(10),
+          ),
+        );
+      } else {
+        _showErrorMessage(result['message']);
+      }
     } catch (e) {
       _showErrorMessage("Failed to save availability. Please try again.");
     } finally {

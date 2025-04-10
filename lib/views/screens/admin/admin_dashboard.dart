@@ -294,8 +294,9 @@ class _AdminHomeState extends State<AdminHome> {
                   () {
                     final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
                     if (adminDashboardState != null) {
-                      adminDashboardState._selectedIndex = 1;
-                      adminDashboardState.setState(() {});
+                      adminDashboardState.setState(() {
+                        adminDashboardState._selectedIndex = 1;
+                      });
                     }
                   },
                 ),
@@ -306,8 +307,9 @@ class _AdminHomeState extends State<AdminHome> {
                   () {
                     final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
                     if (adminDashboardState != null) {
-                      adminDashboardState._selectedIndex = 2;
-                      adminDashboardState.setState(() {});
+                      adminDashboardState.setState(() {
+                        adminDashboardState._selectedIndex = 2;
+                      });
                     }
                   },
                 ),
@@ -318,8 +320,9 @@ class _AdminHomeState extends State<AdminHome> {
                   () {
                     final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
                     if (adminDashboardState != null) {
-                      adminDashboardState._selectedIndex = 3;
-                      adminDashboardState.setState(() {});
+                      adminDashboardState.setState(() {
+                        adminDashboardState._selectedIndex = 3;
+                      });
                     }
                   },
                 ),
@@ -330,8 +333,9 @@ class _AdminHomeState extends State<AdminHome> {
                   () {
                     final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
                     if (adminDashboardState != null) {
-                      adminDashboardState._selectedIndex = 4;
-                      adminDashboardState.setState(() {});
+                      adminDashboardState.setState(() {
+                        adminDashboardState._selectedIndex = 4;
+                      });
                     }
                   },
                 ),
@@ -342,8 +346,9 @@ class _AdminHomeState extends State<AdminHome> {
                   () {
                     final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
                     if (adminDashboardState != null) {
-                      adminDashboardState._selectedIndex = 5;
-                      adminDashboardState.setState(() {});
+                      adminDashboardState.setState(() {
+                        adminDashboardState._selectedIndex = 5;
+                      });
                     }
                   },
                 ),

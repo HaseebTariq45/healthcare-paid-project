@@ -4,10 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/services/auth_service.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/components/signup.dart';
-import 'package:healthcare/views/screens/dashboard/home.dart';
 import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
+import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 
@@ -37,6 +37,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isVerificationSuccessful = false;
 
   Timer? _timer;
   int _start = 60;
@@ -82,6 +83,44 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     super.dispose();
   }
 
+  // Resend OTP method
+  Future<void> _resendOTP() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final result = await _authService.sendOTP(
+        phoneNumber: widget.phoneNumber,
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (result['success']) {
+        // Update verification ID
+        verificationId = result['verificationId'];
+        // Clear OTP fields
+        for (final controller in _controllers) {
+          controller.clear();
+        }
+        // Restart timer
+        startTimer();
+      } else {
+        setState(() {
+          _errorMessage = result['message'];
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Failed to resend OTP. Please try again.';
+      });
+    }
+  }
+
   Future<void> _verifyOTP() async {
     // Get OTP code from text fields
     final otp = _controllers.map((c) => c.text).join();
@@ -101,24 +140,51 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     
     try {
       // Verify OTP with Firebase
-      final credential = await _authService.verifyOTP(
+      final result = await _authService.verifyOTP(
         verificationId: verificationId,
         smsCode: otp,
       );
       
-      // Check if this is a new user (from sign up) or existing user (login)
-      if (widget.userType != null && widget.fullName != null) {
-        // This is a new user signing up
-        await _registerNewUser(credential.user!.uid);
+      if (result['success']) {
+        // Set flag for successful verification
+        _isVerificationSuccessful = true;
+        
+        // Success notification
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Verification successful!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        
+        // Check if this is a new user (from sign up) or existing user (login)
+        if (widget.userType != null && widget.fullName != null) {
+          // This is a new user signing up
+          final String uid = result['user'].uid;
+              
+          final registerResult = await _registerNewUser(uid);
+          
+          if (!registerResult['success']) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = registerResult['message'];
+            });
+            return;
+          }
+        
+          // Update last login timestamp
+          await _authService.updateLastLogin(uid);
+        }
+        
+        // Navigate based on user role and profile completion
+        await _navigateBasedOnUserRole();
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = result['message'];
+        });
       }
-      
-      // Navigate based on user role and profile completion
-      await _navigateBasedOnUserRole();
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.message ?? 'Invalid OTP. Please try again.';
-      });
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -127,8 +193,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
   }
 
-  Future<void> _registerNewUser(String uid) async {
-    if (widget.userType == null || widget.fullName == null) return;
+  Future<Map<String, dynamic>> _registerNewUser(String uid) async {
+    if (widget.userType == null || widget.fullName == null) {
+      return {
+        'success': false,
+        'message': 'Missing user information'
+      };
+    }
     
     // Convert string user type to enum
     UserRole role;
@@ -147,7 +218,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     }
     
     // Register user in Firestore
-    await _authService.registerUser(
+    return await _authService.registerUser(
       uid: uid,
       fullName: widget.fullName!,
       phoneNumber: widget.phoneNumber,
@@ -170,7 +241,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (context) => ProfilePage1(userRole: UserRole.patient),
+              builder: (context) => CompleteProfilePatient1Screen(),
             ),
             (route) => false,
           );
@@ -190,18 +261,42 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         break;
         
       case UserRole.doctor:
-      case UserRole.ladyHealthWorker:
         if (!isProfileComplete) {
-          // Navigate to doctor/LHW profile completion
+          // Navigate to doctor profile completion
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (context) => ProfilePage1(userRole: userRole),
+              builder: (context) => DoctorProfilePage1Screen(),
             ),
             (route) => false,
           );
         } else {
-          // Navigate to doctor/LHW dashboard
+          // Navigate to doctor dashboard
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BottomNavigationBarScreen(
+                key: BottomNavigationBarScreen.navigatorKey,
+                profileStatus: "complete"
+              ),
+            ),
+            (route) => false,
+          );
+        }
+        break;
+        
+      case UserRole.ladyHealthWorker:
+        if (!isProfileComplete) {
+          // Navigate to LHW profile completion
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CompleteProfilePatient1Screen(),
+            ),
+            (route) => false,
+          );
+        } else {
+          // Navigate to LHW dashboard
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
@@ -235,121 +330,113 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     return Scaffold(
       appBar: AppBarOnboarding(text: text, isBackButtonVisible: true),
       backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 20),
-              child: Text(
-                'Enter the OTP sent to ${widget.phoneNumber}',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // OTP input fields
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (index) {
-                  return SizedBox(
-                    width: size.width * 0.12,
-                    child: TextField(
-                      onTapOutside: (event) => FocusScope.of(context).unfocus(),
-                      controller: _controllers[index],
-                      maxLength: 1,
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        counterText: "",
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty && index < 5) {
-                          FocusScope.of(context).nextFocus();
-                        }
-                        
-                        // Auto-submit when all digits are entered
-                        if (index == 5 && value.isNotEmpty) {
-                          _verifyOTP();
-                        }
-                      },
-                    ),
-                  );
-                }),
-              ),
-            ),
-            
-            if (_errorMessage != null)
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            children: [
               Padding(
-                padding: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.only(top: 20),
                 child: Text(
-                  _errorMessage!,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.red,
-                  ),
-                ),
-              ),
-            
-            const SizedBox(height: 24),
-            _start > 0
-                ? Text(
-                  "Resend OTP in $formattedTime",
+                  'Enter the OTP sent to ${widget.phoneNumber}',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.normal,
                     color: Colors.black,
                   ),
-                )
-                : TextButton(
-                  onPressed: () {
-                    debugPrint("Resend OTP pressed");
-                    // Optionally clear OTP fields
-                    setState(() {
-                      for (final controller in _controllers) {
-                        controller.clear();
-                      }
-                    });
-                    // Restart the timer after resending OTP
-                    startTimer();
-                  },
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // OTP input fields
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(6, (index) {
+                    return SizedBox(
+                      width: size.width * 0.12,
+                      child: TextField(
+                        onTapOutside: (event) => FocusScope.of(context).unfocus(),
+                        controller: _controllers[index],
+                        maxLength: 1,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          counterText: "",
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        onChanged: (value) {
+                          if (value.isNotEmpty && index < 5) {
+                            FocusScope.of(context).nextFocus();
+                          }
+                          
+                          // Auto-submit when all digits are entered
+                          if (index == 5 && value.isNotEmpty) {
+                            _verifyOTP();
+                          }
+                        },
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
                   child: Text(
-                    "Resend OTP",
+                    _errorMessage!,
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.normal,
-                      color: Colors.deepPurple,
+                      fontSize: 12,
+                      color: Colors.red,
                     ),
                   ),
                 ),
-            const SizedBox(height: 24),
-            // Confirm OTP button
-            Container(
-              margin: const EdgeInsets.only(top: 40),
-              child: InkWell(
-                onTap: _isLoading ? null : _verifyOTP,
-                child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        color: const Color(0xFF3366CC),
+              
+              const SizedBox(height: 24),
+              _start > 0
+                  ? Text(
+                    "Resend OTP in $formattedTime",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                      color: Colors.black,
+                    ),
+                  )
+                  : TextButton(
+                    onPressed: _isLoading ? null : _resendOTP,
+                    child: Text(
+                      "Resend OTP",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.normal,
+                        color: Colors.deepPurple,
                       ),
-                    )
-                  : ProceedButton(isEnabled: true, text: "Confirm OTP"),
+                    ),
+                  ),
+              const SizedBox(height: 24),
+              // Confirm OTP button
+              Container(
+                margin: const EdgeInsets.only(top: 40),
+                child: InkWell(
+                  onTap: _isLoading || _isVerificationSuccessful ? null : _verifyOTP,
+                  child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: const Color(0xFF3366CC),
+                        ),
+                      )
+                    : ProceedButton(isEnabled: !_isVerificationSuccessful, text: "Confirm OTP"),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

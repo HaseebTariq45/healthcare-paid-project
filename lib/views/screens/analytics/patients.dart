@@ -301,9 +301,9 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-                          child: Column(
-                            children: [
-                              _buildSearchBar(),
+        child: Column(
+          children: [
+            _buildSearchBar(),
                               SizedBox(height: 16),
                               Row(
                                 children: [
@@ -321,7 +321,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                               SizedBox(height: 8),
                               _buildSortOptions(),
                               SizedBox(height: 10),
-                              _buildFilters(),
+            _buildFilters(),
                               SizedBox(height: 10),
                             ],
                           ),
@@ -388,7 +388,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
             ),
           ),
           SizedBox(width: 12),
-          Expanded(
+            Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -436,19 +436,19 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
             bool isLast = index == _sortOptions.length - 1;
             
             return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedSortIndex = index;
-                  });
-                },
-                child: Container(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedSortIndex = index;
+                });
+              },
+              child: Container(
                   margin: EdgeInsets.symmetric(horizontal: 2),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
                     color: isSelected
-                        ? Color.fromRGBO(64, 124, 226, 1)
-                        : Colors.transparent,
+                      ? Color.fromRGBO(64, 124, 226, 1)
+                      : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: isSelected ? [
                       BoxShadow(
@@ -460,22 +460,22 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                   ),
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(
-                      _sortOptions[index],
-                      style: GoogleFonts.poppins(
+                child: Text(
+                  _sortOptions[index],
+                  style: GoogleFonts.poppins(
                         color: isSelected
-                            ? Colors.white
-                            : Colors.grey.shade600,
+                        ? Colors.white
+                        : Colors.grey.shade600,
                         fontSize: 12,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      ),
+                  ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                    ),
-                  ),
                 ),
               ),
+            ),
+          ),
             );
           },
         ),

@@ -10,7 +10,8 @@ import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
 import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
 import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
+import 'package:healthcare/views/screens/developer/developer_tools.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 
 enum UserType { doctor, patient }
@@ -43,25 +44,28 @@ class _MenuScreenState extends State<MenuScreen> {
   void _initializeMenuItems() {
     if (widget.userType == UserType.doctor) {
       menuItems = [
-        MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Update Availability", LucideIcons.calendar, const DoctorAvailabilityScreen(), category: "Appointment"),
-        MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-        MenuItem("Payment Methods", LucideIcons.creditCard, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
-        MenuItem("Withdrawal History", LucideIcons.wallet, const WithdrawalHistoryScreen(), category: "Payment"),
-        MenuItem("FAQs", LucideIcons.info, const FAQScreen(), category: "Support"),
-        MenuItem("Help Center", LucideIcons.headphones, null, category: "Support"),
-        MenuItem("Logout", LucideIcons.logOut, null, category: ""),
+        MenuItem("Edit Profile", Icons.person, const ProfileEditorScreen(), category: "Account"),
+        MenuItem("Manage Hospitals", Icons.business, const ManageHospitalsScreen(), category: "Appointment"),
+        MenuItem("Update Availability", Icons.calendar_month, const DoctorAvailabilityScreen(), category: "Appointment"),
+        MenuItem("Appointments History", Icons.history, const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Payment Methods", Icons.credit_card, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
+        MenuItem("Withdrawal History", Icons.account_balance_wallet, const WithdrawalHistoryScreen(), category: "Payment"),
+        MenuItem("FAQs", Icons.info_outline, const FAQScreen(), category: "Support"),
+        MenuItem("Help Center", Icons.headset_mic, null, category: "Support"),
+        MenuItem("Developer Tools", Icons.terminal, const DeveloperToolsScreen(), category: "Development"),
+        MenuItem("Logout", Icons.logout, null, category: ""),
       ];
     } else {
       // Patient menu items
       menuItems = [
-        MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Medical Records", LucideIcons.fileText, null, category: "Health"),
-        MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-        MenuItem("Payment Methods", LucideIcons.creditCard, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
-        MenuItem("FAQs", LucideIcons.info, const FAQScreen(), category: "Support"),
-        MenuItem("Help Center", LucideIcons.headphones, null, category: "Support"),
-        MenuItem("Logout", LucideIcons.logOut, null, category: ""),
+        MenuItem("Edit Profile", Icons.person, const ProfileEditorScreen(), category: "Account"),
+        MenuItem("Medical Records", Icons.description, null, category: "Health"),
+        MenuItem("Appointments History", Icons.history, const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Payment Methods", Icons.credit_card, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
+        MenuItem("FAQs", Icons.info_outline, const FAQScreen(), category: "Support"),
+        MenuItem("Help Center", Icons.headset_mic, null, category: "Support"),
+        MenuItem("Developer Tools", Icons.terminal, const DeveloperToolsScreen(), category: "Development"),
+        MenuItem("Logout", Icons.logout, null, category: ""),
       ];
     }
   }
@@ -185,7 +189,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
-                    LucideIcons.arrowLeft,
+                    Icons.arrow_back,
                     color: Colors.white,
                     size: 20,
                   ),
@@ -280,7 +284,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   _buildStatCard(
                     "Appointments", 
                     "25",
-                    LucideIcons.calendar,
+                    Icons.calendar_today,
                   ),
                   Container(
                     height: 50,
@@ -290,7 +294,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   _buildStatCard(
                     "Earnings", 
                     "Rs 15,000",
-                    LucideIcons.wallet,
+                    Icons.account_balance_wallet,
                   ),
                 ],
               ),
@@ -434,7 +438,7 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
             const Spacer(),
             Icon(
-              LucideIcons.chevronRight,
+              Icons.chevron_right,
               color: Colors.grey.shade400,
               size: 20,
             ),
@@ -480,7 +484,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
-                    LucideIcons.logOut,
+                    Icons.logout,
                     color: Color(0xFFFF5252),
                     size: 20,
                   ),
@@ -496,7 +500,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
                 const Spacer(),
                 const Icon(
-                  LucideIcons.chevronRight,
+                  Icons.chevron_right,
                   color: Color(0xFFFF9E9E),
                   size: 20,
                 ),
@@ -528,7 +532,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    LucideIcons.logOut,
+                    Icons.logout,
                     color: Color(0xFFFF5252),
                     size: 30,
                   ),
