@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/admin/manage_doctors.dart';
 import 'package:healthcare/views/screens/admin/manage_patients.dart';
 import 'package:healthcare/views/screens/admin/system_settings.dart';
+import 'package:healthcare/views/screens/admin/analytics_dashboard.dart';
+import 'package:healthcare/views/screens/admin/appointment_management.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -16,6 +18,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   
   final List<Widget> _pages = [
     const AdminHome(),
+    const AnalyticsDashboard(),
+    const AppointmentManagement(),
     const ManageDoctors(),
     const ManagePatients(),
     const SystemSettings(),
@@ -97,7 +101,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
           items: [
             BottomNavigationBarItem(
               icon: Icon(Icons.dashboard),
-              label: 'Dashboard',
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.analytics),
+              label: 'Analytics',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today),
+              label: 'Appointments',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.medical_services),
@@ -118,171 +130,262 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 }
 
-class AdminHome extends StatelessWidget {
+class AdminHome extends StatefulWidget {
   const AdminHome({Key? key}) : super(key: key);
 
   @override
+  State<AdminHome> createState() => _AdminHomeState();
+}
+
+class _AdminHomeState extends State<AdminHome> {
+  // Mock data for statistics
+  String doctorCount = '42';
+  String patientCount = '367';
+  String appointmentCount = '89';
+  bool _isLoading = false;
+  List<Map<String, dynamic>> _recentActivities = [
+    {
+      'title': 'New Doctor Registration',
+      'description': 'Dr. Ahsan Khan has registered as a Cardiologist.',
+      'time': '10 minutes ago',
+      'icon': Icons.check_circle,
+      'color': Color(0xFF3366CC),
+    },
+    {
+      'title': 'Patient Complaint',
+      'description': 'Sara Ahmed reported an issue with appointment scheduling.',
+      'time': '1 hour ago',
+      'icon': Icons.warning,
+      'color': Color(0xFFFF5722),
+    },
+    {
+      'title': 'System Update',
+      'description': 'Payment system was updated successfully.',
+      'time': '2 hours ago',
+      'icon': Icons.update,
+      'color': Color(0xFF4CAF50),
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // In a real app, we would fetch data here
+    // _fetchDashboardData();
+  }
+
+  // Simulating a data refresh
+  Future<void> _refreshDashboardData() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    // Simulate network delay
+    await Future.delayed(Duration(seconds: 2));
+    
+    // In a real app, we would make API calls here
+    // For now, just update with random data
+    setState(() {
+      doctorCount = (40 + (DateTime.now().second % 10)).toString();
+      patientCount = (360 + (DateTime.now().second % 20)).toString();
+      appointmentCount = (80 + (DateTime.now().second % 15)).toString();
+      _isLoading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Admin Welcome Card
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF3366CC), Color(0xFF6699FF)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0xFF3366CC).withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
+    return RefreshIndicator(
+      onRefresh: _refreshDashboardData,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Admin Welcome Card
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF3366CC), Color(0xFF6699FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF3366CC).withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Welcome, Administrator',
+                        style: GoogleFonts.poppins(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (_isLoading)
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'You have full access to manage the healthcare platform.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildStatCard('Doctors', doctorCount, Icons.medical_services, Color(0xFF4CAF50)),
+                      _buildStatCard('Patients', patientCount, Icons.people, Color(0xFFFFC107)),
+                      _buildStatCard('Appointments', appointmentCount, Icons.bar_chart, Color(0xFFFF5722)),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            
+            SizedBox(height: 24),
+            
+            // Quick Actions
+            Text(
+              'Quick Actions',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.5,
               children: [
-                Text(
-                  'Welcome, Administrator',
-                  style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                _buildActionCard(
+                  'View Analytics',
+                  Icons.analytics,
+                  Color(0xFF3366CC),
+                  () {
+                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
+                    if (adminDashboardState != null) {
+                      adminDashboardState._selectedIndex = 1;
+                      adminDashboardState.setState(() {});
+                    }
+                  },
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'You have full access to manage the healthcare platform.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
+                _buildActionCard(
+                  'Manage Appointments',
+                  Icons.calendar_today,
+                  Color(0xFF4CAF50),
+                  () {
+                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
+                    if (adminDashboardState != null) {
+                      adminDashboardState._selectedIndex = 2;
+                      adminDashboardState.setState(() {});
+                    }
+                  },
                 ),
-                SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildStatCard('Doctors', '42', Icons.medical_services, Color(0xFF4CAF50)),
-                    _buildStatCard('Patients', '367', Icons.people, Color(0xFFFFC107)),
-                    _buildStatCard('Appointments', '89', Icons.bar_chart, Color(0xFFFF5722)),
-                  ],
+                _buildActionCard(
+                  'Manage Doctors',
+                  Icons.medical_services,
+                  Color(0xFFFF5722),
+                  () {
+                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
+                    if (adminDashboardState != null) {
+                      adminDashboardState._selectedIndex = 3;
+                      adminDashboardState.setState(() {});
+                    }
+                  },
+                ),
+                _buildActionCard(
+                  'Manage Patients',
+                  Icons.people,
+                  Color(0xFF9C27B0),
+                  () {
+                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
+                    if (adminDashboardState != null) {
+                      adminDashboardState._selectedIndex = 4;
+                      adminDashboardState.setState(() {});
+                    }
+                  },
+                ),
+                _buildActionCard(
+                  'System Settings',
+                  Icons.settings,
+                  Color(0xFFFF5722),
+                  () {
+                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
+                    if (adminDashboardState != null) {
+                      adminDashboardState._selectedIndex = 5;
+                      adminDashboardState.setState(() {});
+                    }
+                  },
                 ),
               ],
             ),
-          ),
-          
-          SizedBox(height: 24),
-          
-          // Quick Actions
-          Text(
-            'Quick Actions',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+            
+            SizedBox(height: 24),
+            
+            // Recent Activities
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Activities',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.refresh),
+                    onPressed: _isLoading ? null : _refreshDashboardData,
+                    tooltip: 'Refresh',
+                  ),
+                ],
+              ),
             ),
-          ),
-          SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
-            children: [
-              _buildActionCard(
-                'Verify Doctors',
-                Icons.check_circle,
-                Color(0xFF3366CC),
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManageDoctors(initialTab: 0),
-                    ),
-                  );
-                },
+            ..._recentActivities.map((activity) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildActivityCard(
+                activity['title'],
+                activity['description'],
+                activity['time'],
+                activity['icon'],
+                activity['color'],
               ),
-              _buildActionCard(
-                'Manage Patients',
-                Icons.people,
-                Color(0xFF4CAF50),
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManagePatients(),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                'View Reports',
-                Icons.bar_chart,
-                Color(0xFFFFC107),
-                () {},
-              ),
-              _buildActionCard(
-                'System Settings',
-                Icons.settings,
-                Color(0xFFFF5722),
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SystemSettings(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          
-          SizedBox(height: 24),
-          
-          // Recent Activities
-          Text(
-            'Recent Activities',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(height: 16),
-          _buildActivityCard(
-            'New Doctor Registration',
-            'Dr. Ahsan Khan has registered as a Cardiologist.',
-            '10 minutes ago',
-            Icons.check_circle,
-            Color(0xFF3366CC),
-          ),
-          SizedBox(height: 12),
-          _buildActivityCard(
-            'Patient Complaint',
-            'Sara Ahmed reported an issue with appointment scheduling.',
-            '1 hour ago',
-            Icons.warning,
-            Color(0xFFFF5722),
-          ),
-          SizedBox(height: 12),
-          _buildActivityCard(
-            'System Update',
-            'Payment system was updated successfully.',
-            '2 hours ago',
-            Icons.update,
-            Color(0xFF4CAF50),
-          ),
-        ],
+            )).toList(),
+          ],
+        ),
       ),
     );
   }
@@ -324,9 +427,8 @@ class AdminHome extends StatelessWidget {
   }
   
   Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -342,21 +444,23 @@ class AdminHome extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               color: color,
               size: 28,
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 8),
             Text(
               title,
               style: GoogleFonts.poppins(
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.black87,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

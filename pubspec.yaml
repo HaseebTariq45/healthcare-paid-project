@@ -40,6 +40,7 @@ dependencies:
   intl: ^0.18.1  # For date formatting
   provider: ^6.0.5  # For state management
   table_calendar: ^3.0.9
+  fl_chart: ^0.64.0  # For charts and graphs
   
   # Document handling
   path: ^1.8.3
