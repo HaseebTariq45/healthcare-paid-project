@@ -17,10 +17,34 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
-  final TextEditingController _stateController = TextEditingController();
-  final TextEditingController _countryController = TextEditingController();
-  final TextEditingController _zipCodeController = TextEditingController();
+  
+  // Remove individual address fields and add selectedCity
+  String? _selectedCity;
+  
+  // List of Pakistani cities in alphabetical order
+  final List<String> _pakistaniCities = [
+    "Abbottabad", "Adilpur", "Ahmadpur East", "Alipur", "Arifwala", "Attock",
+    "Badin", "Bahawalnagar", "Bahawalpur", "Bannu", "Battagram", "Bhakkar", "Bhalwal", "Bhera", "Bhimbar", "Bhit Shah", "Bhopalwala", "Burewala",
+    "Chaman", "Charsadda", "Chichawatni", "Chiniot", "Chishtian", "Chitral", "Chunian",
+    "Dadu", "Daharki", "Daska", "Dera Ghazi Khan", "Dera Ismail Khan", "Dinga", "Dipalpur", "Duki",
+    "Faisalabad", "Fateh Jang", "Fazilpur", "Fort Abbas",
+    "Gambat", "Ghotki", "Gilgit", "Gojra", "Gwadar",
+    "Hafizabad", "Hala", "Hangu", "Haripur", "Haroonabad", "Hasilpur", "Haveli Lakha", "Hazro", "Hub", "Hyderabad",
+    "Islamabad", 
+    "Jacobabad", "Jahanian", "Jalalpur Jattan", "Jampur", "Jamshoro", "Jatoi", "Jauharabad", "Jhelum",
+    "Kabirwala", "Kahror Pakka", "Kalat", "Kamalia", "Kamoke", "Kandhkot", "Karachi", "Karak", "Kasur", "Khairpur", "Khanewal", "Khanpur", "Kharian", "Khushab", "Kohat", "Kot Addu", "Kotri", "Kumbar", "Kunri",
+    "Lahore", "Laki Marwat", "Larkana", "Layyah", "Liaquatpur", "Lodhran", "Loralai",
+    "Mailsi", "Malakwal", "Mandi Bahauddin", "Mansehra", "Mardan", "Mastung", "Matiari", "Mian Channu", "Mianwali", "Mingora", "Mirpur", "Mirpur Khas", "Multan", "Muridke", "Muzaffarabad", "Muzaffargarh",
+    "Narowal", "Nawabshah", "Nowshera",
+    "Okara",
+    "Pakpattan", "Pasrur", "Pattoki", "Peshawar", "Pir Mahal",
+    "Quetta",
+    "Rahimyar Khan", "Rajanpur", "Rani Pur", "Rawalpindi", "Rohri", "Risalpur",
+    "Sadiqabad", "Sahiwal", "Saidu Sharif", "Sakrand", "Samundri", "Sanghar", "Sargodha", "Sheikhupura", "Shikarpur", "Sialkot", "Sibi", "Sukkur", "Swabi", "Swat",
+    "Talagang", "Tandlianwala", "Tando Adam", "Tando Allahyar", "Tando Muhammad Khan", "Tank", "Taunsa", "Taxila", "Toba Tek Singh", "Turbat",
+    "Vehari",
+    "Wah Cantonment", "Wazirabad"
+  ];
 
   XFile? _profileImage;
   XFile? _medicalLicenseFront;
@@ -69,10 +93,6 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
     return RegExp(r'^\+?[\d\s-]{10,}$').hasMatch(phone);
   }
 
-  bool _isValidZipCode(String zipCode) {
-    return RegExp(r'^\d{5}(-\d{4})?$').hasMatch(zipCode);
-  }
-
   bool _validateFields() {
     // Commenting out validation for debugging
     /*
@@ -80,10 +100,7 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
         _emailController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _addressController.text.isEmpty ||
-        _cityController.text.isEmpty ||
-        _stateController.text.isEmpty ||
-        _countryController.text.isEmpty ||
-        _zipCodeController.text.isEmpty ||
+        _selectedCity == null ||
         _profileImage == null ||
         _medicalLicenseFront == null ||
         _medicalLicenseBack == null ||
@@ -112,16 +129,6 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid phone number'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
-    }
-
-    if (!_isValidZipCode(_zipCodeController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid zip code'),
           backgroundColor: Colors.red,
         ),
       );
@@ -266,6 +273,290 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
     );
   }
 
+  // Text area widget for address
+  Widget _buildTextArea({
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: 3,
+        textAlignVertical: TextAlignVertical.top,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          color: Colors.black87,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.poppins(
+            color: Colors.grey.shade600,
+            fontSize: 14,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 8, top: 16),
+            child: Icon(
+              icon,
+              color: const Color(0xFF3366CC),
+              size: 20,
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 40,
+            minHeight: 40,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        ),
+      ),
+    );
+  }
+  
+  // City dropdown widget with enhanced design
+  Widget _buildCityDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: _selectedCity != null 
+              ? const Color(0xFF3366CC)
+              : Colors.grey.shade300,
+          width: 1.5,
+        ),
+        gradient: _selectedCity != null 
+            ? LinearGradient(
+                colors: [
+                  Colors.white,
+                  const Color(0xFF3366CC).withOpacity(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              )
+            : null,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          popupMenuTheme: PopupMenuThemeData(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          canvasColor: Colors.white,
+          dividerColor: Colors.transparent,
+          shadowColor: const Color(0xFF3366CC).withOpacity(0.2),
+        ),
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButtonFormField<String>(
+            value: _selectedCity,
+            isExpanded: true,
+            isDense: false,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _selectedCity != null
+                    ? const Color(0xFF3366CC).withOpacity(0.15)
+                    : const Color(0xFF3366CC).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                LucideIcons.chevronDown,
+                color: _selectedCity != null
+                    ? const Color(0xFF3366CC)
+                    : const Color(0xFF3366CC).withOpacity(0.7),
+                size: 16,
+              ),
+            ),
+            dropdownColor: Colors.white,
+            menuMaxHeight: 350,
+            itemHeight: 50,
+            elevation: 8,
+            borderRadius: BorderRadius.circular(16),
+            decoration: InputDecoration(
+              hintText: "Select City",
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+              prefixIcon: Container(
+                padding: const EdgeInsets.all(12),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (_selectedCity != null)
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3366CC).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    Icon(
+                      LucideIcons.building2,
+                      color: const Color(0xFF3366CC),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+              suffixIcon: _selectedCity != null
+                  ? GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCity = null;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 46),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.x,
+                          color: Colors.grey.shade700,
+                          size: 12,
+                        ),
+                      ),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            selectedItemBuilder: (BuildContext context) {
+              return _pakistaniCities.map<Widget>((String city) {
+                return Container(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    city,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList();
+            },
+            items: _pakistaniCities.map((String city) {
+              // Group cities by first letter for better organization
+              bool isFirstWithLetter = _pakistaniCities.indexOf(city) == 0 || 
+                  _pakistaniCities[_pakistaniCities.indexOf(city) - 1][0] != city[0];
+              
+              return DropdownMenuItem<String>(
+                value: city,
+                child: SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      // Section for the letter grouping indicator (if first letter)
+                      if (isFirstWithLetter)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3366CC).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            city[0],
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: const Color(0xFF3366CC),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      
+                      // Checkbox indicator
+                      Container(
+                        width: 16,
+                        height: 16,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: _selectedCity == city
+                              ? const Color(0xFF3366CC)
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: _selectedCity == city
+                                ? const Color(0xFF3366CC)
+                                : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: _selectedCity == city
+                            ? const Center(
+                                child: Icon(
+                                  Icons.check,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
+                      
+                      // City name
+                      Expanded(
+                        child: Text(
+                          city,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: _selectedCity == city
+                                ? const Color(0xFF3366CC)
+                                : Colors.black87,
+                            fontWeight: _selectedCity == city
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedCity = newValue;
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -294,13 +585,21 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
             children: [
               // Profile Picture Section
               Container(
-                padding: const EdgeInsets.all(20),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF3366CC).withOpacity(0.8),
+                      const Color(0xFF6699FF).withOpacity(0.9),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF3366CC).withOpacity(0.1),
+                      color: const Color(0xFF3366CC).withOpacity(0.2),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -308,70 +607,110 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
                 ),
                 child: Column(
                   children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF3366CC),
-                              width: 2,
-                            ),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 8),
                           ),
-                          child: ClipOval(
-                            child: _profileImage != null
-                                ? Image.file(
-                                    File(_profileImage!.path),
-                                    fit: BoxFit.cover,
-                                  )
-                                : Container(
-                                    color: Colors.grey.shade200,
-                                    child: Icon(
-                                      LucideIcons.user,
-                                      size: 50,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: GestureDetector(
-                            onTap: () => _pickImage(ImageSource.gallery),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3366CC),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                _profileImage == null ? LucideIcons.camera : LucideIcons.refreshCw,
+                        ],
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 130,
+                            height: 130,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
                                 color: Colors.white,
-                                size: 20,
+                                width: 3,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: _profileImage != null
+                                  ? Image.file(
+                                      File(_profileImage!.path),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.9),
+                                            Colors.white.withOpacity(0.7),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        LucideIcons.user,
+                                        size: 60,
+                                        color: const Color(0xFF3366CC).withOpacity(0.7),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 4,
+                            bottom: 4,
+                            child: GestureDetector(
+                              onTap: () => _pickImage(ImageSource.gallery),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  _profileImage == null ? LucideIcons.camera : LucideIcons.refreshCw,
+                                  color: const Color(0xFF3366CC),
+                                  size: 22,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Profile Picture",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            LucideIcons.imageUp,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Profile Picture",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -601,7 +940,7 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          "Address",
+                          "Address Information",
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -611,32 +950,12 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                      hint: "Address",
+                    _buildTextArea(
+                      hint: "Complete Address",
                       icon: LucideIcons.building,
                       controller: _addressController,
                     ),
-                    _buildTextField(
-                      hint: "City",
-                      icon: LucideIcons.building2,
-                      controller: _cityController,
-                    ),
-                    _buildTextField(
-                      hint: "State",
-                      icon: LucideIcons.map,
-                      controller: _stateController,
-                    ),
-                    _buildTextField(
-                      hint: "Country",
-                      icon: LucideIcons.globe,
-                      controller: _countryController,
-                    ),
-                    _buildTextField(
-                      hint: "Zip Code",
-                      icon: LucideIcons.mapPin,
-                      controller: _zipCodeController,
-                      keyboardType: TextInputType.number,
-                    ),
+                    _buildCityDropdown(),
                   ],
                 ),
               ),

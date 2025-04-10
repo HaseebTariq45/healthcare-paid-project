@@ -34,94 +34,25 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     profileStatus = widget.profileStatus;
     userType = widget.userType;
-    // Show popup automatically if the profile is not complete
+    
+    // Auto-redirect to profile completion screens if profile is incomplete
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (profileStatus != "complete") {
-        showPopup(context);
+        if (userType == "Doctor") {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const DoctorProfilePage1Screen(),
+            ),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const CompleteProfileScreen(),
+            ),
+          );
+        }
       }
     });
-  }
-
-  void showPopup(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible:
-          false, // Prevent closing the dialog when tapping outside
-      builder: (BuildContext context) {
-        return Stack(
-          children: [
-            // Blurred background effect
-            BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 5,
-                sigmaY: 5,
-              ), // Adjust blur intensity
-              child: Container(
-                color: const Color.fromARGB(
-                  30,
-                  0,
-                  0,
-                  0,
-                ), // Darken background slightly
-              ),
-            ),
-            AlertDialog(
-              backgroundColor: const Color.fromRGBO(64, 124, 226, 1),
-              title: Padding(
-                padding: const EdgeInsets.only(top: 30, bottom: 20),
-                child: Center(
-                  child: Text(
-                    "Please Complete Your Profile first",
-                    style: GoogleFonts.poppins(fontSize: 20, color: Colors.white),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              actions: [
-                InkWell(
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => userType == "Doctor" 
-                          ? const DoctorProfilePage1Screen() 
-                          : const CompleteProfileScreen(),
-                      ),
-                    );
-                  },
-                  child: Center(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(32),
-                        color: const Color.fromRGBO(217, 217, 217, 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color.fromRGBO(0, 0, 0, 0.25),
-                            blurRadius: 4,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      width: 100,
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Center(
-                        child: Text(
-                          "Proceed",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _onItemTapped(int index) {
