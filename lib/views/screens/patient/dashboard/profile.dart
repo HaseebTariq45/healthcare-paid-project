@@ -9,17 +9,20 @@ import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/patient/dashboard/patient_profile_details.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/views/screens/dashboard/menu.dart';
 
 class PatientMenuScreen extends StatefulWidget {
   final String name;
   final String role;
   final int profileCompletionPercentage;
+  final UserType userType;
   
   const PatientMenuScreen({
     super.key,
     this.name = "Amna",
     this.role = "Patient",
     this.profileCompletionPercentage = 0,
+    this.userType = UserType.patient,
   });
 
   @override
@@ -42,7 +45,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
       MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen()),
       // MenuItem("Medical Records", LucideIcons.fileText, null),
       MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen()),
-      MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen()),
+      MenuItem("Payment Methods", LucideIcons.creditCard, PaymentMethodsScreen(userType: widget.userType)),
       MenuItem("FAQs", LucideIcons.info, const FAQScreen()),
       MenuItem("Help Center", LucideIcons.headphones, null),
     ];

@@ -82,56 +82,44 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                  // EasyPaisa Logo and Branding
+                  // EasyPaisa Section
                   Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Color(0xFFF5FFF5),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color(0xFF4CAF50).withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                      color: const Color(0xFFF4FFF5),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    width: double.infinity,
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF4CAF50).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Icon(
-                            LucideIcons.wallet,
-                            color: Color(0xFF4CAF50),
-                            size: 32,
-                          ),
+                        Icon(
+                          LucideIcons.wallet,
+                          color: const Color(0xFF4CAF50),
+                          size: 28,
                         ),
-                        SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "EasyPaisa",
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF4CAF50),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "EasyPaisa",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Mobile Wallet Payment",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
+                              Text(
+                                "Pay via EasyPaisa Mobile Account",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.black54,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),

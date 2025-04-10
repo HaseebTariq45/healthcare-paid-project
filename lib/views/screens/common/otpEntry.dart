@@ -2,13 +2,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 // Import your custom onboarding AppBar, if needed
+import 'package:healthcare/services/auth_service.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/components/signup.dart';
 import 'package:healthcare/views/screens/dashboard/home.dart';
+import 'package:healthcare/views/screens/admin/admin_dashboard.dart';
 
 class OTPScreen extends StatefulWidget {
   final String text; // Contains "Sign Up as a Doctor" or "Sign Up as a Patient"
-  const OTPScreen({super.key, required this.text});
+  final String phoneNumber;
+  
+  const OTPScreen({
+    Key? key, 
+    required this.text,
+    this.phoneNumber = "",
+  }) : super(key: key);
 
   @override
   State<OTPScreen> createState() => _OTPScreenState();
@@ -17,6 +25,8 @@ class OTPScreen extends StatefulWidget {
 class _OTPScreenState extends State<OTPScreen> {
   late String text;
   late String userType;
+  late String phoneNumber;
+  final AuthService _authService = AuthService();
 
   Timer? _timer;
   int _start = 60;
@@ -31,6 +41,7 @@ class _OTPScreenState extends State<OTPScreen> {
   void initState() {
     super.initState();
     text = widget.text;
+    phoneNumber = widget.phoneNumber;
     // Extract user type from text (e.g., "Sign Up as a Doctor" -> "Doctor")
     userType = text.contains("Doctor") ? "Doctor" : "Patient";
     startTimer();
@@ -164,22 +175,43 @@ class _OTPScreenState extends State<OTPScreen> {
                 onTap: () {
                   final otp = _controllers.map((c) => c.text).join();
                   debugPrint("Entered OTP: $otp");
-                  // Clear OTP fields when Confirm OTP is pressed
-                  setState(() {
-                    for (final controller in _controllers) {
-                      controller.clear();
-                    }
-                  });
 
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HomeScreen(
-                        profileStatus: "incomplete",
-                        userType: userType,
+                  // Check for admin credentials
+                  if (_authService.isAdminCredentials(phoneNumber, otp)) {
+                    debugPrint("Admin login detected");
+                    // Clear OTP fields
+                    setState(() {
+                      for (final controller in _controllers) {
+                        controller.clear();
+                      }
+                    });
+                    
+                    // Navigate to admin dashboard
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AdminDashboard(),
                       ),
-                    ),
-                  );
+                    );
+                  } else {
+                    // Regular user authentication
+                    // Clear OTP fields 
+                    setState(() {
+                      for (final controller in _controllers) {
+                        controller.clear();
+                      }
+                    });
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HomeScreen(
+                          profileStatus: "incomplete",
+                          userType: userType,
+                        ),
+                      ),
+                    );
+                  }
                   FocusScope.of(context).unfocus();
                 },
                 child: ProceedButton(isEnabled: true, text: "Confirm OTP"),

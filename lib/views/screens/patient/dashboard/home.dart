@@ -113,7 +113,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     DiseaseCategory(
       name: "Dentistry",
       nameUrdu: "دانتوں کے امراض",
-      icon: Icons.emoji_emotions,
+      icon: Icons.healing,
       color: Color(0xFF607D8B),
       description: "Dental care specialists",
     ),
@@ -127,14 +127,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     DiseaseCategory(
       name: "Pulmonology",
       nameUrdu: "پھیپھڑوں کے امراض",
-      icon: Icons.air_rounded,
+      icon: Icons.air,
       color: Color(0xFF009688),
       description: "Lung and respiratory specialists",
     ),
     DiseaseCategory(
       name: "Gastrology",
       nameUrdu: "معدے کے امراض",
-      icon: Icons.medical_services,
+      icon: Icons.local_dining,
       color: Color(0xFFFF5722),
       description: "Digestive system specialists",
     ),

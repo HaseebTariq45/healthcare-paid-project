@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/appointment/appointment_booking_flow.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-// Material Icons is already imported as part of Flutter Material package
 
 class DoctorsScreen extends StatefulWidget {
   final String? specialty;
@@ -129,7 +128,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           children: [
             _buildHeader(),
             _buildSearchBar(),
-            _buildCategoryTabs(),
+                  _buildCategoryTabs(),
                   Expanded(
                     child: _buildDoctorsList(),
             ),
@@ -170,8 +169,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               color: Colors.white,
-              ),
             ),
+          ),
           ),
           Container(
             padding: const EdgeInsets.all(8),
@@ -184,7 +183,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 _showFilterDialog();
               },
               child: const Icon(
-                LucideIcons.settings,
+                Icons.filter_list,
                 color: Colors.white,
                 size: 20,
               ),
@@ -232,7 +231,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     : null,
                   border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 15),
-          ),
+                ),
         ),
       ),
     );
@@ -269,8 +268,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                             color: const Color(0xFF3366CC).withOpacity(0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
-                          ),
-                        ]
+                        ),
+                      ]
                       : null,
               ),
               alignment: Alignment.center,
@@ -389,7 +388,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 CircleAvatar(
                   radius: 40,
                   backgroundImage: AssetImage(doctor["image"]),
-                ),
+                      ),
                 const SizedBox(width: 16),
                   Expanded(
                     child: Column(
@@ -467,7 +466,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                               fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
-                          ),
+                            ),
                           const SizedBox(width: 16),
                           Icon(
                               LucideIcons.briefcase,
@@ -504,11 +503,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           ),
                           
                           const SizedBox(width: 16),
-                          Icon(
-                            LucideIcons.mapPin,
+                            Icon(
+                              LucideIcons.mapPin,
                             color: Colors.red.shade400,
                             size: 16,
-                          ),
+                            ),
                           const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -541,8 +540,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                 borderRadius: BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
-        ),
-      ),
+                ),
+              ),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
@@ -562,7 +561,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                             fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
-                      ),
+                          ),
                       IconButton(
                         icon: const Icon(LucideIcons.x),
                         onPressed: () => Navigator.pop(context),
@@ -572,14 +571,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                   const SizedBox(height: 15),
                   
                   // Rating filter
-                  Text(
+                        Text(
                     "Rating",
-                    style: GoogleFonts.poppins(
+                          style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
-                    ),
-                  ),
+                          ),
+                        ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 10,
@@ -597,9 +596,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                         () => setState(() {
                           selectedRating = "4+";
                         }),
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 15),
                   
                   // Online/In-person filter
@@ -663,7 +662,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        ),
+                      ),
                     ),
                     child: Text(
                         "Apply Filters",

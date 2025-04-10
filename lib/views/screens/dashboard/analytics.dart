@@ -5,6 +5,7 @@ import 'package:healthcare/views/screens/analytics/financial_analysis.dart';
 import 'package:healthcare/views/screens/analytics/patients.dart';
 import 'package:healthcare/views/screens/analytics/performance_analysis.dart';
 import 'package:healthcare/views/screens/analytics/reports.dart';
+import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 
@@ -146,6 +147,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       iconColor: Color(0xFF03A9F4),
                 onPressed: () {
                   NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
+                },
+              ),
+              _buildAnalyticsCard(
+                      icon: LucideIcons.calendar,
+                title: "Manage Availability",
+                      description: "Set your schedule & locations",
+                      bgColor: Color(0xFFE8EAF6),
+                      iconColor: Color(0xFF3F51B5),
+                onPressed: () {
+                  NavigationHelper.navigateWithBottomBar(context, DoctorAvailabilityScreen());
                 },
               ),
               _buildAnalyticsCard(

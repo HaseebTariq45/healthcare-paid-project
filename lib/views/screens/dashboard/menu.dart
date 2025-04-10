@@ -9,6 +9,7 @@ import 'package:healthcare/views/screens/menu/withdrawal_history.dart';
 import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
 import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
+import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 
@@ -43,9 +44,9 @@ class _MenuScreenState extends State<MenuScreen> {
     if (widget.userType == UserType.doctor) {
       menuItems = [
         MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Update Availability", LucideIcons.calendar, const SetAvailabilityScreen(), category: "Appointment"),
+        MenuItem("Update Availability", LucideIcons.calendar, const DoctorAvailabilityScreen(), category: "Appointment"),
         MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-        MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen(), category: "Payment"),
+        MenuItem("Payment Methods", LucideIcons.creditCard, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
         MenuItem("Withdrawal History", LucideIcons.wallet, const WithdrawalHistoryScreen(), category: "Payment"),
         MenuItem("FAQs", LucideIcons.info, const FAQScreen(), category: "Support"),
         MenuItem("Help Center", LucideIcons.headphones, null, category: "Support"),
@@ -57,7 +58,7 @@ class _MenuScreenState extends State<MenuScreen> {
         MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen(), category: "Account"),
         MenuItem("Medical Records", LucideIcons.fileText, null, category: "Health"),
         MenuItem("Appointments History", LucideIcons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-        MenuItem("Payment Methods", LucideIcons.creditCard, const PaymentMethodsScreen(), category: "Payment"),
+        MenuItem("Payment Methods", LucideIcons.creditCard, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
         MenuItem("FAQs", LucideIcons.info, const FAQScreen(), category: "Support"),
         MenuItem("Help Center", LucideIcons.headphones, null, category: "Support"),
         MenuItem("Logout", LucideIcons.logOut, null, category: ""),

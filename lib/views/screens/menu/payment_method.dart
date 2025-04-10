@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/views/screens/dashboard/menu.dart'; // Add this import
 
 class PaymentMethodsScreen extends StatefulWidget {
-  const PaymentMethodsScreen({super.key});
+  final UserType userType;
+  
+  const PaymentMethodsScreen({
+    super.key,
+    required this.userType, // Remove the default value so it must be provided
+  });
 
   @override
   State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
@@ -19,7 +24,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       "expiry": "12/27",
       "cvv": "333",
       "color": "0xFF3366FF", // Blue color
-      "icon": LucideIcons.creditCard,
+      "icon": Icons.credit_card,
       "bank_logo": "assets/images/User.png", // Replace with actual logo
       "default": true,
     },
@@ -31,7 +36,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       "expiry": "09/26",
       "cvv": "444",
       "color": "0xFF8E44AD", // Purple color
-      "icon": LucideIcons.creditCard,
+      "icon": Icons.credit_card,
       "bank_logo": "assets/images/User.png", // Replace with actual logo
       "default": false,
     },
@@ -41,13 +46,84 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       "holder": "Dr. Asmara Singh",
       "number": "0300 - 1112223",
       "color": "0xFFC2554D", // Red color
-      "icon": LucideIcons.wallet,
+      "icon": Icons.account_balance_wallet,
       "bank_logo": "assets/images/User.png", // Replace with actual logo
       "default": false,
     },
   ];
 
+  // Doctor's banking information
+  Map<String, dynamic> bankAccount = {
+    "bankName": "Allied Bank Limited",
+    "accountTitle": "Dr. Asmara Singh",
+    "accountNumber": "1234-5678-9012-3456",
+    "iban": "PK36ABPA0010001234567",
+    "branchCode": "0651",
+    "swiftCode": "ABPAPKKA",
+    "color": "0xFF3366FF", // Blue color
+  };
+
   int _selectedPaymentIndex = 0;
+  final TextEditingController _bankNameController = TextEditingController();
+  final TextEditingController _accountTitleController = TextEditingController();
+  final TextEditingController _accountNumberController = TextEditingController();
+  final TextEditingController _ibanController = TextEditingController();
+  final TextEditingController _branchCodeController = TextEditingController();
+  final TextEditingController _swiftCodeController = TextEditingController();
+  bool _bankInfoEdited = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBankAccountControllers();
+  }
+
+  void _initBankAccountControllers() {
+    _bankNameController.text = bankAccount["bankName"] ?? "";
+    _accountTitleController.text = bankAccount["accountTitle"] ?? "";
+    _accountNumberController.text = bankAccount["accountNumber"] ?? "";
+    _ibanController.text = bankAccount["iban"] ?? "";
+    _branchCodeController.text = bankAccount["branchCode"] ?? "";
+    _swiftCodeController.text = bankAccount["swiftCode"] ?? "";
+  }
+
+  @override
+  void dispose() {
+    _bankNameController.dispose();
+    _accountTitleController.dispose();
+    _accountNumberController.dispose();
+    _ibanController.dispose();
+    _branchCodeController.dispose();
+    _swiftCodeController.dispose();
+    super.dispose();
+  }
+
+  void _saveBankAccountInfo() {
+    setState(() {
+      bankAccount = {
+        "bankName": _bankNameController.text,
+        "accountTitle": _accountTitleController.text,
+        "accountNumber": _accountNumberController.text,
+        "iban": _ibanController.text,
+        "branchCode": _branchCodeController.text,
+        "swiftCode": _swiftCodeController.text,
+        "color": bankAccount["color"],
+      };
+      _bankInfoEdited = false;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Bank account information saved successfully"),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,11 +133,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         leading: IconButton(
-          icon: Icon(LucideIcons.arrowLeft, color: Color(0xFF333333), size: 24),
+          icon: Icon(Icons.arrow_back, color: Color(0xFF333333), size: 24),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Payment Methods",
+          widget.userType == UserType.doctor ? "Payment Account" : "Payment Methods",
           style: GoogleFonts.poppins(
             color: Color(0xFF333333),
             fontWeight: FontWeight.w600,
@@ -71,18 +147,20 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(LucideIcons.info, color: Color(0xFF3366FF), size: 22),
+            icon: Icon(Icons.info_outline, color: Color(0xFF3366FF), size: 22),
             onPressed: () {
-              // Show payment help dialog
+              // Show payment help dialog based on user type
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text(
-                    "Payment Help",
+                    widget.userType == UserType.doctor ? "Payment Account Help" : "Payment Help",
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                   ),
                   content: Text(
-                    "You can add multiple payment methods and set a default one for quicker checkout.",
+                    widget.userType == UserType.doctor 
+                        ? "Please provide your bank account details to receive payments from patients."
+                        : "You can add multiple payment methods and set a default one for quicker checkout.",
                     style: GoogleFonts.poppins(),
                   ),
                   actions: [
@@ -103,295 +181,394 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: widget.userType == UserType.doctor ? _buildDoctorPaymentView() : _buildPatientPaymentView(),
+      floatingActionButton: widget.userType == UserType.doctor
+          ? (_bankInfoEdited ? FloatingActionButton(
+              onPressed: _saveBankAccountInfo,
+              backgroundColor: Color(0xFF3366FF),
+              elevation: 2,
+              child: Icon(Icons.save, color: Colors.white),
+            ) : null)
+          : FloatingActionButton(
+              onPressed: () {
+                // Show bottom sheet to add new payment method (for patients only)
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => Container(
+                    height: MediaQuery.of(context).size.height * 0.75,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card preview section
-          Container(
-            height: 220,
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: PageView.builder(
-              controller: PageController(viewportFraction: 0.9),
-              onPageChanged: (index) {
-                setState(() {
-                  _selectedPaymentIndex = index;
-                });
-              },
-              itemCount: paymentMethods.length,
-              itemBuilder: (context, index) {
-                return _buildPaymentCard(paymentMethods[index], index);
-              },
-            ),
-          ),
-          
-          // Page indicator
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              paymentMethods.length,
-              (index) => AnimatedContainer(
-                duration: Duration(milliseconds: 300),
-                margin: EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: _selectedPaymentIndex == index ? 24 : 8,
-                decoration: BoxDecoration(
-                  color: _selectedPaymentIndex == index
-                      ? Color(0xFF3366FF)
-                      : Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Add Payment Method",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.close),
+                                onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            "Select Method",
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          _buildMethodOption(
+                            "Credit Card",
+                            Icons.credit_card,
+                            Color(0xFF3366FF),
+                            () {
+                              Navigator.pop(context);
+                              _showAddPaymentBottomSheet("Card", "Credit Card", null);
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          _buildMethodOption(
+                            "Debit Card",
+                            Icons.account_balance,
+                            Color(0xFF4CAF50),
+                            () {
+                              Navigator.pop(context);
+                              _showAddPaymentBottomSheet("Card", "Debit Card", null);
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          _buildMethodOption(
+                            "Mobile Wallet",
+                            Icons.smartphone,
+                            Color(0xFFC2554D),
+                            () {
+                              Navigator.pop(context);
+                              _showAddPaymentBottomSheet("Wallet", "Mobile Wallet", null);
+                            },
+                          ),
+                        ],
                 ),
               ),
             ),
-          ),
-          
-          SizedBox(height: 30),
-          
-          // Payment details section
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+                );
+              },
+              backgroundColor: Color(0xFF3366FF),
+              elevation: 2,
+              child: Icon(Icons.add, color: Colors.white),
+            ),
+    );
+  }
+
+  // Build doctor payment view with bank account details
+  Widget _buildDoctorPaymentView() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+          // Bank account card
+          _buildBankAccountCard(),
+          SizedBox(height: 30),
+          
+          // Bank account details form
                 Text(
-                  "Card Information",
+            "Bank Account Information",
                   style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF333333),
                   ),
                 ),
-                SizedBox(height: 20),
-                
-                // Card details
-                _buildDetailsRow(
-                  "Card Holder",
-                  paymentMethods[_selectedPaymentIndex]["holder"],
-                  LucideIcons.user,
+          SizedBox(height: 16),
+          
+          // Bank name
+          _buildBankFormField(
+            "Bank Name",
+            Icons.business,
+            _bankNameController,
+            "Enter bank name",
+            onChanged: (value) => setState(() => _bankInfoEdited = true),
                 ),
                 SizedBox(height: 16),
-                _buildDetailsRow(
-                  "Card Number",
-                  paymentMethods[_selectedPaymentIndex]["number"],
-                  LucideIcons.creditCard,
-                ),
-                if (paymentMethods[_selectedPaymentIndex]["expiry"] != null) ...[
+          
+          // Account title
+          _buildBankFormField(
+            "Account Title",
+            Icons.person,
+            _accountTitleController,
+            "Enter account title",
+            onChanged: (value) => setState(() => _bankInfoEdited = true),
+          ),
                   SizedBox(height: 16),
-                  _buildDetailsRow(
-                    "Expiry Date",
-                    paymentMethods[_selectedPaymentIndex]["expiry"],
-                    LucideIcons.calendar,
-                  ),
-                ],
-                
-                SizedBox(height: 30),
-                
-                // Action buttons
+          
+          // Account number
+          _buildBankFormField(
+            "Account Number",
+            Icons.tag,
+            _accountNumberController,
+            "Enter account number",
+            onChanged: (value) => setState(() => _bankInfoEdited = true),
+          ),
+          SizedBox(height: 16),
+          
+          // IBAN
+          _buildBankFormField(
+            "IBAN",
+            Icons.account_balance,
+            _ibanController,
+            "Enter IBAN number",
+            onChanged: (value) => setState(() => _bankInfoEdited = true),
+          ),
+          SizedBox(height: 16),
+          
+          // Two fields in one row: Branch Code and Swift Code
                 Row(
                   children: [
                     Expanded(
-                      child: _buildActionButton(
-                        "Edit",
-                        LucideIcons.pencil,
-                        Color(0xFF3366FF),
-                        () {
-                          _showEditPaymentBottomSheet(paymentMethods[_selectedPaymentIndex]);
-                        },
+                child: _buildBankFormField(
+                  "Branch Code",
+                  Icons.numbers,
+                  _branchCodeController,
+                  "Enter branch code",
+                  onChanged: (value) => setState(() => _bankInfoEdited = true),
                       ),
                     ),
                     SizedBox(width: 16),
                     Expanded(
-                      child: _buildActionButton(
-                        "Remove",
-                        LucideIcons.trash2,
-                        Colors.red,
-                        () {
-                          // Show beautiful confirmation dialog for removing payment method
-                          showGeneralDialog(
-                            context: context,
-                            barrierDismissible: true,
-                            barrierLabel: "Remove Payment Method",
-                            barrierColor: Colors.black.withOpacity(0.5),
-                            transitionDuration: Duration(milliseconds: 300),
-                            pageBuilder: (context, animation1, animation2) => Container(),
-                            transitionBuilder: (context, animation, secondaryAnimation, child) {
-                              final curvedAnimation = CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutBack,
-                              );
-                              
-                              return ScaleTransition(
-                                scale: Tween<double>(begin: 0.8, end: 1.0).animate(curvedAnimation),
-                                child: FadeTransition(
-                                  opacity: Tween<double>(begin: 0.5, end: 1.0).animate(curvedAnimation),
-                                  child: Dialog(
-                                    backgroundColor: Colors.transparent,
-        elevation: 0,
-                                    child: Container(
+                child: _buildBankFormField(
+                  "Swift Code",
+                  Icons.code,
+                  _swiftCodeController,
+                  "Enter swift code",
+                  onChanged: (value) => setState(() => _bankInfoEdited = true),
+                ),
+              ),
+            ],
+          ),
+          
+          SizedBox(height: 30),
+          
+          // Information note
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Color(0xFFF2F8FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Color(0xFF3366FF).withOpacity(0.2)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF3366FF),
+                  size: 22,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Payment Information",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "All payments from patients will be transferred to this bank account. Payments are typically processed within 1-3 business days.",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 50),
+        ],
+      ),
+    );
+  }
+
+  // Build bank account card for doctors
+  Widget _buildBankAccountCard() {
+    return Container(
                                       width: double.infinity,
-                                      padding: EdgeInsets.zero,
+      height: 200,
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(24),
+        color: Color(int.parse(bankAccount["color"])),
+        borderRadius: BorderRadius.circular(20),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 20,
-                                            offset: Offset(0, 10),
-                                          ),
-                                        ],
-                                      ),
-        child: Column(
-                                        mainAxisSize: MainAxisSize.min,
+            color: Color(int.parse(bankAccount["color"])).withOpacity(0.4),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(int.parse(bankAccount["color"])),
+            Color(int.parse(bankAccount["color"])).withAlpha(220),
+          ],
+        ),
+      ),
+      child: Stack(
           children: [
-                                          // Top section with illustration
-                                          Container(
-                                            padding: EdgeInsets.all(20),
+          // Card decoration elements
+          Positioned(
+            top: -20,
+            right: -20,
+            child: Container(
+              width: 120,
+              height: 120,
                                             decoration: BoxDecoration(
-                                              color: Color(0xFFFFF0F0),
-                                              borderRadius: BorderRadius.only(
-                                                topLeft: Radius.circular(24),
-                                                topRight: Radius.circular(24),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                // Animated icon
-                                                TweenAnimationBuilder<double>(
-                                                  duration: Duration(milliseconds: 500),
-                                                  tween: Tween(begin: 0.0, end: 1.0),
-                                                  builder: (context, value, child) {
-                                                    return Transform.scale(
-                                                      scale: value,
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -30,
+            left: -30,
                                                       child: Container(
-                                                        width: 72,
-                                                        height: 72,
+              width: 160,
+              height: 160,
                                                         decoration: BoxDecoration(
-                                                          color: Colors.white,
+                color: Colors.white.withOpacity(0.1),
                                                           shape: BoxShape.circle,
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Color(0xFFE74C3C).withOpacity(0.2),
-                                                              blurRadius: 12,
-                                                              spreadRadius: 2,
+              ),
+            ),
+          ),
+          
+          // Card content
+          Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.business,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          "Bank Account",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                          ),
                                                             ),
                                                           ],
                                                         ),
-                                                        child: Center(
-                                                          child: TweenAnimationBuilder<double>(
-                                                            duration: Duration(milliseconds: 700),
-                                                            tween: Tween(begin: 0.0, end: 1.0),
-                                                            curve: Curves.elasticOut,
-                                                            builder: (context, value, child) {
-                                                              return Transform.scale(
-                                                                scale: value,
-                                                                child: Icon(
-                                                                  paymentMethods[_selectedPaymentIndex]["type"] == "Wallet" 
-                                                                    ? LucideIcons.wallet 
-                                                                    : LucideIcons.creditCard,
-                                                                  color: Color(0xFFE74C3C),
-                                                                  size: 34,
-                                                                ),
-                                                              );
-                                                            },
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                                SizedBox(height: 16),
-                                                // Text content
-                                                Text(
-                                                  "Remove Payment Method",
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF333333),
-                                                  ),
-                                                ),
-                                                SizedBox(height: 8),
-                                                Text(
-                                                  "Are you sure you want to remove\n${paymentMethods[_selectedPaymentIndex]["name"]}?",
-                                                  textAlign: TextAlign.center,
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 15,
-                                                    color: Color(0xFF666666),
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          
-                                          // Buttons section
-                                          Padding(
-                                            padding: EdgeInsets.all(20),
-                                            child: Row(
-                                              children: [
-                                                // Cancel button
-            Expanded(
-                                                  child: ElevatedButton(
-                                                    onPressed: () => Navigator.pop(context),
-                                                    style: ElevatedButton.styleFrom(
-                                                      foregroundColor: Color(0xFF333333),
-                                                      backgroundColor: Colors.white,
-                                                      elevation: 0,
-                                                      padding: EdgeInsets.symmetric(vertical: 14),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12),
-                                                        side: BorderSide(color: Colors.grey.shade300),
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      "Cancel",
-                                                      style: GoogleFonts.poppins(
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 16),
-                                                // Remove button
-                                                Expanded(
-                                                  child: ElevatedButton(
-                                                    onPressed: () {
-                                                      // Close dialog first
-                                                      Navigator.pop(context);
-                                                      
-                                                      // Handle removal of the payment method
-                                                      _removePaymentMethod(_selectedPaymentIndex);
-                                                    },
-                                                    style: ElevatedButton.styleFrom(
-                                                      foregroundColor: Colors.white,
-                                                      backgroundColor: Color(0xFFE74C3C),
-                                                      elevation: 0,
-                                                      padding: EdgeInsets.symmetric(vertical: 14),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      "Remove",
-                                                      style: GoogleFonts.poppins(
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
                       ),
+                                                                child: Icon(
+                        Icons.account_balance,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                Spacer(),
+                
+                // Account number
+                Text(
+                  _maskAccountNumber(bankAccount["accountNumber"] ?? ""),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1,
+                  ),
+                ),
+                
+                                                SizedBox(height: 16),
+                
+                // Bank name and account title in one row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                                                Text(
+                          "ACCOUNT HOLDER",
+                                                  style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 10,
+                                                  ),
+                                                ),
+                        SizedBox(height: 4),
+                                                Text(
+                          bankAccount["accountTitle"] ?? "",
+                                                  style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                        Text(
+                          "BANK NAME",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 10,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          bankAccount["bankName"] ?? "",
+                                                      style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                      ],
                     ),
                   ],
                 ),
@@ -400,91 +577,217 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Show bottom sheet to add new payment method
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
+    );
+  }
+
+  String _maskAccountNumber(String accountNumber) {
+    if (accountNumber.isEmpty) return "";
+    
+    // Keep the first 4 and last 4 digits, mask the rest
+    if (accountNumber.length > 8) {
+      final firstFour = accountNumber.substring(0, 4);
+      final lastFour = accountNumber.substring(accountNumber.length - 4);
+      final middleLength = accountNumber.length - 8;
+      final masked = "•" * middleLength;
+      
+      // Reinsert the same formatting
+      final formattedNumber = accountNumber.replaceAll(RegExp(r'\d'), '#');
+      String result = "";
+      int hashIndex = 0;
+      
+      for (int i = 0; i < formattedNumber.length; i++) {
+        if (formattedNumber[i] == '#') {
+          if (hashIndex < 4) {
+            result += firstFour[hashIndex];
+          } else if (hashIndex >= accountNumber.replaceAll(RegExp(r'[^0-9]'), '').length - 4) {
+            result += lastFour[hashIndex - (accountNumber.replaceAll(RegExp(r'[^0-9]'), '').length - 4)];
+          } else {
+            result += "•";
+          }
+          hashIndex++;
+        } else {
+          result += formattedNumber[i];
+        }
+      }
+      
+      return result;
+    }
+    
+    return accountNumber;
+  }
+
+  Widget _buildBankFormField(
+    String label,
+    IconData icon,
+    TextEditingController controller,
+    String hint, {
+    Function(String)? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+                                                      style: GoogleFonts.poppins(
+            fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+            color: Color(0xFF666666),
+          ),
+        ),
+        SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Color(0xFFF5F7FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              color: Color(0xFF333333),
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.grey.shade400,
+                fontSize: 15,
               ),
-              child: Padding(
-                padding: EdgeInsets.all(20),
+              prefixIcon: Icon(
+                icon,
+                color: Color(0xFF3366FF),
+                size: 20,
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      ),
+                                    ),
+                                  ),
+      ],
+    );
+  }
+
+  // Build patient payment view with card options
+  Widget _buildPatientPaymentView() {
+    return Column(
+      children: [
+        // Card preview section
+        Container(
+          height: 220,
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: PageView.builder(
+            controller: PageController(viewportFraction: 0.9),
+            onPageChanged: (index) {
+              setState(() {
+                _selectedPaymentIndex = index;
+              });
+            },
+            itemCount: paymentMethods.length,
+            itemBuilder: (context, index) {
+              return _buildPaymentCard(paymentMethods[index], index);
+                        },
+                      ),
+                    ),
+        
+        // Page indicator
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            paymentMethods.length,
+            (index) => AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              margin: EdgeInsets.symmetric(horizontal: 4),
+              height: 8,
+              width: _selectedPaymentIndex == index ? 24 : 8,
+              decoration: BoxDecoration(
+                color: _selectedPaymentIndex == index
+                    ? Color(0xFF3366FF)
+                    : Color(0xFFE0E0E0),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+        
+        SizedBox(height: 30),
+        
+        // Payment details section
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Add Payment Method",
+                paymentMethods[_selectedPaymentIndex]["type"] == "Wallet" 
+                    ? "Wallet Information" 
+                    : "Card Information",
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(LucideIcons.x),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
+                  color: Color(0xFF333333),
+                ),
                     ),
                     SizedBox(height: 20),
-                    Text(
-                      "Select Method",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+              
+              // Card details
+              _buildDetailsRow(
+                "Card Holder",
+                paymentMethods[_selectedPaymentIndex]["holder"],
+                Icons.person,
+              ),
+              SizedBox(height: 16),
+              _buildDetailsRow(
+                paymentMethods[_selectedPaymentIndex]["type"] == "Wallet" 
+                    ? "Mobile Number" 
+                    : "Card Number",
+                paymentMethods[_selectedPaymentIndex]["number"],
+                paymentMethods[_selectedPaymentIndex]["type"] == "Wallet" 
+                    ? Icons.smartphone 
+                    : Icons.credit_card,
+              ),
+              if (paymentMethods[_selectedPaymentIndex]["expiry"] != null) ...[
                     SizedBox(height: 16),
-                    _buildMethodOption(
-                      "Credit Card",
-                      LucideIcons.creditCard,
+                _buildDetailsRow(
+                  "Expiry Date",
+                  paymentMethods[_selectedPaymentIndex]["expiry"],
+                  Icons.calendar_today,
+                ),
+              ],
+              
+              SizedBox(height: 30),
+              
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionButton(
+                      "Edit",
+                      Icons.edit,
                       Color(0xFF3366FF),
                       () {
-                        Navigator.pop(context);
-                        _showAddPaymentBottomSheet("Card", "Credit Card", null);
+                        _showEditPaymentBottomSheet(paymentMethods[_selectedPaymentIndex]);
                       },
                     ),
-                    SizedBox(height: 12),
-                    _buildMethodOption(
-                      "Debit Card",
-                      LucideIcons.landmark,
-                      Color(0xFF4CAF50),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: _buildActionButton(
+                      "Remove",
+                      Icons.delete,
+                      Colors.red,
                       () {
-                        Navigator.pop(context);
-                        _showAddPaymentBottomSheet("Card", "Debit Card", null);
+                        // Show confirmation dialog for removing payment method
+                        _removePaymentMethod(_selectedPaymentIndex);
                       },
                     ),
-                    SizedBox(height: 12),
-                    _buildMethodOption(
-                      "Mobile Wallet",
-                      LucideIcons.smartphone,
-                      Color(0xFFC2554D),
-                      () {
-                        Navigator.pop(context);
-                        _showAddPaymentBottomSheet("Wallet", "Mobile Wallet", null);
-                      },
                     ),
                   ],
                 ),
-              ),
-            ),
-          );
-        },
-        backgroundColor: Color(0xFF3366FF),
-        elevation: 2,
-        child: Icon(LucideIcons.plus, color: Colors.white),
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -549,7 +852,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        payment["type"] == "Wallet" ? LucideIcons.wallet : LucideIcons.creditCard,
+                        payment["type"] == "Wallet" ? Icons.account_balance_wallet : Icons.credit_card,
                         color: Colors.white,
                         size: 18,
                       ),
@@ -637,7 +940,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      LucideIcons.check,
+                      Icons.check,
                       color: Color(int.parse(payment["color"])),
                       size: 14,
                     ),
@@ -737,52 +1040,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  Widget _buildMethodOption(String label, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 22,
-              ),
-            ),
-            SizedBox(width: 16),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-              fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF333333),
-              ),
-            ),
-            Spacer(),
-            Icon(
-              LucideIcons.chevronRight,
-              color: Colors.grey.shade400,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showEditPaymentBottomSheet(Map<String, dynamic> payment) {
     // Create controllers with existing values
     final holderController = TextEditingController(text: payment["holder"]);
@@ -811,7 +1068,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     Map<String, bool> fieldErrors = {
       'name': false,
       'holder': false,
-      'number': false, // Changed from conditional to false
+      'number': false,
       'expiry': false,
       'cvv': false,
     };
@@ -848,7 +1105,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(LucideIcons.x),
+                        icon: Icon(Icons.close),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -900,7 +1157,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              payment["type"] == "Wallet" ? LucideIcons.wallet : LucideIcons.creditCard,
+                              payment["type"] == "Wallet" ? Icons.account_balance_wallet : Icons.credit_card,
                               color: Colors.white,
                               size: 18,
                             ),
@@ -909,10 +1166,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       ),
                       Spacer(),
                       Text(
-                        payment["type"] == "Wallet" ? payment["number"] : 
-                            numberController.text.isEmpty || numberController.text.length < 16
-                            ? payment["number"] 
-                            : _formatCardNumberForDisplay(numberController.text),
+                        payment["number"],
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                   fontSize: 16,
@@ -932,7 +1186,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       children: [
                         // Card Name
                 Text(
-                          "Card Name",
+                          payment["type"] == "Wallet" ? "Wallet Type" : "Card Name",
                   style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -940,23 +1194,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           ),
                         ),
                         SizedBox(height: 8),
-                        TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 500),
-                          tween: Tween(begin: 0.0, end: fieldErrors['name']! ? 10.0 : 0.0),
-                          onEnd: () {
-                            if (fieldErrors['name']!) {
-                              setModalState(() {
-                                fieldErrors['name'] = false;
-                              });
-                            }
-                          },
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                              child: child,
-                            );
-                          },
-                          child: Container(
+                        
+                        // Use dropdown for wallet types, TextField for cards
+                        if (payment["type"] == "Wallet")
+                          Container(
                             decoration: BoxDecoration(
                               color: Color(0xFFF5F7FF),
                               borderRadius: BorderRadius.circular(12),
@@ -967,20 +1208,16 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 width: fieldErrors['name']! ? 1.5 : 1,
                               ),
                             ),
-                            child: TextField(
-                              controller: nameController,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color: Color(0xFF333333),
-                              ),
+                            child: DropdownButtonFormField<String>(
+                              value: nameController.text,
                               decoration: InputDecoration(
-                                hintText: "Enter card nickname",
+                                hintText: "Select wallet type",
                                 hintStyle: GoogleFonts.poppins(
                                   color: Colors.grey.shade400,
                                   fontSize: 15,
                                 ),
                                 prefixIcon: Icon(
-                                  LucideIcons.creditCard,
+                                  Icons.account_balance_wallet,
                                   color: fieldErrors['name']! 
                                       ? Colors.red 
                                       : Color(0xFF3366FF),
@@ -989,146 +1226,64 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                               ),
-                              onChanged: (value) {
-                                // Clear error state
-                                if (fieldErrors['name']!) {
-                                  setModalState(() {
-                                    fieldErrors['name'] = false;
-                                  });
-                                }
-                                
-                                // Update preview card name in real-time
-                                setModalState(() {});
-                              },
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: 20),
-                        Text(
-                          "Cardholder Name",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 500),
-                          tween: Tween(begin: 0.0, end: fieldErrors['holder']! ? 10.0 : 0.0),
-                          onEnd: () {
-                            if (fieldErrors['holder']!) {
-                              setModalState(() {
-                                fieldErrors['holder'] = false;
-                              });
-                            }
-                          },
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F7FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: fieldErrors['holder']! 
-                                    ? Colors.red 
-                                    : Colors.grey.shade200,
-                                width: fieldErrors['holder']! ? 1.5 : 1,
-                              ),
-                            ),
-                            child: TextField(
-                              controller: holderController,
                               style: GoogleFonts.poppins(
                                 fontSize: 15,
                                 color: Color(0xFF333333),
                               ),
-                              decoration: InputDecoration(
-                                hintText: "Enter cardholder name",
-                                hintStyle: GoogleFonts.poppins(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 15,
+                              dropdownColor: Colors.white,
+                              items: [
+                                DropdownMenuItem(
+                                  value: "EasyPaisa",
+                                  child: Text("EasyPaisa"),
                                 ),
-                                prefixIcon: Icon(
-                                  LucideIcons.user,
-                                  color: fieldErrors['holder']! 
-                                      ? Colors.red 
-                                      : Color(0xFF3366FF),
-                                  size: 20,
+                                DropdownMenuItem(
+                                  value: "JazzCash",
+                                  child: Text("JazzCash"),
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              ),
-                              onChanged: (value) {
-                                // Clear error state
-                                if (fieldErrors['holder']!) {
-                                  setModalState(() {
-                                    fieldErrors['holder'] = false;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                        
-                        // Card Number
-                        if (payment["type"] != "Wallet") ...[
-                          SizedBox(height: 20),
-                          Text(
-                            "Card Number",
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF666666),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TweenAnimationBuilder<double>(
-                            duration: Duration(milliseconds: 500),
-                            tween: Tween(begin: 0.0, end: fieldErrors['number']! ? 10.0 : 0.0),
-                            onEnd: () {
-                              if (fieldErrors['number']!) {
+                              ],
+                              onChanged: (String? value) {
+                                if (value != null) {
+                                  nameController.text = value;
+                                  
+                                  // Update wallet color based on selection
                                 setModalState(() {
-                                  fieldErrors['number'] = false;
+                                    if (value == "EasyPaisa") {
+                                      payment["color"] = "0xFF4CAF50"; // Green for EasyPaisa
+                                    } else if (value == "JazzCash") {
+                                      payment["color"] = "0xFFC2554D"; // Red for JazzCash
+                                    }
                                 });
                               }
                             },
-                            builder: (context, value, child) {
-                              return Transform.translate(
-                                offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                                child: child,
-                              );
-                            },
-                            child: Container(
+                            ),
+                          )
+                        else
+                          Container(
                               decoration: BoxDecoration(
                                 color: Color(0xFFF5F7FF),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: fieldErrors['number']! 
+                                color: fieldErrors['name']! 
                                       ? Colors.red 
                                       : Colors.grey.shade200,
-                                  width: fieldErrors['number']! ? 1.5 : 1,
+                                width: fieldErrors['name']! ? 1.5 : 1,
                                 ),
                               ),
                               child: TextField(
-                                controller: numberController,
+                              controller: nameController,
                                 style: GoogleFonts.poppins(
                                   fontSize: 15,
                                   color: Color(0xFF333333),
                                 ),
                                 decoration: InputDecoration(
-                                  hintText: "Enter 16-digit card number",
+                                hintText: "Enter card nickname",
                                   hintStyle: GoogleFonts.poppins(
                                     color: Colors.grey.shade400,
                                     fontSize: 15,
                                   ),
                                   prefixIcon: Icon(
-                                    LucideIcons.creditCard,
-                                    color: fieldErrors['number']! 
+                                  Icons.credit_card,
+                                  color: fieldErrors['name']! 
                                         ? Colors.red 
                                         : Color(0xFF3366FF),
                                     size: 20,
@@ -1136,47 +1291,23 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                   border: InputBorder.none,
                                   contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                 ),
-                                keyboardType: TextInputType.number,
-                                maxLength: 19, // 16 digits + 3 spaces
-                                buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
                                 onChanged: (value) {
                                   // Clear error state
-                                  if (fieldErrors['number']!) {
+                                if (fieldErrors['name']!) {
                                     setModalState(() {
-                                      fieldErrors['number'] = false;
-                                    });
-                                  }
-                                  
-                                  // Format the card number with spaces
-                                  final text = value.replaceAll(" ", "");
-                                  if (text.length <= 16) {
-                                    final formattedText = _formatCardNumber(text);
-                                    if (formattedText != value) {
-                                      numberController.value = TextEditingValue(
-                                        text: formattedText,
-                                        selection: TextSelection.collapsed(offset: formattedText.length),
-                                      );
-                                    }
-                                    // Update preview
+                                    fieldErrors['name'] = false;
+                                  });
+                                }
+                                
+                                // Update preview card name in real-time
                                     setModalState(() {});
-                                  }
                                 },
                               ),
                   ),
-                ),
-            ],
                         
-                        if (payment["expiry"] != null) ...[
                           SizedBox(height: 20),
-                          Row(
-                            children: [
-                              // Expiry Date
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
                                     Text(
-                                      "Expiry Date",
+                          payment["type"] == "Wallet" ? "Account Holder" : "Cardholder Name",
                                       style: GoogleFonts.poppins(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
@@ -1184,48 +1315,32 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                       ),
                                     ),
                                     SizedBox(height: 8),
-                                    TweenAnimationBuilder<double>(
-                                      duration: Duration(milliseconds: 500),
-                                      tween: Tween(begin: 0.0, end: fieldErrors['expiry']! ? 10.0 : 0.0),
-                                      onEnd: () {
-                                        if (fieldErrors['expiry']!) {
-                                          setModalState(() {
-                                            fieldErrors['expiry'] = false;
-                                          });
-                                        }
-                                      },
-                                      builder: (context, value, child) {
-                                        return Transform.translate(
-                                          offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                                          child: child,
-                                        );
-                                      },
-                                      child: Container(
+                        Container(
                                         decoration: BoxDecoration(
                                           color: Color(0xFFF5F7FF),
                                           borderRadius: BorderRadius.circular(12),
                                           border: Border.all(
-                                            color: fieldErrors['expiry']! 
+                              color: fieldErrors['holder']! 
                                                 ? Colors.red 
                                                 : Colors.grey.shade200,
-                                            width: fieldErrors['expiry']! ? 1.5 : 1,
+                              width: fieldErrors['holder']! ? 1.5 : 1,
                                           ),
                                         ),
                                         child: TextField(
-                                          controller: expiryController,
+                            controller: holderController,
                                           style: GoogleFonts.poppins(
                                             fontSize: 15,
                                             color: Color(0xFF333333),
                                           ),
                                           decoration: InputDecoration(
-                                            hintText: "MM/YY",
+                              hintText: payment["type"] == "Wallet" ? "Enter account holder name" : "Enter cardholder name",
                                             hintStyle: GoogleFonts.poppins(
                                               color: Colors.grey.shade400,
                                               fontSize: 15,
                                             ),
                                             prefixIcon: Icon(
-                                              LucideIcons.calendar,
-                                              color: fieldErrors['expiry']! 
+                                Icons.person,
+                                color: fieldErrors['holder']! 
                                                   ? Colors.red 
                                                   : Color(0xFF3366FF),
                                               size: 20,
@@ -1234,48 +1349,21 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                           ),
                                           onChanged: (value) {
-                                            if (fieldErrors['expiry']!) {
+                              // Clear error state
+                              if (fieldErrors['holder']!) {
                                               setModalState(() {
-                                                fieldErrors['expiry'] = false;
-                                              });
-                                            }
-                                            
-                                            // Check if month section is valid (01-12)
-                                            if (value.length == 2 && !value.contains('/')) {
-                                              // Convert input to integer
-                                              int? month = int.tryParse(value);
-                                              
-                                              // If month is greater than 12, set it to 12
-                                              if (month != null && month > 12) {
-                                                expiryController.text = '12/';
-                                              } else {
-                                                expiryController.text = value + '/';
-                                              }
-                                              
-                                              // Position cursor after the slash
-                                              expiryController.selection = TextSelection.fromPosition(
-                                                TextPosition(offset: expiryController.text.length),
-                                              );
-                                            }
-                                          },
-                                          maxLength: 5,
-                                          buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                                        ),
-                                      ),
-          ),
-        ],
-      ),
-                              ),
-                              
-                              // CVV
-                              if (payment["cvv"] != null) ...[
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
+                                  fieldErrors['holder'] = false;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                        
+                        // For wallet types, show mobile number field
+                        if (payment["type"] == "Wallet") ...[
+                          SizedBox(height: 20),
                                       Text(
-                                        "CVV",
+                            "Mobile Number",
                                         style: GoogleFonts.poppins(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
@@ -1283,48 +1371,32 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                         ),
                                       ),
                                       SizedBox(height: 8),
-                                      TweenAnimationBuilder<double>(
-                                        duration: Duration(milliseconds: 500),
-                                        tween: Tween(begin: 0.0, end: fieldErrors['cvv']! ? 10.0 : 0.0),
-                                        onEnd: () {
-                                          if (fieldErrors['cvv']!) {
-                                            setModalState(() {
-                                              fieldErrors['cvv'] = false;
-                                            });
-                                          }
-                                        },
-                                        builder: (context, value, child) {
-                                          return Transform.translate(
-                                            offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                                            child: child,
-                                          );
-                                        },
-                                        child: Container(
+                          Container(
                                           decoration: BoxDecoration(
                                             color: Color(0xFFF5F7FF),
                                             borderRadius: BorderRadius.circular(12),
                                             border: Border.all(
-                                              color: fieldErrors['cvv']! 
+                                color: fieldErrors['number']! 
                                                   ? Colors.red 
                                                   : Colors.grey.shade200,
-                                              width: fieldErrors['cvv']! ? 1.5 : 1,
+                                width: fieldErrors['number']! ? 1.5 : 1,
                                             ),
                                           ),
                                           child: TextField(
-                                            controller: cvvController,
+                              controller: numberController,
                                             style: GoogleFonts.poppins(
                                               fontSize: 15,
                                               color: Color(0xFF333333),
                                             ),
                                             decoration: InputDecoration(
-                                              hintText: "123",
+                                hintText: "03XX - XXXXXXX",
                                               hintStyle: GoogleFonts.poppins(
                                                 color: Colors.grey.shade400,
                                                 fontSize: 15,
                                               ),
                                               prefixIcon: Icon(
-                                                LucideIcons.shield,
-                                                color: fieldErrors['cvv']! 
+                                  Icons.smartphone,
+                                  color: fieldErrors['number']! 
                                                     ? Colors.red 
                                                     : Color(0xFF3366FF),
                                                 size: 20,
@@ -1332,26 +1404,29 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                               border: InputBorder.none,
                                               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                             ),
-                                            maxLength: 3,
-                                            obscureText: true,
-                                            keyboardType: TextInputType.number,
+                              keyboardType: TextInputType.phone,
+                              maxLength: 14, // 03XX - XXXXXXX
                                             buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
                                             onChanged: (value) {
                                               // Clear error state
-                                              if (fieldErrors['cvv']!) {
+                                if (fieldErrors['number']!) {
                                                 setModalState(() {
-                                                  fieldErrors['cvv'] = false;
-                                                });
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
+                                    fieldErrors['number'] = false;
+                                  });
+                                }
+                                
+                                // Format phone number with a hyphen after the 4 first digits
+                                if (value.length == 4 && !value.contains(" - ")) {
+                                  numberController.text = value + " - ";
+                                  numberController.selection = TextSelection.fromPosition(
+                                    TextPosition(offset: numberController.text.length),
+                                  );
+                                }
+                                
+                                // Update preview
+                                setModalState(() {});
+                              },
+                            ),
                           ),
                         ],
                         
@@ -1424,7 +1499,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Validate all required fields
+                        // Validate required fields
                         bool hasErrors = false;
                         Map<String, bool> newErrors = Map.from(fieldErrors);
                         
@@ -1440,8 +1515,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           hasErrors = true;
                         }
                         
-                        // Check card number for card payment types
-                        if (payment["type"] != "Wallet") {
+                        // Validate card-specific fields
+                        if (payment["type"] == "Card") {
+                          // Check card number if provided
+                          if (numberController.text.isNotEmpty) {
                           final cleanNumber = numberController.text.replaceAll(" ", "");
                           if (cleanNumber.length < 16) {
                             newErrors['number'] = true;
@@ -1449,16 +1526,35 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           }
                         }
                         
-                        // Check expiry if applicable
-                        if (payment["expiry"] != null && expiryController.text.trim().isEmpty) {
+                          // Check expiry date
+                          if (expiryController.text.trim().isEmpty || !expiryController.text.contains("/") || expiryController.text.length < 5) {
+                            newErrors['expiry'] = true;
+                            hasErrors = true;
+                          } else {
+                            // Validate that expiry is in future
+                            try {
+                              final parts = expiryController.text.split('/');
+                              final month = int.parse(parts[0]);
+                              final year = int.parse("20${parts[1]}");
+                              
+                              final currentDate = DateTime.now();
+                              final expiryDate = DateTime(year, month + 1, 0);
+                              
+                              if (expiryDate.isBefore(currentDate)) {
                           newErrors['expiry'] = true;
                           hasErrors = true;
+                              }
+                            } catch (e) {
+                              newErrors['expiry'] = true;
+                              hasErrors = true;
+                            }
                         }
                         
-                        // Check CVV if applicable
-                        if (payment["cvv"] != null && cvvController.text.trim().isEmpty) {
+                          // Check CVV
+                          if (cvvController.text.trim().isEmpty || cvvController.text.length < 3) {
                           newErrors['cvv'] = true;
                           hasErrors = true;
+                          }
                         }
                         
                         // If we have errors, update UI and don't save
@@ -1483,21 +1579,34 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           paymentMethods[_selectedPaymentIndex]["holder"] = holderController.text;
                           paymentMethods[_selectedPaymentIndex]["default"] = isDefault;
                           
-                          if (payment["type"] != "Wallet" && numberController.text.isNotEmpty) {
-                            // Remove spaces and format for storage, show only last 4 digits
+                          // Update card-specific fields
+                          if (payment["type"] == "Card") {
+                            if (numberController.text.isNotEmpty) {
+                              // Format card number - mask all but last 4 digits
                             final cleanNumber = numberController.text.replaceAll(" ", "");
-                            if (cleanNumber.length == 16) {
                               final lastFourDigits = cleanNumber.substring(12, 16);
                               paymentMethods[_selectedPaymentIndex]["number"] = "•••• •••• •••• " + lastFourDigits;
-                            }
                           }
                           
-                          if (payment["expiry"] != null) {
+                            if (expiryController.text.isNotEmpty) {
                             paymentMethods[_selectedPaymentIndex]["expiry"] = expiryController.text;
                           }
                           
-                          if (payment["cvv"] != null) {
+                            if (cvvController.text.isNotEmpty) {
                             paymentMethods[_selectedPaymentIndex]["cvv"] = cvvController.text;
+                            }
+                          } else if (payment["type"] == "Wallet") {
+                            // Update mobile wallet number if changed
+                            if (numberController.text.isNotEmpty) {
+                              paymentMethods[_selectedPaymentIndex]["number"] = numberController.text;
+                            }
+                            
+                            // Update wallet icon based on name
+                            if (nameController.text == "EasyPaisa") {
+                              paymentMethods[_selectedPaymentIndex]["color"] = "0xFF4CAF50"; // Green for EasyPaisa
+                            } else if (nameController.text == "JazzCash") {
+                              paymentMethods[_selectedPaymentIndex]["color"] = "0xFFC2554D"; // Red for JazzCash
+                            }
                           }
                         });
                         
@@ -1543,64 +1652,33 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  // Helper method to format card number as user types (e.g. "1234 5678 9012 3456")
-  String _formatCardNumber(String cardNumber) {
-    // Add a space after every 4 characters
-    StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < cardNumber.length; i++) {
-      if (i > 0 && i % 4 == 0) {
-        buffer.write(" ");
-      }
-      buffer.write(cardNumber[i]);
-    }
-    return buffer.toString();
-  }
-
-  // Helper method to format card number for display in preview (masking all but last 4)
-  String _formatCardNumberForDisplay(String cardNumber) {
-    // Remove spaces
-    final cleanNumber = cardNumber.replaceAll(" ", "");
-    
-    // Return masked version
-    if (cleanNumber.length < 16) return "•••• •••• •••• ####";
-    
-    // Show only last 4 digits
-    return "•••• •••• •••• ${cleanNumber.substring(12, 16)}";
-  }
-
-  // Add this new method to generate card colors based on card number
-  String _generateCardColor(String cardNumber) {
-    // Define a palette of 7 visually distinct colors suitable for cards
-    final List<String> colorPalette = [
-      "0xFF3366FF", // Blue
-      "0xFF8E44AD", // Purple
-      "0xFF16A085", // Teal
-      "0xFFE74C3C", // Red
-      "0xFFFF9800", // Orange
-      "0xFF2C3E50", // Dark Blue
-      "0xFF27AE60", // Green
-    ];
-    
-    // If card number is empty, return a default color
-    if (cardNumber.isEmpty) return colorPalette[0];
-    
-    // Clean the card number (remove spaces)
-    final cleanNumber = cardNumber.replaceAll(" ", "");
-    
-    // Use the last digit of the card number to select a color
-    if (cleanNumber.length >= 1) {
-      // Get the last digit as an integer
-      final lastDigit = int.parse(cleanNumber[cleanNumber.length - 1]);
-      // Use modulo to get an index within the color palette range
-      return colorPalette[lastDigit % colorPalette.length];
-    }
-    
-    // Fallback to the first color
-    return colorPalette[0];
-  }
-
   // Method to remove a payment method
   void _removePaymentMethod(int index) {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          "Remove Payment Method",
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          "Are you sure you want to remove this payment method?",
+          style: GoogleFonts.poppins(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Cancel",
+              style: GoogleFonts.poppins(color: Colors.grey.shade700),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              // Close dialog
+              Navigator.pop(context);
+              
     setState(() {
       // Check if we're removing the default method
       bool wasDefault = paymentMethods[index]["default"] == true;
@@ -1632,772 +1710,80 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         margin: EdgeInsets.all(10),
       ),
     );
-  }
-
-  void _showAddPaymentBottomSheet(String type, String name, String? colorCode) {
-    // Create controllers for form fields
-    final holderController = TextEditingController(text: "Dr. Asmara Singh");
-    final expiryController = TextEditingController();
-    final nameController = TextEditingController(text: name);
-    final numberController = TextEditingController();
-    final cvvController = TextEditingController();
-    
-    // Use a default color initially (will be updated when card number changes)
-    String cardColor = colorCode ?? "0xFF3366FF";
-    
-    bool isDefault = paymentMethods.isEmpty; // Make default if it's the first card
-    
-    // Track field validation errors - initialize all as false
-    Map<String, bool> fieldErrors = {
-      'name': false,
-      'holder': false,
-      'number': false, // Changed from true to false
-      'expiry': false, // Changed from conditional to false
-      'cvv': false, // Changed from conditional to false
-    };
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.8,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
-              ),
-            ),
-            child: Column(
-              children: [
-                // Header
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Add ${type == 'Card' ? nameController.text : 'Mobile Wallet'}",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(LucideIcons.x),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Card preview
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: Color(int.parse(cardColor)),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(int.parse(cardColor)).withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(int.parse(cardColor)),
-                        Color(int.parse(cardColor)).withAlpha(220),
-                      ],
-                    ),
-                  ),
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            nameController.text,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              type == "Wallet" ? LucideIcons.wallet : LucideIcons.creditCard,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Spacer(),
-                      Text(
-                        type == "Wallet" 
-                            ? (numberController.text.isEmpty ? "Enter phone number" : numberController.text)
-                            : (numberController.text.isEmpty || numberController.text.length < 16
-                                ? "•••• •••• •••• ####" 
-                                : _formatCardNumberForDisplay(numberController.text)),
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Form
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Card/Wallet Name
-                        Text(
-                          type == "Card" ? "Card Name" : "Wallet Name",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 500),
-                          tween: Tween(begin: 0.0, end: fieldErrors['name']! ? 10.0 : 0.0),
-                          onEnd: () {
-                            if (fieldErrors['name']!) {
-                              setModalState(() {
-                                fieldErrors['name'] = false;
-                              });
-                            }
-                          },
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F7FF),
-            borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: fieldErrors['name']! 
-                                    ? Colors.red 
-                                    : Colors.grey.shade200,
-                                width: fieldErrors['name']! ? 1.5 : 1,
-                              ),
-                            ),
-                            child: TextField(
-                              controller: nameController,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color: Color(0xFF333333),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: type == "Card" ? "Enter card nickname" : "Enter wallet name",
-                                hintStyle: GoogleFonts.poppins(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 15,
-                                ),
-                                prefixIcon: Icon(
-                                  type == "Card" ? LucideIcons.creditCard : LucideIcons.wallet,
-                                  color: fieldErrors['name']! 
-                                      ? Colors.red 
-                                      : Color(0xFF3366FF),
-                                  size: 20,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              ),
-                              onChanged: (value) {
-                                // Clear error state
-                                if (fieldErrors['name']!) {
-                                  setModalState(() {
-                                    fieldErrors['name'] = false;
-                                  });
-                                }
-                                
-                                // Update preview name in real-time
-                                setModalState(() {});
-                              },
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: 20),
-                        Text(
-                          type == "Card" ? "Cardholder Name" : "Account Holder",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 500),
-                          tween: Tween(begin: 0.0, end: fieldErrors['holder']! ? 10.0 : 0.0),
-                          onEnd: () {
-                            if (fieldErrors['holder']!) {
-                              setModalState(() {
-                                fieldErrors['holder'] = false;
-                              });
-                            }
-                          },
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F7FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: fieldErrors['holder']! 
-                                    ? Colors.red 
-                                    : Colors.grey.shade200,
-                                width: fieldErrors['holder']! ? 1.5 : 1,
-                              ),
-                            ),
-                            child: TextField(
-                              controller: holderController,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color: Color(0xFF333333),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: "Enter name",
-                                hintStyle: GoogleFonts.poppins(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 15,
-                                ),
-                                prefixIcon: Icon(
-                                  LucideIcons.user,
-                                  color: fieldErrors['holder']! 
-                                      ? Colors.red 
-                                      : Color(0xFF3366FF),
-                                  size: 20,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              ),
-                              onChanged: (value) {
-                                if (fieldErrors['holder']!) {
-                                  setModalState(() {
-                                    fieldErrors['holder'] = false;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                        
-                        // Number field
-                        SizedBox(height: 20),
-                        Text(
-                          type == "Card" ? "Card Number" : "Phone Number",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TweenAnimationBuilder<double>(
-                          duration: Duration(milliseconds: 500),
-                          tween: Tween(begin: 0.0, end: fieldErrors['number']! ? 10.0 : 0.0),
-                          onEnd: () {
-                            if (fieldErrors['number']!) {
-                              setModalState(() {
-                                fieldErrors['number'] = false;
-                              });
-                            }
-                          },
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F7FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: fieldErrors['number']! 
-                                    ? Colors.red 
-                                    : Colors.grey.shade200,
-                                width: fieldErrors['number']! ? 1.5 : 1,
-                              ),
-                            ),
-                            child: TextField(
-                              controller: numberController,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color: Color(0xFF333333),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: type == "Card" ? "Enter 16-digit card number" : "Enter phone number",
-                                hintStyle: GoogleFonts.poppins(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 15,
-                                ),
-                                prefixIcon: Icon(
-                                  type == "Card" ? LucideIcons.creditCard : LucideIcons.phone,
-                                  color: fieldErrors['number']! 
-                                      ? Colors.red 
-                                      : Color(0xFF3366FF),
-                                  size: 20,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              ),
-                              keyboardType: TextInputType.number,
-                              maxLength: type == "Card" ? 19 : 14, // 16 digits + 3 spaces or phone number
-                              buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                              onChanged: (value) {
-                                // Clear error state
-                                if (fieldErrors['number']!) {
-                                  setModalState(() {
-                                    fieldErrors['number'] = false;
-                                  });
-                                }
-                                
-                                // Format card number with spaces for cards
-                                if (type == "Card") {
-                                  final text = value.replaceAll(" ", "");
-                                  if (text.length <= 16) {
-                                    final formattedText = _formatCardNumber(text);
-                                    if (formattedText != value) {
-                                      numberController.value = TextEditingValue(
-                                        text: formattedText,
-                                        selection: TextSelection.collapsed(offset: formattedText.length),
-                                      );
-                                    }
-                                    
-                                    // Update card color based on number
-                                    if (text.length > 0) {
-                                      cardColor = _generateCardColor(text);
-                                    }
-                                  }
-                                }
-                                
-                                // Update preview
-                                setModalState(() {});
-                              },
-                            ),
-                          ),
-                        ),
-                        
-                        // Card-specific fields
-                        if (type == "Card") ...[
-                          SizedBox(height: 20),
-                          Row(
-                            children: [
-                              // Expiry Date
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Expiry Date",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF666666),
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    TweenAnimationBuilder<double>(
-                                      duration: Duration(milliseconds: 500),
-                                      tween: Tween(begin: 0.0, end: fieldErrors['expiry']! ? 10.0 : 0.0),
-                                      onEnd: () {
-                                        if (fieldErrors['expiry']!) {
-                                          setModalState(() {
-                                            fieldErrors['expiry'] = false;
-                                          });
-                                        }
-                                      },
-                                      builder: (context, value, child) {
-                                        return Transform.translate(
-                                          offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                                          child: child,
-                                        );
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFF5F7FF),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: fieldErrors['expiry']! 
-                                                ? Colors.red 
-                                                : Colors.grey.shade200,
-                                            width: fieldErrors['expiry']! ? 1.5 : 1,
-                                          ),
-                                        ),
-                                        child: TextField(
-                                          controller: expiryController,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 15,
-                                            color: Color(0xFF333333),
-                                          ),
-                                          decoration: InputDecoration(
-                                            hintText: "MM/YY",
-                                            hintStyle: GoogleFonts.poppins(
-                                              color: Colors.grey.shade400,
-                                              fontSize: 15,
-                                            ),
-                                            prefixIcon: Icon(
-                                              LucideIcons.calendar,
-                                              color: fieldErrors['expiry']! 
-                                                  ? Colors.red 
-                                                  : Color(0xFF3366FF),
-                                              size: 20,
-                                            ),
-                                            border: InputBorder.none,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                          ),
-                                          onChanged: (value) {
-                                            if (fieldErrors['expiry']!) {
-                                              setModalState(() {
-                                                fieldErrors['expiry'] = false;
-                                              });
-                                            }
-                                            
-                                            // Check if month section is valid (01-12)
-                                            if (value.length == 2 && !value.contains('/')) {
-                                              // Convert input to integer
-                                              int? month = int.tryParse(value);
-                                              
-                                              // If month is greater than 12, set it to 12
-                                              if (month != null && month > 12) {
-                                                expiryController.text = '12/';
-                                              } else {
-                                                expiryController.text = value + '/';
-                                              }
-                                              
-                                              // Position cursor after the slash
-                                              expiryController.selection = TextSelection.fromPosition(
-                                                TextPosition(offset: expiryController.text.length),
-                                              );
-                                            }
-                                          },
-                                          maxLength: 5,
-                                          buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // CVV
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "CVV",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF666666),
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    TweenAnimationBuilder<double>(
-                                      duration: Duration(milliseconds: 500),
-                                      tween: Tween(begin: 0.0, end: fieldErrors['cvv']! ? 10.0 : 0.0),
-                                      onEnd: () {
-                                        if (fieldErrors['cvv']!) {
-                                          setModalState(() {
-                                            fieldErrors['cvv'] = false;
-                                          });
-                                        }
-                                      },
-                                      builder: (context, value, child) {
-                                        return Transform.translate(
-                                          offset: Offset(value * ((value.toInt() % 2 == 0) ? 1 : -1), 0),
-                                          child: child,
-                                        );
-                                      },
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Color(0xFFF5F7FF),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: fieldErrors['cvv']! 
-                                                ? Colors.red 
-                                                : Colors.grey.shade200,
-                                            width: fieldErrors['cvv']! ? 1.5 : 1,
-                                          ),
-                                        ),
-                                        child: TextField(
-                                          controller: cvvController,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 15,
-                                            color: Color(0xFF333333),
-                                          ),
-                                          decoration: InputDecoration(
-                                            hintText: "123",
-                                            hintStyle: GoogleFonts.poppins(
-                                              color: Colors.grey.shade400,
-                                              fontSize: 15,
-                                            ),
-                                            prefixIcon: Icon(
-                                              LucideIcons.shield,
-                                              color: fieldErrors['cvv']! 
-                                                  ? Colors.red 
-                                                  : Color(0xFF3366FF),
-                                              size: 20,
-                                            ),
-                                            border: InputBorder.none,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                          ),
-                                          maxLength: 3,
-                                          obscureText: true,
-                                          keyboardType: TextInputType.number,
-                                          buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                                          onChanged: (value) {
-                                            if (fieldErrors['cvv']!) {
-                                              setModalState(() {
-                                                fieldErrors['cvv'] = false;
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        
-                        SizedBox(height: 20),
-                        Text(
-                          "Card Settings",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF333333),
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        
-                        // Default switch
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Set as Default",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF333333),
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      "Use this payment method by default",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: Color(0xFF666666),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Switch(
-                                value: isDefault,
-                                onChanged: (value) {
-                                  setModalState(() {
-                                    isDefault = value;
-                                  });
-                                },
-                                activeColor: Color(0xFF3366FF),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                // Save button
-                Padding(
-                  padding: EdgeInsets.all(20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Validate all required fields
-                        bool hasErrors = false;
-                        Map<String, bool> newErrors = Map.from(fieldErrors);
-                        
-                        // Check name
-                        if (nameController.text.trim().isEmpty) {
-                          newErrors['name'] = true;
-                          hasErrors = true;
-                        }
-                        
-                        // Check holder
-                        if (holderController.text.trim().isEmpty) {
-                          newErrors['holder'] = true;
-                          hasErrors = true;
-                        }
-                        
-                        // Check number
-                        if (numberController.text.trim().isEmpty) {
-                          newErrors['number'] = true;
-                          hasErrors = true;
-                        } else if (type == "Card") {
-                          final cleanNumber = numberController.text.replaceAll(" ", "");
-                          if (cleanNumber.length < 16) {
-                            newErrors['number'] = true;
-                            hasErrors = true;
-                          }
-                        }
-                        
-                        // Check expiry if applicable
-                        if (type == "Card" && expiryController.text.trim().isEmpty) {
-                          newErrors['expiry'] = true;
-                          hasErrors = true;
-                        }
-                        
-                        // Check CVV if applicable
-                        if (type == "Card" && cvvController.text.trim().isEmpty) {
-                          newErrors['cvv'] = true;
-                          hasErrors = true;
-                        }
-                        
-                        // If we have errors, update UI and don't save
-                        if (hasErrors) {
-                          setModalState(() {
-                            fieldErrors = newErrors;
-                          });
-                          return;
-                        }
-                        
-                        // No errors, create and add the new payment method
-                        Map<String, dynamic> newPaymentMethod = {
-                          "type": type,
-                          "name": nameController.text,
-                          "holder": holderController.text,
-                          "color": cardColor,
-                          "icon": type == "Wallet" ? LucideIcons.wallet : LucideIcons.creditCard,
-                          "default": isDefault,
-                        };
-                        
-                        // Add type-specific fields
-                        if (type == "Card") {
-                          // Format card number for storage
-                          final cleanNumber = numberController.text.replaceAll(" ", "");
-                          final lastFourDigits = cleanNumber.substring(12, 16);
-                          newPaymentMethod["number"] = "•••• •••• •••• " + lastFourDigits;
-                          newPaymentMethod["expiry"] = expiryController.text;
-                          newPaymentMethod["cvv"] = cvvController.text;
-                        } else {
-                          // Use full number for wallet
-                          newPaymentMethod["number"] = numberController.text;
-                          // For wallets, we can use a fixed color or generate one based on phone number
-                          newPaymentMethod["color"] = "0xFFC2554D"; // Fixed red color for wallets
-                        }
-                        
-                        // Close the bottom sheet first to prevent context issues
-                        Navigator.pop(context);
-                        
-                        // Update state with a slight delay to ensure bottom sheet is fully closed
-                        Future.delayed(Duration(milliseconds: 100), () {
-                          setState(() {
-                            // If adding a default method, update all other cards
-                            if (isDefault) {
-                              for (var method in paymentMethods) {
-                                method["default"] = false;
-                              }
-                            }
-                            
-                            // Add the new payment method
-                            paymentMethods.add(newPaymentMethod);
-                            
-                            // Select the new card
-                            _selectedPaymentIndex = paymentMethods.length - 1;
-                          });
-                          
-                          // Show success message
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Payment method added successfully'),
-                              backgroundColor: Color(0xFF3366FF),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              margin: EdgeInsets.all(10),
-                            ),
-                          );
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF3366FF),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        "Add Payment Method",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            },
+            child: Text(
+              "Remove",
+              style: GoogleFonts.poppins(color: Colors.red),
             ),
           ),
+        ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );
+  }
+  
+  void _showAddPaymentBottomSheet(String type, String name, String? colorCode) {
+    // Implementation for adding new payment methods
+  }
+
+  Widget _buildMethodOption(String label, IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+                          child: Container(
+        padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+          color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+                            children: [
+            Container(
+              padding: EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 22,
+              ),
+            ),
+                              SizedBox(width: 16),
+                                    Text(
+              label,
+                                      style: GoogleFonts.poppins(
+                fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                            color: Color(0xFF333333),
+                                          ),
+            ),
+            Spacer(),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey.shade400,
+                                              size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+    );
+  }
+  
+  // Helper method to format card number as user types (e.g. "1234 5678 9012 3456")
+  String _formatCardNumber(String cardNumber) {
+    // Add a space after every 4 characters
+    StringBuffer buffer = StringBuffer();
+    for (int i = 0; i < cardNumber.length; i++) {
+      if (i > 0 && i % 4 == 0) {
+        buffer.write(" ");
+      }
+      buffer.write(cardNumber[i]);
+    }
+    return buffer.toString();
   }
 }

@@ -7,12 +7,22 @@ enum UserRole {
   patient,
   doctor,
   ladyHealthWorker,
+  admin,
   unknown,
 }
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Admin credentials
+  static const String adminPhoneNumber = "+923031234567";
+  static const String adminOTP = "123456";
+
+  // Check if credentials match admin
+  bool isAdminCredentials(String phoneNumber, String otp) {
+    return phoneNumber == adminPhoneNumber && otp == adminOTP;
+  }
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -36,6 +46,7 @@ class AuthService {
       case 'patient': return UserRole.patient;
       case 'doctor': return UserRole.doctor;
       case 'ladyHealthWorker': return UserRole.ladyHealthWorker;
+      case 'admin': return UserRole.admin;
       default: return UserRole.unknown;
     }
   }
@@ -49,6 +60,7 @@ class AuthService {
       case UserRole.patient: roleStr = 'patient'; break;
       case UserRole.doctor: roleStr = 'doctor'; break;
       case UserRole.ladyHealthWorker: roleStr = 'ladyHealthWorker'; break;
+      case UserRole.admin: roleStr = 'admin'; break;
       default: roleStr = 'unknown'; break;
     }
     
@@ -73,6 +85,7 @@ class AuthService {
         case 'patient': userRole = UserRole.patient; break;
         case 'doctor': userRole = UserRole.doctor; break;
         case 'ladyHealthWorker': userRole = UserRole.ladyHealthWorker; break;
+        case 'admin': userRole = UserRole.admin; break;
         default: userRole = UserRole.unknown; break;
       }
       
@@ -129,6 +142,7 @@ class AuthService {
       case UserRole.patient: roleStr = 'patient'; break;
       case UserRole.doctor: roleStr = 'doctor'; break;
       case UserRole.ladyHealthWorker: roleStr = 'ladyHealthWorker'; break;
+      case UserRole.admin: roleStr = 'admin'; break;
       default: roleStr = 'unknown'; break;
     }
     

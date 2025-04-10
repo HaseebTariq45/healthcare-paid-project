@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
+import 'package:healthcare/views/screens/patient/dashboard/patient_profile_details.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PatientsScreen extends StatefulWidget {
@@ -23,6 +24,13 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       "image": "assets/images/patient_1.png",
       "lastVisit": "2 days ago",
       "condition": "Hypertension",
+      "appointment": {
+        "date": "15 Oct 2023",
+        "time": "09:00 AM",
+        "hospital": "Aga Khan Hospital, Karachi",
+        "reason": "Follow-up Visit",
+        "status": "Completed"
+      }
     },
     {
       "name": "Fehmida",
@@ -31,6 +39,13 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       "image": "assets/images/patient_2.png",
       "lastVisit": "1 week ago",
       "condition": "Diabetes",
+      "appointment": {
+        "date": "20 Oct 2023",
+        "time": "11:00 AM",
+        "hospital": "Shaukat Khanum Hospital, Lahore",
+        "reason": "Regular Checkup",
+        "status": "Upcoming"
+      }
     },
     {
       "name": "Asma",
@@ -39,6 +54,13 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       "image": "assets/images/patient_3.png",
       "lastVisit": "Yesterday",
       "condition": "Pregnancy",
+      "appointment": {
+        "date": "14 Oct 2023",
+        "time": "02:00 PM",
+        "hospital": "Jinnah Hospital, Karachi",
+        "reason": "Prescription Refill",
+        "status": "Completed"
+      }
     },
     {
       "name": "Sher Bano",
@@ -47,6 +69,13 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       "image": "assets/images/patient_4.png",
       "lastVisit": "3 days ago",
       "condition": "Asthma",
+      "appointment": {
+        "date": "22 Oct 2023",
+        "time": "10:00 AM",
+        "hospital": "Liaquat National Hospital, Karachi",
+        "reason": "New Symptoms",
+        "status": "Upcoming"
+      }
     },
     {
       "name": "Naheed",
@@ -55,12 +84,19 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       "image": "assets/images/patient_5.png",
       "lastVisit": "2 weeks ago",
       "condition": "Arthritis",
+      "appointment": {
+        "date": "25 Oct 2023",
+        "time": "04:00 PM",
+        "hospital": "Aga Khan Hospital, Karachi",
+        "reason": "Test Results Review",
+        "status": "Upcoming"
+      }
     },
   ];
 
   List<String> selectedFilters = [];
   int _selectedSortIndex = 0;
-  final List<String> _sortOptions = ["All Patients", "Recent", "Alphabetical"];
+  final List<String> _sortOptions = ["All", "Upcoming", "Completed"];
 
   @override
   void initState() {
@@ -87,24 +123,40 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   List<Map<String, dynamic>> get filteredPatients {
     List<Map<String, dynamic>> result = patients.where((patient) {
       final matchesSearch = patient["name"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                          patient["location"]!.toLowerCase().contains(_searchQuery.toLowerCase());
+                          patient["location"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                          patient["appointment"]["hospital"].toLowerCase().contains(_searchQuery.toLowerCase());
       
       if (selectedFilters.isEmpty) {
         return matchesSearch;
       }
       
-      final matchesLocation = selectedFilters.contains("Islamabad") ? 
-                              patient["location"] == "Islamabad" : true;
+      bool matchesFilters = true;
+      
+      // Filter by location
+      if (selectedFilters.contains("Karachi")) {
+        matchesFilters = matchesFilters && 
+                         patient["appointment"]["hospital"].toString().contains("Karachi");
+      }
+      
+      // Filter by appointment status
+      if (selectedFilters.contains("Upcoming")) {
+        matchesFilters = matchesFilters && 
+                         patient["appointment"]["status"] == "Upcoming";
+      }
+      
+      if (selectedFilters.contains("Completed")) {
+        matchesFilters = matchesFilters && 
+                         patient["appointment"]["status"] == "Completed";
+      }
                               
-      return matchesSearch && matchesLocation;
+      return matchesSearch && matchesFilters;
     }).toList();
     
     // Sort based on selected option
-    if (_selectedSortIndex == 1) { // Recent
-      // This is just for demonstration as we don't have actual dates
-      result.sort((a, b) => a["lastVisit"].compareTo(b["lastVisit"]));
-    } else if (_selectedSortIndex == 2) { // Alphabetical
-      result.sort((a, b) => a["name"].compareTo(b["name"]));
+    if (_selectedSortIndex == 1) { // Upcoming Appointments
+      result = result.where((p) => p["appointment"]["status"] == "Upcoming").toList();
+    } else if (_selectedSortIndex == 2) { // Completed Appointments
+      result = result.where((p) => p["appointment"]["status"] == "Completed").toList();
     }
     
     return result;
@@ -178,7 +230,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                       ),
                       SizedBox(width: 15),
                       Text(
-                        "Patients",
+                        "Patient Appointments",
                         style: GoogleFonts.poppins(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -217,9 +269,9 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                       SizedBox(width: 14),
                       Expanded(
                         child: _buildStatCard(
-                          "12",
-                          "New this month",
-                          Icons.person_add_alt_outlined,
+                          "28",
+                          "Upcoming Appointments",
+                          Icons.calendar_month_outlined,
                         ),
                       ),
                     ],
@@ -249,13 +301,27 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-        child: Column(
-          children: [
-            _buildSearchBar(),
+                          child: Column(
+                            children: [
+                              _buildSearchBar(),
                               SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Text(
+                                    "Filter by: ",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                ],
+                              ),
+                              SizedBox(height: 8),
                               _buildSortOptions(),
                               SizedBox(height: 10),
-            _buildFilters(),
+                              _buildFilters(),
                               SizedBox(height: 10),
                             ],
                           ),
@@ -322,7 +388,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
             ),
           ),
           SizedBox(width: 12),
-            Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -342,6 +408,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                     color: Colors.white.withOpacity(0.8),
                   ),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
               ],
             ),
@@ -353,42 +420,64 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
 
   Widget _buildSortOptions() {
     return Container(
-      height: 40,
+      height: 44,
+      padding: EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200)
       ),
       child: Row(
         children: List.generate(
           _sortOptions.length,
-          (index) => Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedSortIndex = index;
-                });
-              },
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _selectedSortIndex == index
-                      ? Color.fromRGBO(64, 124, 226, 1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _sortOptions[index],
-                  style: GoogleFonts.poppins(
-                    color: _selectedSortIndex == index
-                        ? Colors.white
-                        : Colors.grey.shade600,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+          (index) {
+            bool isSelected = _selectedSortIndex == index;
+            bool isFirst = index == 0;
+            bool isLast = index == _sortOptions.length - 1;
+            
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedSortIndex = index;
+                  });
+                },
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 2),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Color.fromRGBO(64, 124, 226, 1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: isSelected ? [
+                      BoxShadow(
+                        color: Color.fromRGBO(64, 124, 226, 0.3),
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      )
+                    ] : null,
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      _sortOptions[index],
+                      style: GoogleFonts.poppins(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.grey.shade600,
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -456,6 +545,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       padding: const EdgeInsets.all(16),
       itemCount: filteredPatients.length,
       itemBuilder: (context, index) {
+        final patient = filteredPatients[index];
         final delay = index * 0.1;
         return SlideTransition(
           position: Tween<Offset>(
@@ -474,12 +564,13 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
               curve: Interval(0.3 + delay, 0.8 + delay > 0.95 ? 0.95 : 0.8 + delay, curve: Curves.easeOut),
             )),
             child: _buildPatientCard(
-              filteredPatients[index]["name"]!,
-              filteredPatients[index]["age"]!,
-              filteredPatients[index]["location"]!,
-              filteredPatients[index]["image"]!,
-              filteredPatients[index]["lastVisit"]!,
-              filteredPatients[index]["condition"]!,
+              patient["name"]!,
+              patient["age"]!,
+              patient["location"]!,
+              patient["image"]!,
+              patient["lastVisit"]!,
+              patient["condition"]!,
+              patient["appointment"],
             ),
           ),
         );
@@ -547,28 +638,28 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
             () {},
           ),
           _buildFilterButton(
-            Icons.star_rounded,
-            "4 +",
-            selectedFilters.contains("4 +"),
-            () => toggleFilter("4 +"),
+            Icons.location_on_rounded,
+            "Karachi",
+            selectedFilters.contains("Karachi"),
+            () => toggleFilter("Karachi"),
           ),
           _buildFilterButton(
-            Icons.location_on_rounded,
-            "Islamabad",
-            selectedFilters.contains("Islamabad"),
-            () => toggleFilter("Islamabad"),
+            Icons.check_circle_outline,
+            "Upcoming",
+            selectedFilters.contains("Upcoming"),
+            () => toggleFilter("Upcoming"),
+          ),
+          _buildFilterButton(
+            Icons.history_rounded,
+            "Completed",
+            selectedFilters.contains("Completed"),
+            () => toggleFilter("Completed"),
           ),
           _buildFilterButton(
             Icons.calendar_today_rounded,
             "This Month",
             selectedFilters.contains("This Month"),
             () => toggleFilter("This Month"),
-          ),
-          _buildFilterButton(
-            Icons.person_rounded,
-            "New",
-            selectedFilters.contains("New"),
-            () => toggleFilter("New"),
           ),
         ],
       ),
@@ -635,7 +726,10 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     String image,
     String lastVisit,
     String condition,
+    Map<String, dynamic> appointment,
   ) {
+    final bool isUpcoming = appointment["status"] == "Upcoming";
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -704,7 +798,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                           Row(
                             children: [
                               Icon(
-                                Icons.calendar_today_rounded,
+                                Icons.calendar_today,
                                 size: 14,
                                 color: Colors.grey.shade600,
                               ),
@@ -758,6 +852,82 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                   ],
                 ),
                 SizedBox(height: 12),
+                // Appointment status indicator
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isUpcoming ? Color(0xFFE8F5FE) : Color(0xFFF0F0F0),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isUpcoming ? Color(0xFF2B8FEB) : Colors.grey.shade300,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: isUpcoming ? Color(0xFF2B8FEB).withOpacity(0.1) : Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isUpcoming ? Icons.event : Icons.check_circle,
+                          size: 16,
+                          color: isUpcoming ? Color(0xFF2B8FEB) : Colors.grey.shade600,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        isUpcoming ? "Upcoming Appointment" : "Completed Appointment",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isUpcoming ? Color(0xFF2B8FEB) : Colors.grey.shade700,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
+                // Appointment details
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildAppointmentDetailRow(
+                        Icons.calendar_today,
+                        "Date:",
+                        appointment["date"],
+                      ),
+                      SizedBox(height: 8),
+                      _buildAppointmentDetailRow(
+                        Icons.access_time,
+                        "Time:",
+                        appointment["time"],
+                      ),
+                      SizedBox(height: 8),
+                      _buildAppointmentDetailRow(
+                        Icons.business,
+                        "Hospital:",
+                        appointment["hospital"],
+                      ),
+                      SizedBox(height: 8),
+                      _buildAppointmentDetailRow(
+                        Icons.description,
+                        "Reason:",
+                        appointment["reason"],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
                 Container(
                   padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                   decoration: BoxDecoration(
@@ -798,11 +968,145 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                     ],
                   ),
                 ),
+                SizedBox(height: 12),
+                // Medical Info Button
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF3366CC),
+                        Color(0xFF5E8EF7),
+                      ],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF3366CC).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        // Navigate to medical profile
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PatientDetailProfileScreen(
+                              name: name,
+                              age: age,
+                              bloodGroup: "B+", // This would be dynamically set in a real app
+                              phoneNumber: "+92 300 1234567", // This would be dynamically set in a real app
+                              allergies: ["Pollen", "Dust"], // This would be dynamically set in a real app
+                              diseases: [condition], // Using the condition as a disease for demonstration
+                            ),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.medical_services,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                            SizedBox(width: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "View Complete Medical Profile",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    "Blood group, allergies, medical history",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: Colors.white.withOpacity(0.85),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+  
+  Widget _buildAppointmentDetailRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: Colors.grey.shade600,
+        ),
+        SizedBox(width: 8),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 13,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

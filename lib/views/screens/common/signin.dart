@@ -6,8 +6,21 @@ import 'package:healthcare/views/screens/common/otpentry.dart';
 import 'package:healthcare/views/screens/common/signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-class SignIN extends StatelessWidget {
+class SignIN extends StatefulWidget {
   const SignIN({super.key});
+
+  @override
+  State<SignIN> createState() => _SignINState();
+}
+
+class _SignINState extends State<SignIN> {
+  final TextEditingController _phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,10 +90,25 @@ class SignIN extends StatelessWidget {
                       const SizedBox(height: 20),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: DataInputFeild(
-                          hinttext: "+92 300 0000000",
-                          icon: LucideIcons.phone,
-                          inputType: TextInputType.phone,
+                        child: TextField(
+                          controller: _phoneController,
+                          decoration: InputDecoration(
+                            hintText: "+92 300 0000000",
+                            prefixIcon: Icon(LucideIcons.phone),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(color: Color(0xFF3366CC), width: 1.5),
+                            ),
+                          ),
+                          keyboardType: TextInputType.phone,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -99,12 +127,27 @@ class SignIN extends StatelessWidget {
                 Container(
                   margin: EdgeInsets.symmetric(vertical: 24),
                   child: InkWell(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => OTPScreen(text: "Welcome Back"),
-                      ),
-                    ),
+                    onTap: () {
+                      final phoneNumber = _phoneController.text.trim();
+                      if (phoneNumber.isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OTPScreen(
+                              text: "Welcome Back",
+                              phoneNumber: phoneNumber,
+                            ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Please enter a valid phone number'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
                     child: ProceedButton(
                       isEnabled: true,
                       text: 'Send OTP',
