@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/card_payment.dart';
 import 'package:healthcare/views/screens/patient/appointment/successfull_appoinment.dart';
+import 'package:healthcare/views/screens/menu/appointment_history.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SavedCardsScreen extends StatefulWidget {
   final Map<String, dynamic>? appointmentDetails;
@@ -58,53 +61,136 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
       _isLoading = true;
     });
 
-    // Simulate API call with potential failure
-    Future.delayed(Duration(seconds: 2), () {
-      setState(() {
-        _isLoading = false;
-      });
+    // Get the selected card
+    final selectedCard = savedCards[_selectedCardIndex];
+
+    // Process the payment with Firebase
+    Future.delayed(Duration(seconds: 2), () async {
+      // Get the current user ID
+      final user = FirebaseAuth.instance.currentUser;
+      final String? userId = user?.uid;
       
-      // Simulate random success/failure
-      bool success = true; // In real app, this would come from API response
-      
-      if (success) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green),
-                SizedBox(width: 10),
-                Text("Payment Successful"),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Your payment has been processed successfully."),
-                SizedBox(height: 10),
-                Text("Amount: ${widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}"),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PatientAppointmentDetailsScreen(),
-                    ),
-                  );
-                },
-                child: Text("Continue"),
+      if (userId != null) {
+        try {
+          // Get the fee amount directly as it's already a number
+          int amountValue = widget.appointmentDetails?['fee'] ?? 0;
+          
+          // 1. Save the appointment to Firestore
+          final appointmentRef = await FirebaseFirestore.instance.collection('appointments').add({
+            'patientId': userId,
+            'doctorId': widget.appointmentDetails?['doctorId'],
+            'doctorName': widget.appointmentDetails?['doctorName'],
+            'date': widget.appointmentDetails?['date'],
+            'time': widget.appointmentDetails?['time'],
+            'location': widget.appointmentDetails?['location'],
+            'fee': amountValue,
+            'displayFee': widget.appointmentDetails?['displayFee'],
+            'status': 'confirmed',
+            'paymentStatus': 'completed',
+            'paymentMethod': 'Saved Card',
+            'cardType': selectedCard["name"],
+            'paymentDate': FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'notes': widget.appointmentDetails?['notes'],
+            'isPanelConsultation': widget.appointmentDetails?['isPanelConsultation'] ?? false,
+          });
+          
+          // 2. Save the transaction to Firestore
+          await FirebaseFirestore.instance.collection('transactions').add({
+            'userId': userId,
+            'patientId': userId,
+            'doctorId': widget.appointmentDetails?['doctorId'],
+            'appointmentId': appointmentRef.id,
+            'title': 'Appointment Payment',
+            'description': 'Consultation with ${widget.appointmentDetails?['doctorName']}',
+            'amount': amountValue,
+            'date': Timestamp.now(),
+            'type': 'payment',
+            'status': 'completed',
+            'paymentMethod': 'Saved Card',
+            'doctorName': widget.appointmentDetails?['doctorName'],
+            'hospitalName': widget.appointmentDetails?['location'],
+            'cardType': selectedCard["name"],
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          });
+          
+          // 3. Update the appointment slot status to booked
+          final String? slotId = widget.appointmentDetails?['slotId'];
+          if (slotId != null) {
+            await FirebaseFirestore.instance.collection('appointment_slots').doc(slotId).update({
+              'isBooked': true,
+              'tempHoldUntil': null,
+              'tempHoldBy': null,
+              'bookedAt': FieldValue.serverTimestamp(),
+              'bookedBy': userId,
+              'appointmentId': appointmentRef.id,
+            });
+            print('Appointment slot updated successfully');
+          } else {
+            print('No slotId found in appointment details');
+          }
+          
+          print('Appointment and transaction saved successfully');
+          
+          setState(() {
+            _isLoading = false;
+          });
+          
+          // Show success dialog
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green),
+                  SizedBox(width: 10),
+                  Text("Payment Successful"),
+                ],
               ),
-            ],
-          ),
-        );
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Your payment has been processed successfully."),
+                  SizedBox(height: 10),
+                  Text("Amount: ${_formatFeeDisplay(widget.appointmentDetails)}"),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Navigate to appointment details screen, replacing the entire stack
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PatientAppointmentDetailsScreen(),
+                      ),
+                      (route) => false, // This will remove all previous routes
+                    );
+                  },
+                  child: Text("Continue"),
+                ),
+              ],
+            ),
+          );
+        } catch (e) {
+          print('Error saving appointment and transaction: $e');
+          setState(() {
+            _isLoading = false;
+          });
+          
+          // Show error message
+          _showError("Payment failed: ${e.toString()}");
+        }
       } else {
-        _showError("Payment failed. Please try again or use a different card.");
+        // User not signed in
+        setState(() {
+          _isLoading = false;
+        });
+        
+        _showError("You must be signed in to book an appointment");
       }
     });
   }
@@ -131,10 +217,26 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Get the appropriate fee from appointment details
-    String fee = widget.appointmentDetails != null && widget.appointmentDetails!.containsKey('fee') 
-        ? widget.appointmentDetails!['fee'] 
-        : 'Rs. 2,000';
+    // Get the appropriate fee from appointment details, handling both string and int types
+    String fee = "";
+    if (widget.appointmentDetails != null) {
+      if (widget.appointmentDetails!.containsKey('displayFee')) {
+        fee = widget.appointmentDetails!['displayFee'];
+      } else if (widget.appointmentDetails!.containsKey('fee')) {
+        var feeValue = widget.appointmentDetails!['fee'];
+        if (feeValue is int) {
+          fee = "Rs. ${feeValue.toString()}";
+        } else if (feeValue is String) {
+          fee = feeValue;
+        } else {
+          fee = "Rs. 2,000";
+        }
+      } else {
+        fee = "Rs. 2,000";
+      }
+    } else {
+      fee = "Rs. 2,000";
+    }
     
     String doctor = widget.appointmentDetails != null && widget.appointmentDetails!.containsKey('doctor') 
         ? widget.appointmentDetails!['doctor'] 
@@ -544,5 +646,22 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
         ),
       ],
     );
+  }
+
+  String _formatFeeDisplay(Map<String, dynamic>? appointmentDetails) {
+    if (appointmentDetails != null && appointmentDetails.containsKey('displayFee')) {
+      return appointmentDetails['displayFee'];
+    } else if (appointmentDetails != null && appointmentDetails.containsKey('fee')) {
+      var feeValue = appointmentDetails['fee'];
+      if (feeValue is int) {
+        return "Rs. ${feeValue.toString()}";
+      } else if (feeValue is String) {
+        return feeValue;
+      } else {
+        return "Rs. 2,000";
+      }
+    } else {
+      return "Rs. 2,000";
+    }
   }
 } 

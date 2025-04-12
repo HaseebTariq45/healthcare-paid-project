@@ -178,7 +178,10 @@ class _PatientPaymentScreenState extends State<PatientPaymentScreen> {
           _buildSummaryRow(
             LucideIcons.creditCard,
             "Fee",
-            widget.appointmentDetails['fee'] ?? 'Not selected',
+            widget.appointmentDetails['displayFee'] ?? 
+            (widget.appointmentDetails['fee'] != null 
+              ? widget.appointmentDetails['fee'].toString() 
+              : 'Not selected'),
           ),
         ],
       ),

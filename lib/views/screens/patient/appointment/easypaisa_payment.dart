@@ -80,6 +80,22 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
               'updatedAt': Timestamp.now(),
             });
             
+            // 3. Update the appointment slot status to booked
+            final String? slotId = widget.appointmentDetails?['slotId'];
+            if (slotId != null) {
+              await FirebaseFirestore.instance.collection('appointment_slots').doc(slotId).update({
+                'isBooked': true,
+                'tempHoldUntil': null,
+                'tempHoldBy': null,
+                'bookedAt': FieldValue.serverTimestamp(),
+                'bookedBy': userId,
+                'appointmentId': appointmentRef.id,
+              });
+              print('Appointment slot updated successfully');
+            } else {
+              print('No slotId found in appointment details');
+            }
+            
             print('Appointment and transaction saved successfully');
             
             // Show a success message
@@ -180,8 +196,14 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     // Get the appropriate fee from appointment details
-    String fee = widget.appointmentDetails != null && widget.appointmentDetails!.containsKey('fee') 
-        ? widget.appointmentDetails!['fee'] 
+    String fee = widget.appointmentDetails != null 
+        ? (widget.appointmentDetails!.containsKey('displayFee') 
+          ? widget.appointmentDetails!['displayFee'] 
+          : (widget.appointmentDetails!.containsKey('fee')
+              ? (widget.appointmentDetails!['fee'] is int 
+                  ? "Rs. ${widget.appointmentDetails!['fee']}" 
+                  : widget.appointmentDetails!['fee'])
+              : 'Rs. 2,000'))
         : 'Rs. 2,000';
     
     String doctor = widget.appointmentDetails != null && widget.appointmentDetails!.containsKey('doctor') 
