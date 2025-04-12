@@ -196,7 +196,7 @@ class _MenuScreenState extends State<MenuScreen> {
     if (widget.userType == UserType.doctor) {
       menuItems = [
         MenuItem("Edit Profile", Icons.person, () => const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Appointments History", Icons.history, () => const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Appointments", Icons.calendar_month, () => const AppointmentHistoryScreen(), category: "Appointment"),
         MenuItem("Payment Methods", Icons.credit_card, () => PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
         MenuItem("Withdrawal History", Icons.account_balance_wallet, () => const WithdrawalHistoryScreen(), category: "Payment"),
         MenuItem("FAQs", Icons.info_outline, () => const FAQScreen(), category: "Support"),
@@ -209,7 +209,7 @@ class _MenuScreenState extends State<MenuScreen> {
       menuItems = [
         MenuItem("Edit Profile", Icons.person, () => const ProfileEditorScreen(), category: "Account"),
         MenuItem("Medical Records", Icons.description, () => const Scaffold(body: Center(child: Text("Medical Records Coming Soon"))), category: "Health"),
-        MenuItem("Appointments History", Icons.history, () => const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Appointments", Icons.calendar_month, () => const AppointmentHistoryScreen(), category: "Appointment"),
         MenuItem("Payment Methods", Icons.credit_card, () => PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
         MenuItem("FAQs", Icons.info_outline, () => const FAQScreen(), category: "Support"),
         MenuItem("Help Center", Icons.headset_mic, () => const Scaffold(body: Center(child: Text("Help Center Coming Soon"))), category: "Support"),
@@ -365,7 +365,7 @@ class _MenuScreenState extends State<MenuScreen> {
           case "Edit Profile":
             screen = const ProfileEditorScreen();
             break;
-          case "Appointments History":
+          case "Appointments":
             screen = const AppointmentHistoryScreen();
             break;
           case "Payment Methods":
@@ -439,7 +439,7 @@ class _MenuScreenState extends State<MenuScreen> {
         case "Edit Profile":
           screen = const ProfileEditorScreen();
           break;
-        case "Appointments History":
+        case "Appointments":
           screen = const AppointmentHistoryScreen();
           break;
         case "Payment Methods":

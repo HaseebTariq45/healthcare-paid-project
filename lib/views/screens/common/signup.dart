@@ -286,7 +286,7 @@ class _SignUpState extends State<SignUp> {
                       TextField(
                         controller: _phoneController,
                         decoration: InputDecoration(
-                          hintText: "+92 300 0000000",
+                          hintText: "0300 1234567",
                           prefixIcon: Icon(LucideIcons.phone),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
