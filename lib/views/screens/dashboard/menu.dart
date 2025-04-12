@@ -5,13 +5,11 @@ import 'package:healthcare/views/screens/menu/availability.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
-import 'package:healthcare/views/screens/menu/withdrawal_history.dart';
 import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 import 'package:healthcare/views/screens/onboarding/signupoptions.dart';
 import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
 import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
 import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
-import 'package:healthcare/views/screens/developer/developer_tools.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -158,7 +156,7 @@ class _MenuScreenState extends State<MenuScreen> {
       // Get doctor profile
       final doctorProfile = await _doctorProfileService.getDoctorProfile();
       
-      // Get doctor stats
+      // Get doctor stats - this now uses consistent earnings calculation
       final doctorStats = await _doctorProfileService.getDoctorStats();
       
       if (mounted) {
@@ -196,12 +194,10 @@ class _MenuScreenState extends State<MenuScreen> {
     if (widget.userType == UserType.doctor) {
       menuItems = [
         MenuItem("Edit Profile", Icons.person, () => const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Appointments", Icons.calendar_month, () => const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Appointments History", Icons.history, () => const AppointmentHistoryScreen(), category: "Appointment"),
         MenuItem("Payment Methods", Icons.credit_card, () => PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
-        MenuItem("Withdrawal History", Icons.account_balance_wallet, () => const WithdrawalHistoryScreen(), category: "Payment"),
         MenuItem("FAQs", Icons.info_outline, () => const FAQScreen(), category: "Support"),
         MenuItem("Help Center", Icons.headset_mic, () => const Scaffold(body: Center(child: Text("Help Center Coming Soon"))), category: "Support"),
-        MenuItem("Developer Tools", Icons.terminal, () => const DeveloperToolsScreen(), category: "Development"),
         MenuItem("Logout", Icons.logout, () => Container(), category: ""),
       ];
     } else {
@@ -209,11 +205,10 @@ class _MenuScreenState extends State<MenuScreen> {
       menuItems = [
         MenuItem("Edit Profile", Icons.person, () => const ProfileEditorScreen(), category: "Account"),
         MenuItem("Medical Records", Icons.description, () => const Scaffold(body: Center(child: Text("Medical Records Coming Soon"))), category: "Health"),
-        MenuItem("Appointments", Icons.calendar_month, () => const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Appointments History", Icons.history, () => const AppointmentHistoryScreen(), category: "Appointment"),
         MenuItem("Payment Methods", Icons.credit_card, () => PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
         MenuItem("FAQs", Icons.info_outline, () => const FAQScreen(), category: "Support"),
         MenuItem("Help Center", Icons.headset_mic, () => const Scaffold(body: Center(child: Text("Help Center Coming Soon"))), category: "Support"),
-        MenuItem("Developer Tools", Icons.terminal, () => const DeveloperToolsScreen(), category: "Development"),
         MenuItem("Logout", Icons.logout, () => Container(), category: ""),
       ];
     }
@@ -234,96 +229,6 @@ class _MenuScreenState extends State<MenuScreen> {
     }
     
     return result;
-  }
-
-  // Debug test screen to isolate navigation issues
-  void _openTestScreen() {
-    try {
-      debugPrint('Attempting to open TestScreen');
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: const Text('Test Screen'),
-              backgroundColor: Colors.blue,
-            ),
-            body: const Center(
-              child: Text('This is a test screen. If you see this, navigation works!'),
-            ),
-          ),
-        ),
-      );
-      debugPrint('TestScreen navigation successful');
-    } catch (e) {
-      debugPrint('*** Navigation ERROR: $e ***');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 10),
-        ),
-      );
-    }
-  }
-
-  // Optimized navigation with loading indicator
-  void _navigateWithLoadingIndicator(Widget Function() screenBuilder, String screenName) {
-    // Show loading dialog immediately
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(
-                  color: Color(0xFF3366CC),
-                ),
-                const SizedBox(height: 20),
-                Text('Loading $screenName...'),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    // Use micro-task to ensure UI updates before heavy computation
-    Future.microtask(() async {
-      try {
-        // Delay to ensure dialog shows
-        await Future.delayed(const Duration(milliseconds: 100));
-        
-        final screen = screenBuilder();
-        
-        // Close loading dialog
-        if (context.mounted) Navigator.of(context).pop();
-        
-        // Navigate to the screen
-        if (context.mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => screen),
-          );
-        }
-      } catch (e) {
-        // Close loading dialog if there's an error
-        if (context.mounted) Navigator.of(context).pop();
-        
-        debugPrint('Error loading $screenName: $e');
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Unable to load $screenName: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    });
   }
 
   // Navigate directly to a specific screen with web-friendly routing
@@ -365,14 +270,11 @@ class _MenuScreenState extends State<MenuScreen> {
           case "Edit Profile":
             screen = const ProfileEditorScreen();
             break;
-          case "Appointments":
+          case "Appointments History":
             screen = const AppointmentHistoryScreen();
             break;
           case "Payment Methods":
             screen = PaymentMethodsScreen(userType: widget.userType);
-            break;
-          case "Withdrawal History":
-            screen = const WithdrawalHistoryScreen();
             break;
           case "FAQs":
             screen = const FAQScreen();
@@ -388,9 +290,6 @@ class _MenuScreenState extends State<MenuScreen> {
               appBar: AppBar(title: const Text("Medical Records")),
               body: const Center(child: Text("Medical Records Coming Soon")),
             );
-            break;
-          case "Developer Tools":
-            screen = const DeveloperToolsScreen();
             break;
           default:
             // Close loading dialog
@@ -439,14 +338,11 @@ class _MenuScreenState extends State<MenuScreen> {
         case "Edit Profile":
           screen = const ProfileEditorScreen();
           break;
-        case "Appointments":
+        case "Appointments History":
           screen = const AppointmentHistoryScreen();
           break;
         case "Payment Methods":
           screen = PaymentMethodsScreen(userType: widget.userType);
-          break;
-        case "Withdrawal History":
-          screen = const WithdrawalHistoryScreen();
           break;
         case "FAQs":
           screen = const FAQScreen();
@@ -462,9 +358,6 @@ class _MenuScreenState extends State<MenuScreen> {
             appBar: AppBar(title: const Text("Medical Records")),
             body: const Center(child: Text("Medical Records Coming Soon")),
           );
-          break;
-        case "Developer Tools":
-          screen = const DeveloperToolsScreen();
           break;
         default:
           throw Exception("Unknown screen type: $screenType");
@@ -506,7 +399,6 @@ class _MenuScreenState extends State<MenuScreen> {
             : Column(
           children: [
             _buildProfileHeader(),
-            _buildTestButton(),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -865,8 +757,6 @@ class _MenuScreenState extends State<MenuScreen> {
           
           if (item.title == "Logout") {
             _showLogoutDialog();
-          } else if (item.title == "Test Navigation") {
-            _openTestScreen();
           } else if (item.title == "Edit Profile") {
             // Direct navigation for Edit Profile
             debugPrint('Direct navigation to Edit Profile');
@@ -1175,25 +1065,6 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         );
       },
-    );
-  }
-
-  // Add a test button below profile header
-  Widget _buildTestButton() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
-      child: ElevatedButton(
-        onPressed: _openTestScreen,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: const Text('Test Navigation'),
-      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:healthcare/services/doctor_profile_service.dart';
 
 class PatientsScreen extends StatefulWidget {
   const PatientsScreen({super.key});
@@ -21,11 +22,16 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DoctorProfileService _doctorProfileService = DoctorProfileService();
   
   // Patient data state
   List<Map<String, dynamic>> _patients = [];
   bool _isLoading = true;
   String? _errorMessage;
+  
+  // Doctor earnings data
+  double _totalEarnings = 0.0;
+  int _totalAppointments = 0;
   
   // Pagination variables
   DocumentSnapshot? _lastDocument;
@@ -40,6 +46,8 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
+    debugPrint('PatientsScreen initState called');
+    
     _controller = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -56,9 +64,15 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       _fetchPatientData();
     });
     
+    // Load earnings immediately
+    _loadDoctorEarnings();
+    
     // Fetch data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('Post frame callback running');
       _fetchPatientData();
+      // Call earnings again to ensure it runs
+      _loadDoctorEarnings();
     });
   }
   
@@ -83,6 +97,9 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     });
     
     await _loadPatients(true);
+    
+    // Also refresh earnings data
+    await _loadDoctorEarnings();
   }
   
   // Load patients with pagination
@@ -362,6 +379,46 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     _fetchPatientData();
   }
 
+  // Load doctor earnings data
+  Future<void> _loadDoctorEarnings() async {
+    if (!mounted) return;
+    
+    debugPrint('Loading doctor earnings data...');
+    
+    try {
+      final String? doctorId = _auth.currentUser?.uid;
+      if (doctorId == null) {
+        debugPrint('Doctor ID is null, cannot load earnings');
+        return;
+      }
+      
+      debugPrint('Fetching earnings for doctor: $doctorId');
+      
+      // Get doctor stats which includes consistently calculated earnings
+      final doctorStats = await _doctorProfileService.getDoctorStats();
+      
+      debugPrint('Doctor stats received: $doctorStats');
+      
+      if (mounted && doctorStats['success'] == true) {
+        final earnings = doctorStats['totalEarnings'] ?? 0.0;
+        final appointments = doctorStats['totalAppointments'] ?? 0;
+        
+        debugPrint('Setting state with earnings: $earnings, appointments: $appointments');
+        
+        setState(() {
+          _totalEarnings = earnings;
+          _totalAppointments = appointments;
+        });
+        
+        debugPrint('State updated with earnings and appointments');
+      } else {
+        debugPrint('Doctor stats not successful or component unmounted');
+      }
+    } catch (e) {
+      debugPrint('Error loading doctor earnings: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get filtered patients
@@ -443,6 +500,71 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                             LucideIcons.bell,
                             color: Colors.white,
                             size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Earnings summary
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          "Doctor Performance",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildEarningsStat(
+                              "Total Earnings",
+                              "Rs ${_totalEarnings.toStringAsFixed(0)}",
+                              LucideIcons.wallet,
+                            ),
+                            Container(
+                              height: 40,
+                              width: 1,
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                            _buildEarningsStat(
+                              "Appointments",
+                              _totalAppointments.toString(),
+                              LucideIcons.calendar,
+                            ),
+                          ],
+                        ),
+                        // Add debug text to show actual values
+                        Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text(
+                            "Debug - Earnings: $_totalEarnings, Appointments: $_totalAppointments",
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
                           ),
                         ),
                       ],
@@ -1401,6 +1523,44 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildEarningsStat(String label, String value, IconData icon) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            size: 24,
+            color: Colors.white,
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 }

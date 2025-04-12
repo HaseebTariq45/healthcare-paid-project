@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Get doctor profile
       final doctorProfile = await _doctorProfileService.getDoctorProfile();
       
-      // Get doctor stats
+      // Get doctor stats - this now uses consistent earnings calculation
       final doctorStats = await _doctorProfileService.getDoctorStats();
       
       if (mounted) {

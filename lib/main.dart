@@ -12,8 +12,6 @@ import 'package:healthcare/views/screens/menu/appointment_history.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
-import 'package:healthcare/views/screens/menu/withdrawal_history.dart';
-import 'package:healthcare/views/screens/developer/developer_tools.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -39,7 +37,6 @@ class MyApp extends StatelessWidget {
         '/profile/edit': (context) => const ProfileEditorScreen(),
         '/appointments/history': (context) => const AppointmentHistoryScreen(),
         '/payment/methods': (context) => PaymentMethodsScreen(userType: UserType.doctor),
-        '/payment/withdrawal': (context) => const WithdrawalHistoryScreen(),
         '/faqs': (context) => const FAQScreen(),
         '/help': (context) => Scaffold(
           appBar: AppBar(title: const Text("Help Center")),
@@ -49,7 +46,6 @@ class MyApp extends StatelessWidget {
           appBar: AppBar(title: const Text("Medical Records")),
           body: const Center(child: Text("Medical Records Coming Soon")),
         ),
-        '/developer/tools': (context) => const DeveloperToolsScreen(),
       },
     );
   }

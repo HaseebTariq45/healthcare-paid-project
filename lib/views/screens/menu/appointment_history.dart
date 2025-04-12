@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/dashboard/patient_profile_details.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
 
 class AppointmentHistoryScreen extends StatefulWidget {
   const AppointmentHistoryScreen({super.key});
@@ -16,300 +13,182 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
   bool _isLoading = true;
   String _errorMessage = '';
   
-  // Appointment data structure for storing fetched appointments
-  final List<Map<String, dynamic>> _appointments = [];
-  
-  // Pagination variables
-  bool _isLoadingMore = false;
-  bool _hasMoreData = true;
-  DocumentSnapshot? _lastDocument;
-  final int _appointmentsPerPage = 10;
+  // Appointment data structure optimized for Firestore
+  final List<Map<String, dynamic>> _completedAppointments = [];
 
   // Search query
   String _searchQuery = '';
   String _selectedFilter = 'All';
-  
-  // Auth and Firestore instances
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
-  // ScrollController for infinite scrolling
-  late ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
-    
-    // Initialize scroll controller
-    _scrollController = ScrollController();
-    _scrollController.addListener(_scrollListener);
-    
     _loadAppointments();
   }
   
-  @override
-  void dispose() {
-    _scrollController.removeListener(_scrollListener);
-    _scrollController.dispose();
-    super.dispose();
-  }
-  
-  // Scroll listener to detect when user scrolls to bottom
-  void _scrollListener() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8 &&
-        !_isLoadingMore &&
-        _hasMoreData) {
-      _loadMoreAppointments();
-    }
-  }
-  
-  // Load more appointments when scrolling
-  Future<void> _loadMoreAppointments() async {
-    if (_isLoadingMore || !_hasMoreData) return;
-    
-    setState(() {
-      _isLoadingMore = true;
-    });
-    
-    await _fetchAppointments(isInitialLoad: false);
-  }
-  
-  // Load appointments from Firestore
+  // Load appointments from Firestore (mock implementation for now)
   Future<void> _loadAppointments() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
-      _lastDocument = null;
-      _hasMoreData = true;
-      _appointments.clear();
     });
     
-    await _fetchAppointments(isInitialLoad: true);
-  }
-  
-  // Fetch appointments from Firestore with pagination
-  Future<void> _fetchAppointments({required bool isInitialLoad}) async {
     try {
-      // Get current user
-      final String? userId = _auth.currentUser?.uid;
-      
-      if (userId == null) {
-        setState(() {
-          _errorMessage = 'No user logged in';
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-        return;
-      }
-      
-      // Get user role to determine query
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final String userRole = userDoc.data()?['role'] ?? 'patient';
-      
-      // Create base query depending on user role
-      Query query;
-      
-      if (userRole == 'doctor') {
-        // For doctors, find appointments where they are the doctor
-        query = _firestore
-            .collection('appointments')
-            .where('doctorId', isEqualTo: userId)
-            .orderBy('createdAt', descending: true);
-      } else {
-        // For patients, find appointments where they are the patient
-        query = _firestore
-            .collection('appointments')
-            .where('patientId', isEqualTo: userId)
-            .orderBy('createdAt', descending: true);
-      }
-      
-      // Apply pagination
-      if (_lastDocument != null) {
-        query = query.startAfterDocument(_lastDocument!);
-      }
-      
-      // Limit results
-      query = query.limit(_appointmentsPerPage);
-      
-      // Execute query
-      final appointmentsSnapshot = await query.get();
-      
-      // Update pagination info
-      _hasMoreData = appointmentsSnapshot.docs.length >= _appointmentsPerPage;
-      
-      if (appointmentsSnapshot.docs.isNotEmpty) {
-        _lastDocument = appointmentsSnapshot.docs.last;
-      }
-      
-      if (appointmentsSnapshot.docs.isEmpty && isInitialLoad) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-        return;
-      }
-      
-      // Process appointments
-      List<Map<String, dynamic>> loadedAppointments = [];
-      
-      for (var doc in appointmentsSnapshot.docs) {
-        final appointmentData = doc.data() as Map<String, dynamic>;
-        
-        // Get patient details
-        String patientName = "Unknown Patient";
-        String patientImage = "";
-        String patientAge = "";
-        String patientLocation = "";
-        
-        if (appointmentData['patientId'] != null) {
-          try {
-            final patientDoc = await _firestore
-                .collection('users')
-                .doc(appointmentData['patientId'])
-                .get();
-                
-            if (patientDoc.exists) {
-              final patientData = patientDoc.data() as Map<String, dynamic>;
-              patientName = patientData['fullName'] ?? patientData['name'] ?? "Unknown Patient";
-              patientImage = patientData['profileImageUrl'] ?? "";
-              patientAge = patientData['age'] != null ? "${patientData['age']} Years" : "";
-              patientLocation = patientData['city'] ?? patientData['address'] ?? "";
-            }
-          } catch (e) {
-            print('Error fetching patient data: $e');
-          }
-        }
-        
-        // Get doctor details
-        String doctorName = "Unknown Doctor";
-        String doctorSpecialty = "";
-        
-        if (appointmentData['doctorId'] != null) {
-          try {
-            final doctorDoc = await _firestore
-                .collection('doctors')
-                .doc(appointmentData['doctorId'])
-                .get();
-                
-            if (doctorDoc.exists) {
-              final doctorData = doctorDoc.data() as Map<String, dynamic>;
-              doctorName = doctorData['fullName'] ?? doctorData['name'] ?? "Unknown Doctor";
-              doctorSpecialty = doctorData['specialty'] ?? "";
-            }
-          } catch (e) {
-            print('Error fetching doctor data: $e');
-          }
-        }
-        
-        // Format appointment date
-        String formattedDate = "Unknown Date";
-        String formattedTime = "Unknown Time";
-        
-        if (appointmentData['appointmentDate'] != null && appointmentData['appointmentDate'] is Timestamp) {
-          final appointmentDateTime = (appointmentData['appointmentDate'] as Timestamp).toDate();
-          formattedDate = "${appointmentDateTime.day} ${_getMonthName(appointmentDateTime.month)} ${appointmentDateTime.year}";
-          
-          // Format time in 12-hour format
-          final hour = appointmentDateTime.hour > 12 ? appointmentDateTime.hour - 12 : appointmentDateTime.hour;
-          final period = appointmentDateTime.hour >= 12 ? "PM" : "AM";
-          formattedTime = "$hour:${appointmentDateTime.minute.toString().padLeft(2, '0')} $period";
-        } else if (appointmentData['date'] != null) {
-          // Handle string date format
-          formattedDate = appointmentData['date'];
-          formattedTime = appointmentData['time'] ?? "Unknown Time";
-        }
-        
-        // Get hospital details
-        String hospitalName = appointmentData['hospitalName'] ?? "Unknown Hospital";
-        String hospitalLocation = "";
-        
-        // Format appointment data
-        final appointment = {
-          "id": doc.id,
-          "patientId": appointmentData['patientId'],
-          "doctorId": appointmentData['doctorId'],
-          "patientName": patientName,
-          "patientAge": patientAge,
-          "patientLocation": patientLocation,
-          "patientImage": patientImage,
-          "doctorName": doctorName,
-          "doctorSpecialty": doctorSpecialty,
-          "condition": appointmentData['reason'] ?? "Consultation",
-          "date": formattedDate,
-          "time": formattedTime,
-          "hospital": hospitalName,
-          "reason": appointmentData['reason'] ?? "Consultation",
-          "status": appointmentData['status'] ?? "Pending",
-          "diagnosis": appointmentData['diagnosis'] ?? "",
-          "prescription": appointmentData['prescription'] ?? "",
-          "notes": appointmentData['notes'] ?? "",
-          "nextVisit": appointmentData['nextVisit'] ?? "",
-          "amount": appointmentData['fee'] ?? 0,
-          "displayAmount": appointmentData['fee'] != null ? "Rs ${appointmentData['fee']}" : "N/A",
-          "type": appointmentData['isPanelConsultation'] == true 
-              ? "In-Person Visit" 
-              : "Video Consultation",
-          "createdAt": appointmentData['createdAt'],
-        };
-        
-        loadedAppointments.add(appointment);
-      }
+      // This will be replaced with actual Firestore queries
+      // For demo purposes, use the sample data
+      await Future.delayed(Duration(milliseconds: 800)); // Simulate network delay
       
       setState(() {
-        // Append new data or replace existing data
-        if (isInitialLoad) {
-          _appointments.clear();
-          _appointments.addAll(loadedAppointments);
-        } else {
-          _appointments.addAll(loadedAppointments);
-        }
+        _completedAppointments.clear();
+        _completedAppointments.addAll([
+          {
+            "id": "appt1",
+            "patientId": "patient1",
+            "doctorId": "doctor1",
+            "patientName": "Ali",
+            "patientAge": "29 Years",
+            "patientLocation": "Bhalwal",
+            "patientImage": "assets/images/patient_1.png",
+            "lastVisit": "2 days ago",
+            "condition": "Hypertension",
+            "date": "15 Oct 2023",
+            "time": "09:00 AM",
+            "hospital": "Aga Khan Hospital, Karachi",
+            "reason": "Follow-up Visit",
+            "status": "Completed",
+            "diagnosis": "Controlled hypertension",
+            "prescription": "Amlodipine 5mg daily",
+            "notes": "Blood pressure normal at 120/80. Continue current medication.",
+            "nextVisit": "15 Jan 2024",
+            "amount": 2000,
+            "displayAmount": "Rs 2,000",
+            "type": "In-Person Visit",
+          },
+          {
+            "id": "appt3",
+            "patientId": "patient3",
+            "doctorId": "doctor1",
+            "patientName": "Asma",
+            "patientAge": "24 Years",
+            "patientLocation": "Lahore",
+            "patientImage": "assets/images/patient_3.png",
+            "lastVisit": "Yesterday",
+            "condition": "Pregnancy",
+            "date": "14 Oct 2023",
+            "time": "02:00 PM",
+            "hospital": "Jinnah Hospital, Karachi",
+            "reason": "Prescription Refill",
+            "status": "Completed",
+            "diagnosis": "Healthy pregnancy - 28 weeks",
+            "prescription": "Prenatal vitamins",
+            "notes": "Fetal heart rate normal. Scheduled for ultrasound next month.",
+            "nextVisit": "14 Nov 2023",
+            "amount": 1500,
+            "displayAmount": "Rs 1,500",
+            "type": "In-Person Visit",
+          },
+          {
+            "id": "appt4",
+            "patientId": "patient4",
+            "doctorId": "doctor1",
+            "patientName": "Robert Lee",
+            "patientAge": "42 Years",
+            "patientLocation": "Islamabad",
+            "patientImage": "assets/images/User.png",
+            "lastVisit": "5 days ago",
+            "condition": "Diabetes Type 2",
+            "date": "10 Oct 2023",
+            "time": "11:30 AM",
+            "hospital": "Shifa International Hospital, Islamabad",
+            "reason": "Regular Checkup",
+            "status": "Completed",
+            "diagnosis": "Well-managed diabetes",
+            "prescription": "Metformin 500mg twice daily",
+            "notes": "HbA1c improved to 6.5%. Continue diet and exercise regimen.",
+            "nextVisit": "10 Jan 2024",
+            "amount": 2500,
+            "displayAmount": "Rs 2,500",
+            "type": "Video Consultation",
+          },
+          {
+            "id": "appt5",
+            "patientId": "patient5",
+            "doctorId": "doctor1",
+            "patientName": "Saima Khan",
+            "patientAge": "36 Years",
+            "patientLocation": "Karachi",
+            "patientImage": "assets/images/User.png",
+            "lastVisit": "2 weeks ago",
+            "condition": "Migraine",
+            "date": "5 Oct 2023",
+            "time": "03:00 PM",
+            "hospital": "Liaquat National Hospital, Karachi",
+            "reason": "Acute Headache",
+            "status": "Completed",
+            "diagnosis": "Migraine with aura",
+            "prescription": "Sumatriptan 50mg as needed",
+            "notes": "Discussed trigger avoidance and stress management techniques.",
+            "nextVisit": "As needed",
+            "amount": 1800,
+            "displayAmount": "Rs 1,800",
+            "type": "In-Person Visit",
+          },
+          {
+            "id": "appt6",
+            "patientId": "patient6",
+            "doctorId": "doctor1",
+            "patientName": "Imran Ahmed",
+            "patientAge": "52 Years",
+            "patientLocation": "Peshawar",
+            "patientImage": "assets/images/User.png",
+            "lastVisit": "3 weeks ago",
+            "condition": "Osteoarthritis",
+            "date": "28 Sept 2023",
+            "time": "10:00 AM",
+            "hospital": "Khyber Teaching Hospital, Peshawar",
+            "reason": "Joint Pain",
+            "status": "Completed",
+            "diagnosis": "Moderate osteoarthritis of knee",
+            "prescription": "Acetaminophen 500mg as needed, Glucosamine supplement",
+            "notes": "Recommended physiotherapy twice weekly for 1 month.",
+            "nextVisit": "28 Dec 2023",
+            "amount": 2000,
+            "displayAmount": "Rs 2,000",
+            "type": "In-Person Visit",
+          },
+        ]);
         
         _isLoading = false;
-        _isLoadingMore = false;
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load appointments: ${e.toString()}';
         _isLoading = false;
-        _isLoadingMore = false;
       });
       print('Error loading appointments: $e');
     }
   }
   
-  // Helper method to get month name
-  String _getMonthName(int month) {
-    const monthNames = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return monthNames[month - 1];
-  }
-  
   // Filter appointments based on search query and selected filter
   List<Map<String, dynamic>> get filteredAppointments {
-    List<Map<String, dynamic>> result = _appointments;
+    List<Map<String, dynamic>> result = _completedAppointments;
     
     // Apply search query
     if (_searchQuery.isNotEmpty) {
       result = result.where((appointment) {
-        final patientName = appointment['patientName'].toString().toLowerCase();
-        final doctorName = appointment['doctorName'].toString().toLowerCase();
+      final patientName = appointment['patientName'].toString().toLowerCase();
         final hospital = appointment['hospital'].toString().toLowerCase();
         final condition = appointment['condition'].toString().toLowerCase();
         final date = appointment['date'].toString().toLowerCase();
-        final status = appointment['status'].toString().toLowerCase();
       
-        final query = _searchQuery.toLowerCase();
+      final query = _searchQuery.toLowerCase();
       
         return patientName.contains(query) || 
-               doctorName.contains(query) ||
                hospital.contains(query) ||
                condition.contains(query) ||
-               date.contains(query) ||
-               status.contains(query);
-      }).toList();
-    }
+             date.contains(query);
+    }).toList();
+  }
   
     // Apply filter
     if (_selectedFilter != 'All') {
@@ -318,13 +197,8 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
           return appointment['type'] == 'Video Consultation';
         } else if (_selectedFilter == 'In-Person') {
           return appointment['type'] == 'In-Person Visit';
-        } else if (_selectedFilter == 'Completed') {
-          return appointment['status'].toString().toLowerCase() == 'completed';
-        } else if (_selectedFilter == 'Upcoming') {
-          final status = appointment['status'].toString().toLowerCase();
-          return status == 'pending' || status == 'confirmed';
-        } else if (_selectedFilter == 'Cancelled') {
-          return appointment['status'].toString().toLowerCase() == 'cancelled';
+        } else if (_selectedFilter == 'Follow-up') {
+          return appointment['reason'].toString().contains('Follow-up');
         }
         return true;
       }).toList();
@@ -345,7 +219,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Appointments",
+          "Completed Appointments",
           style: GoogleFonts.poppins(
             color: Color(0xFF333333),
             fontWeight: FontWeight.w600,
@@ -360,7 +234,7 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
           ),
         ],
       ),
-      body: _isLoading && _appointments.isEmpty
+      body: _isLoading 
         ? Center(
             child: CircularProgressIndicator(
                 color: Color(0xFF3366FF),
@@ -375,86 +249,62 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                 
                 // Results count
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Row(
                     children: [
                       Text(
-                        "${filteredAppointments.length} appointment${filteredAppointments.length != 1 ? 's' : ''} found",
-                        style: GoogleFonts.poppins(
-                          color: Color(0xFF666666),
+                        "${filteredAppointments.length} ${filteredAppointments.length == 1 ? 'result' : 'results'}",
+                      style: GoogleFonts.poppins(
                           fontSize: 14,
+                          color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
                         ),
                       ),
                       Spacer(),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFE6F0FF),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          "Filter: $_selectedFilter",
-                          style: GoogleFonts.poppins(
-                            color: Color(0xFF3366FF),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
+                      Text(
+                        "Completed appointments",
+                        style: GoogleFonts.poppins(
+                        fontSize: 14,
+                          color: Color(0xFF4CAF50),
+                          fontWeight: FontWeight.w500,
+                    ),
                   ),
+                    ],
+                ),
                 ),
                 
-                // Appointments list
+                // Appointment list
                 Expanded(
-                  child: _appointments.isEmpty
-                    ? _buildEmptyState()
-                    : filteredAppointments.isEmpty
-                      ? _buildNoResultsView()
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: filteredAppointments.length + (_hasMoreData ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            // Show loading indicator at the end
-                            if (index == filteredAppointments.length) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                child: Center(
-                                  child: SizedBox(
-                                    height: 30,
-                                    width: 30,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 3,
-                                      color: Color(0xFF3366FF),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                            
-                            // Display appointment card
-                            return _buildAppointmentCard(filteredAppointments[index]);
-                          },
-                        ),
+                  child: filteredAppointments.isEmpty
+                    ? _buildEmptyView()
+                    : _buildAppointmentsList(),
                 ),
               ],
             ),
     );
   }
-
+  
   Widget _buildSearchAndFilterSection() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade100,
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           // Search bar
           Container(
-            height: 48,
             decoration: BoxDecoration(
-              color: Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Color(0xFFEEEEEE)),
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
             ),
             child: TextField(
               onChanged: (value) {
@@ -463,31 +313,46 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                 });
               },
               decoration: InputDecoration(
-                hintText: "Search appointments...",
+                hintText: "Search by patient, condition, or location",
                 hintStyle: GoogleFonts.poppins(
-                  color: Color(0xFF999999),
-                  fontSize: 14,
+                  color: Colors.grey.shade400,
+                        fontSize: 14,
+                      ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 18,
+                  color: Colors.grey.shade400,
                 ),
-                prefixIcon: Icon(Icons.search, color: Color(0xFF999999)),
+                suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear, size: 18, color: Colors.grey.shade600),
+                      onPressed: () {
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 15),
               ),
             ),
           ),
           
-          SizedBox(height: 12),
+          SizedBox(height: 15),
           
-          // Filter buttons
+          // Filter chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterButton('All'),
-                _buildFilterButton('Upcoming'),
-                _buildFilterButton('Completed'),
-                _buildFilterButton('Cancelled'),
-                _buildFilterButton('Consultation'),
-                _buildFilterButton('In-Person'),
+                _buildFilterChip('All'),
+                SizedBox(width: 10),
+                _buildFilterChip('In-Person'),
+                SizedBox(width: 10),
+                _buildFilterChip('Consultation'),
+                SizedBox(width: 10),
+                _buildFilterChip('Follow-up'),
               ],
             ),
           ),
@@ -495,283 +360,408 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       ),
     );
   }
-
-  Widget _buildFilterButton(String filter) {
-    final isSelected = _selectedFilter == filter;
+  
+  Widget _buildFilterChip(String label) {
+    final isSelected = _selectedFilter == label;
     
     return GestureDetector(
       onTap: () {
         setState(() {
-          _selectedFilter = filter;
+          _selectedFilter = label;
         });
       },
       child: Container(
-        margin: EdgeInsets.only(right: 10),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Color(0xFF3366FF) : Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(25),
+          color: isSelected ? Color(0xFF3366FF).withOpacity(0.1) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? Color(0xFF3366FF) : Color(0xFFEEEEEE),
-          ),
+            color: isSelected ? Color(0xFF3366FF) : Colors.grey.shade300,
+            ),
         ),
         child: Text(
-          filter,
+          label,
           style: GoogleFonts.poppins(
-            color: isSelected ? Colors.white : Color(0xFF666666),
-            fontSize: 14,
+            color: isSelected ? Color(0xFF3366FF) : Colors.grey.shade700,
+            fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
     );
   }
-
-  Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
-    // Determine status color
-    Color statusColor = Colors.blue;
-    if (appointment['status'].toString().toLowerCase() == 'completed') {
-      statusColor = Colors.green;
-    } else if (appointment['status'].toString().toLowerCase() == 'cancelled') {
-      statusColor = Colors.red;
-    } else if (appointment['status'].toString().toLowerCase() == 'pending') {
-      statusColor = Colors.orange;
-    }
-    
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AppointmentDetailsScreen(
-              appointmentDetails: appointment,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: Color(0xFFE0E0E0)),
-        ),
-        child: Column(
-          children: [
-            // Appointment header
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Color(0xFFF5F9FF),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Patient/Doctor Image
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: CircleAvatar(
-                      backgroundImage: appointment['patientImage'] != null && appointment['patientImage'].isNotEmpty 
-                          ? NetworkImage(appointment['patientImage']) as ImageProvider
-                          : AssetImage("assets/images/User.png"),
-                      backgroundColor: Colors.grey.shade200,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  // Name and details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          appointment['patientName'] ?? "Unknown Patient",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF333333),
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          appointment['condition'] ?? "Consultation",
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Status badge
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: statusColor.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      appointment['status'] ?? "Pending",
-                      style: GoogleFonts.poppins(
-                        color: statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Appointment details
-            Padding(
-              padding: const EdgeInsets.all(16),
+  
+  Widget _buildEmptyView() {
+    return Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Date and time row
-                  Row(
-                    children: [
-                      _buildDetailItem(
-                        Icons.calendar_today,
-                        "Date",
-                        appointment['date'] ?? "Unknown",
-                      ),
-                      SizedBox(width: 16),
-                      _buildDetailItem(
-                        Icons.access_time,
-                        "Time",
-                        appointment['time'] ?? "Unknown",
-                      ),
-                    ],
+                  Icon(
+            Icons.assignment,
+            size: 70,
+            color: Colors.grey.shade300,
                   ),
-                  SizedBox(height: 12),
-                  // Hospital and doctor
-                  Row(
-                    children: [
-                      _buildDetailItem(
-                        Icons.local_hospital,
-                        "Hospital",
-                        appointment['hospital'] ?? "Unknown",
-                      ),
-                    ],
+          SizedBox(height: 20),
+                  Text(
+            "No completed appointments",
+                    style: GoogleFonts.poppins(
+              fontSize: 18,
+                      fontWeight: FontWeight.w600,
+              color: Colors.grey.shade600,
+                    ),
                   ),
-                  SizedBox(height: 12),
-                  // Doctor or appointment type
-                  Row(
-                    children: [
-                      _buildDetailItem(
-                        Icons.person,
-                        "Doctor",
-                        appointment['doctorName'] ?? "Unknown",
-                      ),
-                      SizedBox(width: 16),
-                      _buildDetailItem(
-                        Icons.video_call,
-                        "Type",
-                        appointment['type'] ?? "Consultation",
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  // View details button
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AppointmentDetailsScreen(
-                            appointmentDetails: appointment,
-                          ),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF3366FF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
-                        child: Text(
-                          "View Details",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+          SizedBox(height: 10),
+                  Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+              _searchQuery.isNotEmpty
+                ? "No results matching \"$_searchQuery\""
+                : "Completed appointments will appear here",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                color: Colors.grey.shade500,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          SizedBox(height: 30),
+          if (_searchQuery.isNotEmpty)
+                  ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _selectedFilter = 'All';
+                });
+              },
+              icon: Icon(Icons.refresh, size: 18),
+                    label: Text(
+                "Clear filters",
+                style: GoogleFonts.poppins(fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF3366FF),
+                      foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+              ],
       ),
     );
   }
 
-  Widget _buildDetailItem(IconData icon, String label, String value) {
-    return Expanded(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Color(0xFFEEF4FF),
-              borderRadius: BorderRadius.circular(8),
+  Widget _buildErrorView() {
+    return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+            Icons.error_outline,
+            size: 70,
+            color: Colors.amber,
+                ),
+          SizedBox(height: 20),
+                Text(
+            "Error Loading Appointments",
+                  style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+                  ),
+                ),
+          SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+                    ),
+                  ),
+          SizedBox(height: 30),
+          ElevatedButton.icon(
+            onPressed: _loadAppointments,
+            icon: Icon(Icons.refresh, size: 18),
+            label: Text(
+              "Try Again",
+              style: GoogleFonts.poppins(fontSize: 14),
             ),
-            child: Icon(
-              icon,
-              color: Color(0xFF3366FF),
-              size: 18,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF3366FF),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
-          SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildAppointmentsList() {
+    return ListView.builder(
+              padding: EdgeInsets.all(20),
+      itemCount: filteredAppointments.length,
+              itemBuilder: (context, index) {
+        final appointment = filteredAppointments[index];
+        return _buildAppointmentCard(appointment, index);
+              },
+          );
+  }
+
+  Widget _buildAppointmentCard(Map<String, dynamic> appointment, int index) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        children: [
+          // Patient info header
+          Container(
+            padding: EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Color(0xFFF5F7FF),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 5,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      appointment['patientImage'],
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
+                        appointment['patientName'],
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Color(0xFF999999),
+                    fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        "${appointment['patientAge']} • ${appointment['patientLocation']}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF333333),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PatientDetailProfileScreen(
+                          name: appointment['patientName'],
+                          age: appointment['patientAge'].split(' ')[0],
+                          bloodGroup: "B+", // This would be dynamically set in a real app
+                          diseases: [appointment['condition']],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Color(0xFF3366CC).withOpacity(0.1),
+                      shape: BoxShape.circle,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                    child: Icon(
+                      Icons.person,
+                      color: Color(0xFF3366CC),
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Appointment details
+          Padding(
+            padding: EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date, time and type row
+                Row(
+                  children: [
+                    _buildInfoTag(
+                      Icons.calendar_today,
+                      appointment['date'],
+                      Colors.blue.shade700,
+                    ),
+                    SizedBox(width: 10),
+                    _buildInfoTag(
+                      Icons.access_time,
+                      appointment['time'],
+                      Colors.orange.shade700,
+                    ),
+                    SizedBox(width: 10),
+                    _buildInfoTag(
+                      appointment['type'] == 'Video Consultation' 
+                          ? Icons.videocam
+                          : Icons.medical_services,
+                      appointment['type'],
+                      appointment['type'] == 'Video Consultation'
+                          ? Colors.purple.shade700
+                          : Colors.green.shade700,
+                    ),
+                  ],
+                ),
+                
+                SizedBox(height: 15),
+                
+                // Facility and reason
+                _buildDetailRow(
+                  "Facility",
+                  appointment['hospital'],
+                  Icons.business,
+                ),
+                SizedBox(height: 10),
+                _buildDetailRow(
+                  "Reason",
+                  appointment['reason'],
+                  Icons.assignment,
+                ),
+                SizedBox(height: 10),
+                _buildDetailRow(
+                  "Diagnosis",
+                  appointment['diagnosis'],
+                  Icons.medical_services,
+                ),
+                SizedBox(height: 10),
+                _buildDetailRow(
+                  "Prescription",
+                  appointment['prescription'],
+                  Icons.medication,
+                ),
+                
+                SizedBox(height: 15),
+                
+                // Clinical notes
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                      Text(
+                        "Clinical Notes",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        appointment['notes'],
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey.shade800,
+                        ),
+                          ),
+                  ],
+                ),
+                ),
+                
+                SizedBox(height: 15),
+                
+                // Bottom row: Fee and next visit
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                        Text(
+                          "Fee",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                        ),
+                        Text(
+                          appointment['displayAmount'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF3366CC),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "Next Visit",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        Text(
+                          appointment['nextVisit'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 ),
               ],
             ),
@@ -781,152 +771,79 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
+  Widget _buildInfoTag(IconData icon, String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+          ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.calendar_today,
-            size: 80,
-            color: Color(0xFFCCDDFF),
-          ),
-          SizedBox(height: 16),
-          Text(
-            "No Appointments Yet",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF666666),
-            ),
-          ),
-          SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              "You don't have any appointments yet. Book an appointment to get started.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Color(0xFF999999),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNoResultsView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: Color(0xFFCCDDFF),
-          ),
-          SizedBox(height: 16),
-          Text(
-            "No Results Found",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF666666),
-            ),
-          ),
-          SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              "We couldn't find any appointments matching your search or filter.",
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Color(0xFF999999),
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          InkWell(
-            onTap: () {
-              setState(() {
-                _searchQuery = '';
-                _selectedFilter = 'All';
-              });
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Ink(
-              decoration: BoxDecoration(
-                color: Color(0xFF3366FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Text(
-                "Clear Filters",
+            icon,
+            size: 14,
+            color: color,
+        ),
+          SizedBox(width: 5),
+              Text(
+            text,
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              fontSize: 12,
+                  fontWeight: FontWeight.w500,
+              color: color,
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
-  Widget _buildErrorView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 80,
-            color: Colors.red.shade300,
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+        padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+            color: Color(0xFF3366CC).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+            size: 16,
+            color: Color(0xFF3366CC),
           ),
-          SizedBox(height: 16),
-          Text(
-            "Something Went Wrong",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF666666),
+      ),
+        SizedBox(width: 10),
+        Expanded(
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+                label,
+              style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              _errorMessage,
-              textAlign: TextAlign.center,
+            Text(
+                value,
               style: GoogleFonts.poppins(
                 fontSize: 14,
-                color: Color(0xFF999999),
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
               ),
             ),
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _loadAppointments,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF3366FF),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            ],
               ),
             ),
-            child: Text("Try Again"),
-          ),
-        ],
-      ),
+          ],
     );
   }
 }

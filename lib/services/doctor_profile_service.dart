@@ -65,74 +65,111 @@ class DoctorProfileService {
     }
   }
 
-  // Get doctor statistics (appointments, ratings, earnings)
+  // Get doctor statistics
   Future<Map<String, dynamic>> getDoctorStats() async {
     try {
-      if (currentUserId == null) {
-        throw Exception('User not authenticated');
+      final String uid = _auth.currentUser?.uid ?? '';
+      
+      if (uid.isEmpty) {
+        return {
+          'success': false,
+          'message': 'User not authenticated'
+        };
       }
-
-      // Get total appointments
-      final appointmentsSnapshot = await _firestore
+      
+      // Get initial stats from the stats document if it exists
+      final doctorStatsDoc = await _firestore
+          .collection('doctorStats')
+          .doc(uid)
+          .get();
+      
+      Map<String, dynamic> stats = {};
+      
+      if (doctorStatsDoc.exists && doctorStatsDoc.data() != null) {
+        stats = doctorStatsDoc.data()!;
+      }
+      
+      // Calculate earnings directly to ensure consistency
+      final totalEarnings = await calculateDoctorEarnings(uid);
+      
+      // Count total appointments
+      final appointmentsQuery = await _firestore
           .collection('appointments')
-          .where('doctorId', isEqualTo: currentUserId)
+          .where('doctorId', isEqualTo: uid)
           .get();
-      
-      int totalAppointments = appointmentsSnapshot.docs.length;
-      int upcomingAppointments = 0;
-      int completedAppointments = 0;
-      double totalEarnings = 0.0;
-      
-      // Process each appointment
-      for (var doc in appointmentsSnapshot.docs) {
-        final data = doc.data();
-        final status = data['status'] as String? ?? '';
-        
-        if (status == 'upcoming') {
-          upcomingAppointments++;
-        } else if (status == 'completed') {
-          completedAppointments++;
           
-          // Add to earnings if fee is available
-          if (data.containsKey('fee')) {
-            totalEarnings += (data['fee'] as num).toDouble();
-          }
-        }
+      final int totalAppointments = appointmentsQuery.docs.length;
+      
+      // Count number of reviews
+      int reviewCount = 0;
+      try {
+        final reviewsQuery = await _firestore
+            .collection('reviews')
+            .where('doctorId', isEqualTo: uid)
+            .get();
+            
+        reviewCount = reviewsQuery.docs.length;
+      } catch (e) {
+        debugPrint('Error counting reviews: $e');
       }
-      
-      // Get reviews data (if stored separately)
-      final reviewsSnapshot = await _firestore
-          .collection('reviews')
-          .where('doctorId', isEqualTo: currentUserId)
-          .get();
-      
-      int totalReviews = reviewsSnapshot.docs.length;
-      double totalRating = 0;
-      
-      for (var doc in reviewsSnapshot.docs) {
-        final data = doc.data();
-        if (data.containsKey('rating')) {
-          totalRating += (data['rating'] as num).toDouble();
-        }
-      }
-      
-      double averageRating = totalReviews > 0 ? totalRating / totalReviews : 0;
       
       return {
         'success': true,
-        'totalAppointments': totalAppointments,
-        'upcomingAppointments': upcomingAppointments,
-        'completedAppointments': completedAppointments,
         'totalEarnings': totalEarnings,
-        'totalReviews': totalReviews,
-        'averageRating': averageRating,
+        'totalAppointments': totalAppointments,
+        'totalReviews': reviewCount,
+        'completedAppointments': stats['completedAppointments'] ?? 0,
+        'cancelledAppointments': stats['cancelledAppointments'] ?? 0,
+        'upcomingAppointments': stats['upcomingAppointments'] ?? 0,
       };
     } catch (e) {
-      debugPrint('Error fetching doctor stats: $e');
+      debugPrint('Error getting doctor stats: $e');
       return {
         'success': false,
-        'error': e.toString(),
+        'message': e.toString()
       };
+    }
+  }
+
+  // Calculate doctor earnings consistently across the app
+  Future<double> calculateDoctorEarnings(String doctorId) async {
+    double totalEarnings = 0.0;
+    
+    try {
+      // Calculate earnings from appointments
+      final completedAppointments = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('status', isEqualTo: 'completed')
+          .where('paymentStatus', isEqualTo: 'completed')
+          .get();
+          
+      for (var doc in completedAppointments.docs) {
+        final data = doc.data();
+        if (data.containsKey('fee') && data['fee'] is num) {
+          totalEarnings += (data['fee'] as num).toDouble();
+        }
+      }
+      
+      // Also check transactions collection if it exists
+      final transactions = await _firestore
+          .collection('transactions')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('type', isEqualTo: 'payment')
+          .where('status', isEqualTo: 'completed')
+          .get();
+          
+      for (var doc in transactions.docs) {
+        final data = doc.data();
+        if (data.containsKey('amount') && data['amount'] is num) {
+          totalEarnings += (data['amount'] as num).toDouble();
+        }
+      }
+      
+      return totalEarnings;
+    } catch (e) {
+      debugPrint('Error calculating earnings: $e');
+      return 0.0;
     }
   }
 
