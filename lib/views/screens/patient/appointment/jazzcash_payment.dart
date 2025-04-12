@@ -177,7 +177,7 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
                             padding: EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              shape: BoxShape.circle,
+                        shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black12,

@@ -690,7 +690,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     _buildBanner(),
                     _buildDiseaseCategories(),
                     _buildAppointmentsSection(),
-                    _buildQuickAccessDoctors(),
                     SizedBox(height: 20),
                   ],
                 ),
@@ -700,6 +699,29 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildHeader() {
+    // Find the earliest upcoming appointment if available
+    Map<String, dynamic>? earliestAppointment;
+    if (upcomingAppointments.isNotEmpty) {
+      // Filter only upcoming appointments (pending/confirmed)
+      List<Map<String, dynamic>> upcoming = upcomingAppointments.where(
+        (appointment) => appointment['status'].toString().toLowerCase() == 'pending' || 
+                        appointment['status'].toString().toLowerCase() == 'confirmed'
+      ).toList();
+      
+      if (upcoming.isNotEmpty) {
+        // Sort by date and time to find the earliest
+        upcoming.sort((a, b) {
+          // Simple string comparison for date format "dd/mm/yyyy"
+          int dateCompare = a['date'].toString().compareTo(b['date'].toString());
+          if (dateCompare != 0) return dateCompare;
+          // If same date, compare time
+          return a['time'].toString().compareTo(b['time'].toString());
+        });
+        
+        earliestAppointment = upcoming.first;
+      }
+    }
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 15, 20, 30),
       decoration: BoxDecoration(
@@ -752,51 +774,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                   ),
                 ],
-              ),
-              GestureDetector(
-                onTap: () {
-                  // Navigate to notifications
-                },
-                child: Stack(
-                  alignment: Alignment.topRight,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 5,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        LucideIcons.bell,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 2,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -936,7 +913,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    LucideIcons.stethoscope,
+                    earliestAppointment != null ? LucideIcons.calendar : LucideIcons.user,
                     color: Color(0xFF3366CC),
                     size: 24,
                   ),
@@ -947,7 +924,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Profile Picture",
+                        earliestAppointment != null ? "Upcoming Appointment" : "Profile Status",
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -955,34 +932,49 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         ),
                       ),
                       SizedBox(height: 2),
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundImage: profileImageUrl != null && profileImageUrl!.isNotEmpty
-                              ? NetworkImage(profileImageUrl!) as ImageProvider
-                              : AssetImage("assets/images/User.png"),
-                            backgroundColor: Colors.grey.shade200,
+                      earliestAppointment != null 
+                      ? Text(
+                          "With ${earliestAppointment['doctorName']} on ${earliestAppointment['date']}",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
                           ),
-                          SizedBox(width: 10),
-                          Text(
-                            profileImageUrl != null && profileImageUrl!.isNotEmpty
-                              ? "Profile picture set"
-                              : "No profile picture",
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: profileImageUrl != null && profileImageUrl!.isNotEmpty
-                                ? Colors.green.shade700
-                                : Colors.grey.shade600,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.grey.shade300,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Icon(
+                                LucideIcons.user,
+                                color: Colors.grey.shade400,
+                                size: 22,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            SizedBox(width: 10),
+                            Text(
+                              "No profile picture added",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
-                if (upcomingAppointments.isNotEmpty)
+                if (earliestAppointment != null)
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -994,7 +986,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ),
                     ),
                     child: Text(
-                      "${upcomingAppointments.length} Upcoming",
+                      earliestAppointment['time'],
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1581,150 +1573,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         ],
       ),
     );
-  }
-
-  Widget _buildQuickAccessDoctors() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Top Doctors",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => DoctorsScreen(
-                      doctors: _getAllDoctors(),
-                    )),
-                  );
-                },
-                child: Text(
-                  "See all",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color.fromRGBO(64, 124, 226, 1),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 15),
-          Container(
-            height: 180,
-            child: ListView.builder(
-              physics: BouncingScrollPhysics(),
-              scrollDirection: Axis.horizontal,
-              itemCount: _quickAccessDoctors.length,
-              itemBuilder: (context, index) {
-                final doctor = _quickAccessDoctors[index];
-                return Container(
-                  width: 150,
-                  margin: EdgeInsets.only(right: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Color.fromRGBO(64, 124, 226, 0.05),
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(15),
-                            topRight: Radius.circular(15),
-                          ),
-                        ),
-                        child: Center(
-                          child: CircleAvatar(
-                            radius: 35,
-                            backgroundImage: AssetImage(doctor["image"]),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          children: [
-                            Text(
-                              doctor["name"],
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                            Text(
-                              doctor["specialty"],
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(height: 5),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  LucideIcons.star,
-                                  color: Colors.amber,
-                                  size: 14,
-                                ),
-                                SizedBox(width: 5),
-                                Text(
-                                  doctor["rating"].toString(),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Helper method to get all doctors from all specialties
-  List<Map<String, dynamic>> _getAllDoctors() {
-    List<Map<String, dynamic>> allDoctors = [];
-    _doctorsBySpecialty.forEach((specialty, doctors) {
-      allDoctors.addAll(doctors);
-    });
-    return allDoctors;
   }
 }
 
