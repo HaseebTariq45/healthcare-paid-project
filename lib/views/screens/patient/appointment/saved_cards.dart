@@ -135,19 +135,19 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
           
           print('Appointment and transaction saved successfully');
           
-          setState(() {
-            _isLoading = false;
-          });
-          
+      setState(() {
+        _isLoading = false;
+      });
+      
           // Show success dialog
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               title: Column(
-                children: [
+              children: [
                   Container(
                     padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -174,9 +174,9 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
               content: Container(
                 constraints: BoxConstraints(minWidth: 300),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                     Text(
                       "Your payment has been processed successfully.",
                       style: GoogleFonts.poppins(
@@ -226,10 +226,10 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
                     ),
                   ],
                 ),
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () {
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
                     Navigator.pop(context); // Close the dialog
                     // Navigate to Finances tab (index 2) in the bottom nav
                     PatientNavigationHelper.navigateToHome(context);
@@ -248,10 +248,10 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
                     ),
                   ),
                   child: Text("View Payment History"),
-                ),
-              ],
-            ),
-          );
+              ),
+            ],
+          ),
+        );
         } catch (e) {
           print('Error saving appointment and transaction: $e');
           setState(() {

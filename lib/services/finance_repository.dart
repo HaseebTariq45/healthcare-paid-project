@@ -239,7 +239,7 @@ class FinanceRepository {
       };
     }
   }
-
+  
   // Get a stream of all transactions for the current user
   Stream<List<FinancialTransaction>> getTransactions() {
     return _firestore.collection('transactions')

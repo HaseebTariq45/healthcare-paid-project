@@ -7,6 +7,7 @@ import 'package:healthcare/views/screens/patient/appointment/appointment_booking
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
+import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -581,10 +582,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   'hospitalName': appointmentData['hospitalName'] ?? doctorData['hospitalName'] ?? 'Unknown Hospital',
                   'reason': appointmentData['reason'] ?? 'Consultation',
                   'doctorImage': doctorData['profileImageUrl'] ?? 'assets/images/User.png',
-                  'fee': appointmentData['fee'] ?? '0',
+                  'fee': appointmentData['fee']?.toString() ?? '0',
                   'paymentStatus': appointmentData['paymentStatus'] ?? 'pending',
                   'paymentMethod': appointmentData['paymentMethod'] ?? 'Not specified',
                   'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
+                  'type': appointmentData['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation',
                 });
                 print('Successfully added appointment to list');
               } else {
@@ -1307,7 +1309,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
             )
           else
-            for (var appointment in upcomingAppointments)
+            // Only show latest 2 appointments on home screen
+            for (var appointment in upcomingAppointments.take(2))
               _buildAppointmentCard(appointment),
         ],
       ),
@@ -1315,178 +1318,190 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-            spreadRadius: 0,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AppointmentDetailsScreen(
+              appointmentDetails: appointment,
+            ),
           ),
-        ],
-        border: Border.all(
-          color: Colors.grey.shade100,
-          width: 1,
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+              spreadRadius: 0,
+            ),
+          ],
+          border: Border.all(
+            color: Colors.grey.shade100,
+            width: 1,
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Color(0xFF3366CC).withOpacity(0.05),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Color(0xFF3366CC).withOpacity(0.05),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundImage: appointment['doctorImage'].startsWith('assets/')
-                        ? AssetImage(appointment['doctorImage'])
-                        : NetworkImage(appointment['doctorImage']) as ImageProvider,
-                  ),
-                ),
-                SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appointment['doctorName'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          letterSpacing: 0.2,
+              child: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
                         ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        appointment['specialty'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF3366CC).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Color(0xFF3366CC).withOpacity(0.2),
-                      width: 1,
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 25,
+                      backgroundImage: appointment['doctorImage'].startsWith('assets/')
+                          ? AssetImage(appointment['doctorImage'])
+                          : NetworkImage(appointment['doctorImage']) as ImageProvider,
                     ),
                   ),
-                  child: Text(
-                    appointment['status'],
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF3366CC),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    _buildAppointmentDetail(
-                      LucideIcons.calendar,
-                      "Date",
-                      appointment['date'],
-                    ),
-                    SizedBox(width: 15),
-                    _buildAppointmentDetail(
-                      LucideIcons.clock,
-                      "Time",
-                      appointment['time'],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Join session
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF3366CC),
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appointment['doctorName'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            letterSpacing: 0.2,
                           ),
-                          elevation: 3,
-                          shadowColor: Color(0xFF3366CC).withOpacity(0.3),
                         ),
-                        icon: Icon(LucideIcons.video, size: 18),
-                        label: Text(
-                          "Join Session",
+                        SizedBox(height: 2),
+                        Text(
+                          appointment['specialty'],
                           style: GoogleFonts.poppins(
                             fontSize: 14,
+                            color: Colors.grey.shade600,
                             fontWeight: FontWeight.w500,
-                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF3366CC).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Color(0xFF3366CC).withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      appointment['status'],
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF3366CC),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      _buildAppointmentDetail(
+                        LucideIcons.calendar,
+                        "Date",
+                        appointment['date'],
+                      ),
+                      SizedBox(width: 15),
+                      _buildAppointmentDetail(
+                        LucideIcons.clock,
+                        "Time",
+                        appointment['time'],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            // Join session
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF3366CC),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 3,
+                            shadowColor: Color(0xFF3366CC).withOpacity(0.3),
+                          ),
+                          icon: Icon(LucideIcons.video, size: 18),
+                          label: Text(
+                            "Join Session",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.3,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 15),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF3366CC).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Color(0xFF3366CC).withOpacity(0.2),
-                          width: 1,
+                      SizedBox(width: 15),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Color(0xFF3366CC).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Color(0xFF3366CC).withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            // Show details
+                          },
+                          icon: Icon(
+                            LucideIcons.info,
+                            color: Color(0xFF3366CC),
+                            size: 20,
+                          ),
                         ),
                       ),
-                      child: IconButton(
-                        onPressed: () {
-                          // Show details
-                        },
-                        icon: Icon(
-                          LucideIcons.info,
-                          color: Color(0xFF3366CC),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

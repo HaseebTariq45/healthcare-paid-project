@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
@@ -14,60 +16,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   late AnimationController _animationController;
   String _searchQuery = '';
   int _selectedTabIndex = 0;
+  bool _isLoading = true;
   
   final List<String> _tabs = ["Upcoming", "Past", "Cancelled"];
   
-  final List<Appointment> _appointments = [
-    Appointment(
-      patientName: "Hania Singh",
-      date: "Jan 10, 2025",
-      time: "12:00 pm - 1:00 pm",
-      patientImage: "assets/images/User.png",
-      type: "Video Consultation",
-      status: "upcoming"
-    ),
-    Appointment(
-      patientName: "Anjali Kapoor",
-      date: "Jan 11, 2025",
-      time: "12:00 pm - 1:00 pm",
-      patientImage: "assets/images/User.png",
-      type: "In-Person Visit",
-      status: "upcoming"
-    ),
-    Appointment(
-      patientName: "Sameer Malhotra",
-      date: "Jan 13, 2025",
-      time: "12:00 pm - 1:00 pm",
-      patientImage: "assets/images/User.png",
-      type: "Video Consultation",
-      status: "upcoming"
-    ),
-    Appointment(
-      patientName: "Rohit Sharma",
-      date: "Jan 4, 2025",
-      time: "10:00 am - 11:00 am",
-      patientImage: "assets/images/User.png",
-      type: "Video Consultation",
-      status: "completed"
-    ),
-    Appointment(
-      patientName: "Preeti Jain",
-      date: "Jan 2, 2025",
-      time: "2:30 pm - 3:00 pm",
-      patientImage: "assets/images/User.png",
-      type: "In-Person Visit",
-      status: "completed"
-    ),
-    Appointment(
-      patientName: "Mohammed Khan",
-      date: "Dec 28, 2024",
-      time: "11:30 am - 12:00 pm",
-      patientImage: "assets/images/User.png",
-      type: "Video Consultation",
-      status: "cancelled",
-      cancellationReason: "Patient requested reschedule"
-    ),
-  ];
+  List<Map<String, dynamic>> _appointments = [];
+  List<Map<String, dynamic>> _filteredAppointments = [];
   
   @override
   void initState() {
@@ -76,6 +30,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..forward();
+    
+    // Fetch data from Firebase
+    _fetchAppointments();
   }
   
   @override
@@ -84,23 +41,138 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     super.dispose();
   }
   
-  List<Appointment> get _filteredAppointments {
+  // Fetch appointment data from Firebase
+  Future<void> _fetchAppointments() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      print('Fetching appointments for user ID: $userId');
+      
+      // Get all appointments for the current user
+      final appointmentsSnapshot = await firestore
+          .collection('appointments')
+          .where('patientId', isEqualTo: userId)
+          .get();
+      
+      print('Found ${appointmentsSnapshot.docs.length} appointments');
+      
+      List<Map<String, dynamic>> fetchedAppointments = [];
+      
+      for (var appointmentDoc in appointmentsSnapshot.docs) {
+        try {
+          final appointmentData = appointmentDoc.data();
+          print('Processing appointment: ${appointmentDoc.id}');
+          
+          // Fetch doctor details
+          if (appointmentData['doctorId'] != null) {
+            final doctorDoc = await firestore
+                .collection('doctors')
+                .doc(appointmentData['doctorId'])
+                .get();
+            
+            if (doctorDoc.exists) {
+              final doctorData = doctorDoc.data() as Map<String, dynamic>;
+              print('Found doctor data: ${doctorData['fullName'] ?? doctorData['name']}');
+              
+              // Format the appointment date
+              DateTime appointmentDate;
+              if (appointmentData['appointmentDate'] != null) {
+                appointmentDate = (appointmentData['appointmentDate'] as Timestamp).toDate();
+              } else if (appointmentData['date'] != null && appointmentData['date'] is Timestamp) {
+                appointmentDate = (appointmentData['date'] as Timestamp).toDate();
+              } else {
+                appointmentDate = DateTime.now();
+              }
+              
+              String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
+              String formattedTime = appointmentData['time'] ?? 
+                                    "${appointmentDate.hour}:${appointmentDate.minute.toString().padLeft(2, '0')}";
+              
+              // Determine appointment status
+              String status = appointmentData['status'] ?? 'pending';
+              if (status.toLowerCase() == 'pending' || status.toLowerCase() == 'confirmed') {
+                status = 'upcoming';
+              } else if (status.toLowerCase() == 'completed') {
+                status = 'completed';
+              } else if (status.toLowerCase() == 'cancelled') {
+                status = 'cancelled';
+              }
+              
+              fetchedAppointments.add({
+                'id': appointmentDoc.id,
+                'date': formattedDate,
+                'time': formattedTime,
+                'status': status,
+                'doctorName': doctorData['fullName'] ?? doctorData['name'] ?? "Unknown Doctor",
+                'specialty': doctorData['specialty'] ?? "General",
+                'hospitalName': appointmentData['hospitalName'] ?? doctorData['hospitalName'] ?? "Unknown Hospital",
+                'reason': appointmentData['reason'] ?? appointmentData['notes'] ?? 'Consultation',
+                'doctorImage': doctorData['profileImageUrl'] ?? 'assets/images/User.png',
+                'fee': appointmentData['fee']?.toString() ?? '0',
+                'paymentStatus': appointmentData['paymentStatus'] ?? 'pending',
+                'paymentMethod': appointmentData['paymentMethod'] ?? 'Not specified',
+                'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
+                'cancellationReason': appointmentData['cancellationReason'],
+                'type': appointmentData['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation',
+              });
+              print('Successfully added appointment to list');
+            } else {
+              print('Doctor document not found for ID: ${appointmentData['doctorId']}');
+            }
+          }
+        } catch (e) {
+          print('Error processing appointment: $e');
+        }
+      }
+      
+      setState(() {
+        _appointments = fetchedAppointments;
+        _filterAppointments();
+        _isLoading = false;
+      });
+      
+    } catch (e) {
+      print('Error fetching appointment data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+  
+  void _filterAppointments() {
     // First filter by tab/status
-    final List<Appointment> statusFiltered = _appointments.where((appointment) {
-      if (_selectedTabIndex == 0) return appointment.status == "upcoming";
-      if (_selectedTabIndex == 1) return appointment.status == "completed";
-      if (_selectedTabIndex == 2) return appointment.status == "cancelled";
+    final List<Map<String, dynamic>> statusFiltered = _appointments.where((appointment) {
+      if (_selectedTabIndex == 0) return appointment['status'] == "upcoming";
+      if (_selectedTabIndex == 1) return appointment['status'] == "completed";
+      if (_selectedTabIndex == 2) return appointment['status'] == "cancelled";
       return true;
     }).toList();
     
     // Then filter by search query if there is one
-    if (_searchQuery.isEmpty) return statusFiltered;
+    if (_searchQuery.isEmpty) {
+      _filteredAppointments = statusFiltered;
+      return;
+    }
     
-    return statusFiltered.where((appointment) {
-      final nameMatch = appointment.patientName.toLowerCase().contains(_searchQuery.toLowerCase());
-      final dateMatch = appointment.date.toLowerCase().contains(_searchQuery.toLowerCase());
-      final typeMatch = appointment.type.toLowerCase().contains(_searchQuery.toLowerCase());
-      return nameMatch || dateMatch || typeMatch;
+    _filteredAppointments = statusFiltered.where((appointment) {
+      final nameMatch = appointment['doctorName'].toLowerCase().contains(_searchQuery.toLowerCase());
+      final dateMatch = appointment['date'].toLowerCase().contains(_searchQuery.toLowerCase());
+      final typeMatch = appointment['type'].toLowerCase().contains(_searchQuery.toLowerCase());
+      final hospitalMatch = appointment['hospitalName'].toLowerCase().contains(_searchQuery.toLowerCase());
+      return nameMatch || dateMatch || typeMatch || hospitalMatch;
     }).toList();
   }
 
@@ -122,7 +194,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 _buildTabs(),
                 SizedBox(height: 10),
                 Expanded(
-                  child: _filteredAppointments.isEmpty
+                  child: _isLoading 
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: Color.fromRGBO(64, 124, 226, 1),
+                        ),
+                      )
+                    : _filteredAppointments.isEmpty
                       ? _buildNoAppointmentsFound()
                       : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -134,8 +212,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                                 CurvedAnimation(
                                   parent: _animationController,
                                   curve: Interval(
-                                    0.1 + (index * 0.1),
-                                    0.6 + (index * 0.1),
+                                    0.1 + (index * 0.1 > 0.5 ? 0.5 : index * 0.1),
+                                    0.6 + (index * 0.1 > 0.5 ? 0.5 : index * 0.1),
                                     curve: Curves.easeOut,
                                   ),
                                 ),
@@ -148,8 +226,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                                   CurvedAnimation(
                                     parent: _animationController,
                                     curve: Interval(
-                                      0.1 + (index * 0.1),
-                                      0.6 + (index * 0.1),
+                                      0.1 + (index * 0.1 > 0.5 ? 0.5 : index * 0.1),
+                                      0.6 + (index * 0.1 > 0.5 ? 0.5 : index * 0.1),
                                       curve: Curves.easeOut,
                                     ),
                                   ),
@@ -206,7 +284,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             ),
             SizedBox(width: 8),
             Text(
-              "Appointments",
+              "My Appointments",
               style: GoogleFonts.poppins(
                 color: Colors.white,
                 fontSize: 20,
@@ -220,10 +298,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
-                icon: Icon(LucideIcons.calendarPlus, color: Colors.white),
-                onPressed: () {
-                  // Handle add appointment
-                },
+                icon: Icon(LucideIcons.refreshCcw, color: Colors.white),
+                onPressed: _fetchAppointments,
+                tooltip: 'Refresh',
               ),
             ),
           ],
@@ -249,6 +326,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         onChanged: (value) {
           setState(() {
             _searchQuery = value;
+            _filterAppointments();
           });
         },
         style: GoogleFonts.poppins(fontSize: 14),
@@ -273,6 +351,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                   onPressed: () {
                     setState(() {
                       _searchQuery = '';
+                      _filterAppointments();
                     });
                   },
                 )
@@ -300,6 +379,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               onTap: () {
                 setState(() {
                   _selectedTabIndex = index;
+                  _filterAppointments();
                 });
               },
               child: Container(
@@ -338,7 +418,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 ? LucideIcons.calendar
                 : _selectedTabIndex == 1
                     ? LucideIcons.clipboardCheck
-                    : LucideIcons.info,
+                    : Icons.cancel_outlined,
             size: 60,
             color: Colors.grey.shade300,
           ),
@@ -371,9 +451,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     );
   }
 
-  Widget _buildAppointmentCard(BuildContext context, Appointment appointment, int index) {
-    final bool isUpcoming = appointment.status == "upcoming";
-    final bool isCancelled = appointment.status == "cancelled";
+  Widget _buildAppointmentCard(BuildContext context, Map<String, dynamic> appointment, int index) {
+    final bool isUpcoming = appointment['status'] == "upcoming";
+    final bool isCancelled = appointment['status'] == "cancelled";
     
     // Define status color based on appointment status
     final Color statusColor = isCancelled
@@ -389,72 +469,95 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             : "Completed";
     
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
-      color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+            spreadRadius: 0,
           ),
         ],
+        border: Border.all(
+          color: Colors.grey.shade100,
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
-          // Card header with patient info
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: statusColor.withOpacity(0.05),
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
               ),
             ),
-        child: Row(
-          children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundImage: AssetImage(appointment.patientImage),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 25,
+                    backgroundImage: appointment['doctorImage'].startsWith('assets/')
+                        ? AssetImage(appointment['doctorImage'])
+                        : NetworkImage(appointment['doctorImage']) as ImageProvider,
+                  ),
                 ),
-                SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                        appointment.patientName,
+                SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appointment['doctorName'],
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF333333),
+                          color: Colors.black87,
+                          letterSpacing: 0.2,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: 2),
                       Text(
-                        appointment.type,
-                    style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Color(0xFF666666),
+                        appointment['specialty'],
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: statusColor.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     statusText,
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       color: statusColor,
                     ),
                   ),
@@ -462,23 +565,44 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               ],
             ),
           ),
-          
-          // Card body with appointment details
           Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Date and time
                 Row(
                   children: [
-                    _buildDetailItem(LucideIcons.calendar, "Date", appointment.date),
-                    SizedBox(width: 16),
-                    _buildDetailItem(LucideIcons.clock, "Time", appointment.time),
+                    _buildAppointmentDetail(
+                      LucideIcons.calendar,
+                      "Date",
+                      appointment['date'],
+                    ),
+                    SizedBox(width: 15),
+                    _buildAppointmentDetail(
+                      LucideIcons.clock,
+                      "Time",
+                      appointment['time'],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 18),
+                Row(
+                  children: [
+                    _buildAppointmentDetail(
+                      LucideIcons.building2,
+                      "Hospital",
+                      appointment['hospitalName'],
+                    ),
+                    SizedBox(width: 15),
+                    _buildAppointmentDetail(
+                      LucideIcons.tag,
+                      "Appointment Type",
+                      appointment['type'],
+                    ),
                   ],
                 ),
                 
                 // If cancelled, show reason
-                if (isCancelled && appointment.cancellationReason != null) ...[
+                if (isCancelled && appointment['cancellationReason'] != null) ...[
                   SizedBox(height: 16),
                   Container(
                     padding: EdgeInsets.all(12),
@@ -497,9 +621,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            appointment.cancellationReason!,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
+                            appointment['cancellationReason'],
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
                               color: Colors.red.shade700,
                             ),
                           ),
@@ -517,25 +641,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         children: [
                           Expanded(
                             child: _buildActionButton(
-                              "Join Session",
-                              LucideIcons.video,
-                              Color.fromRGBO(64, 124, 226, 1),
-                              () {
-                                // Handle join session
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: _buildActionButton(
-                              "Details",
+                              "View Details",
                               LucideIcons.clipboardList,
                               Color.fromRGBO(64, 124, 226, 1),
                               () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => AppointmentDetailsScreen(),
+                                    builder: (context) => AppointmentDetailsScreen(
+                                      appointmentDetails: appointment,
+                                    ),
                                   ),
                                 );
                               },
@@ -544,19 +659,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         ],
                       )
                     : Row(
-              children: [
+                        children: [
                           Expanded(
                             child: _buildActionButton(
                               "View Details",
                               LucideIcons.clipboardList,
                               statusColor,
                               () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AppointmentDetailsScreen(),
-                    ),
-                  );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AppointmentDetailsScreen(
+                                      appointmentDetails: appointment,
+                                    ),
+                                  ),
+                                );
                               },
                             ),
                           ),
@@ -573,17 +690,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                               ),
                             ),
                           ],
+                        ],
+                      ),
               ],
             ),
-          ],
-        ),
           ),
         ],
       ),
     );
   }
   
-  Widget _buildDetailItem(IconData icon, String label, String value) {
+  Widget _buildAppointmentDetail(IconData icon, String label, String value) {
     return Expanded(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -600,7 +717,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               color: Color.fromRGBO(64, 124, 226, 1),
             ),
           ),
-          SizedBox(width: 8),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,7 +726,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                   label,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: Color(0xFF666666),
+                    color: Colors.grey.shade600,
                   ),
                 ),
                 Text(
@@ -617,7 +734,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF333333),
+                    color: Colors.black87,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -637,43 +754,25 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   ) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
         foregroundColor: Colors.white,
         padding: EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        elevation: 0,
+        elevation: 3,
+        shadowColor: color.withOpacity(0.3),
       ),
       icon: Icon(icon, size: 18),
       label: Text(
-          label,
+        label,
         style: GoogleFonts.poppins(
           fontSize: 14,
           fontWeight: FontWeight.w500,
+          letterSpacing: 0.3,
         ),
       ),
     );
   }
-}
-
-class Appointment {
-  final String patientName;
-  final String date;
-  final String time;
-  final String patientImage;
-  final String type;
-  final String status; // upcoming, completed, cancelled
-  final String? cancellationReason;
-
-  Appointment({
-    required this.patientName,
-    required this.date,
-    required this.time,
-    required this.patientImage,
-    required this.type,
-    required this.status,
-    this.cancellationReason,
-  });
 }
