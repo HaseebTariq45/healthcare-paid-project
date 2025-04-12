@@ -8,6 +8,8 @@ import 'package:healthcare/views/screens/dashboard/analytics.dart';
 import 'package:healthcare/views/screens/dashboard/finances.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
+import 'package:healthcare/views/screens/doctor/availability/hospital_selection_screen.dart';
+import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -368,22 +370,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildQuickActionButton(
-                        icon: LucideIcons.calendarClock,
-                        label: "Schedule",
+                        icon: LucideIcons.building2,
+                        label: "Add Hospital",
                         color: Color.fromRGBO(64, 124, 226, 1),
                         onTap: () {
-                          _onItemTapped(1); // Navigate to Analytics (Appointments)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HospitalSelectionScreen(
+                                selectedHospitals: [],
+                              ),
+                            ),
+                          );
                         },
                       ),
                       _buildQuickActionButton(
-                        icon: LucideIcons.clipboardPlus,
-                        label: "New Patient",
+                        icon: LucideIcons.calendar,
+                        label: "Availability",
                         color: Color(0xFF4CAF50),
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => AppointmentDetailsScreen(),
+                              builder: (context) => DoctorAvailabilityScreen(),
                             ),
                           );
                         },

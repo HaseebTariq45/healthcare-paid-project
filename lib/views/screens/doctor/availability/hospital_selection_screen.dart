@@ -32,46 +32,45 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
   
   // List of Pakistani cities
   final List<String> _pakistaniCities = [
-    "Karachi",
-    "Lahore",
-    "Islamabad",
+    "Abbottabad",
+    "Bahawalpur",
+    "Burewala",
+    "Chiniot",
+    "Dera Ghazi Khan",
+    "Dera Ismail Khan",
     "Faisalabad",
-    "Rawalpindi",
+    "Gujranwala",
+    "Gujrat",
+    "Hafizabad",
+    "Hyderabad",
+    "Islamabad",
+    "Jhang",
+    "Kāmoke",
+    "Karachi",
+    "Kasur",
+    "Khanewal",
+    "Kohat",
+    "Kotri",
+    "Lahore",
+    "Larkana",
+    "Mardan",
+    "Mingora",
+    "Mirpur Khas",
     "Multan",
+    "Muzaffargarh",
+    "Nawabshah",
+    "Okara",
     "Peshawar",
     "Quetta",
-    "Gujranwala",
-    "Hyderabad",
-    "Sialkot",
-    "Bahawalpur",
-    "Sargodha",
-    "Sukkur",
-    "Larkana",
-    "Sheikhupura",
     "Rahim Yar Khan",
-    "Jhang",
-    "Dera Ghazi Khan",
-    "Gujrat",
-    "Sahiwal",
-    "Wah Cantonment",
-    "Mardan",
-    "Kasur",
-    "Okara",
-    "Mingora",
-    "Nawabshah",
-    "Chiniot",
-    "Kotri",
-    "Kāmoke",
-    "Hafizabad",
+    "Rawalpindi",
     "Sadiqabad",
-    "Mirpur Khas",
-    "Burewala",
-    "Kohat",
-    "Khanewal",
-    "Dera Ismail Khan",
-    "Abbottabad",
-    "Daska",
-    "Muzaffargarh",
+    "Sahiwal",
+    "Sargodha",
+    "Sheikhupura",
+    "Sialkot",
+    "Sukkur",
+    "Wah Cantonment",
   ];
   
   // Map of hospitals by city with IDs
@@ -275,378 +274,296 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFF8FAFF),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          "Select Hospitals",
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+        leading: Container(
+          margin: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: Icon(LucideIcons.arrowLeft, color: Color(0xFF1E3A8A)),
+          onPressed: () => Navigator.pop(context),
           ),
         ),
-        leading: IconButton(
-          icon: Icon(LucideIcons.arrowLeft, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
         actions: [
-          TextButton(
+          Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: TextButton.icon(
             onPressed: _isLoading ? null : _saveSelection,
-            child: Text(
+              icon: Icon(
+                LucideIcons.save,
+                color: Color(0xFF1E74FD),
+                size: 18,
+              ),
+              label: Text(
               "Save",
               style: GoogleFonts.poppins(
-                fontSize: 16,
+                  fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2B8FEB),
+                  color: Color(0xFF1E74FD),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
             ),
           ),
         ],
+        centerTitle: true,
+        title: Text(
+          "Hospital Selection",
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            shadows: [
+              Shadow(
+                offset: Offset(0, 1),
+                blurRadius: 3.0,
+                color: Colors.black.withOpacity(0.3),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: Column(
+      body: Stack(
         children: [
+          // Background gradient and design elements
           Container(
+            height: MediaQuery.of(context).size.height * 0.25,
             width: double.infinity,
-            padding: EdgeInsets.all(20),
-            margin: EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  Color.fromRGBO(64, 124, 226, 0.1),
-                  Color.fromRGBO(84, 144, 246, 0.1),
-                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF1E74FD),
+                  Color(0xFF1E3A8A),
+                ],
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Color.fromRGBO(64, 124, 226, 0.3),
-                width: 1,
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                Text(
-                  "Hospital Affiliations",
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
+                Positioned(
+                  top: -50,
+                  right: -50,
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.1),
+                    ),
                   ),
                 ),
-                SizedBox(height: 10),
-                Text(
-                  "Select the hospitals where you practice. This will allow patients to book appointments with you at these locations.",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Color(0xFF666666),
+                Positioned(
+                  bottom: -80,
+                  left: -80,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.1),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           
-          // City and Hospital Selector Section
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+          SafeArea(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Select City",
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
-                  ),
-                ),
-                SizedBox(height: 10),
-                // City Dropdown
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedCity,
-                      isExpanded: true,
-                      hint: Padding(
-                        padding: EdgeInsets.only(left: 12),
-                        child: Text(
-                          "Select a city",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
+                // Title and info card
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20, 15, 20, 5),
+                    child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 15,
+                          offset: Offset(0, 10),
                         ),
-                      ),
-                      icon: Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          color: Color(0xFF2B8FEB),
-                        ),
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      borderRadius: BorderRadius.circular(12),
-                      items: _pakistaniCities.map((String city) {
-                        return DropdownMenuItem<String>(
-                          value: city,
-                          child: Text(
-                            city,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedCity = newValue;
-                          _selectedHospital = null; // Reset hospital selection
-                        });
-                      },
+                      ],
                     ),
-                  ),
-                ),
-                
-                SizedBox(height: 20),
-                
-                Text(
-                  "Select Hospital",
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
-                  ),
-                ),
-                SizedBox(height: 10),
-                // Hospital Dropdown
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedHospital,
-                      isExpanded: true,
-                      hint: Padding(
-                        padding: EdgeInsets.only(left: 12),
-                        child: Text(
-                          _selectedCity == null 
-                              ? "Select a city first" 
-                              : "Select a hospital in ${_selectedCity!}",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ),
-                      icon: Padding(
-                        padding: EdgeInsets.only(right: 12),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          color: Color(0xFF2B8FEB),
-                        ),
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      borderRadius: BorderRadius.circular(12),
-                      items: _selectedCity == null 
-                          ? null 
-                          : _hospitalsByCity[_selectedCity]!.map((Map<String, dynamic> hospital) {
-                              return DropdownMenuItem<String>(
-                                value: hospital['name'],
-                                child: Text(
-                                  hospital['name']!,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                  ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF1E74FD),
+                                    Color(0xFF1E3A8A),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
-                              );
-                            }).toList(),
-                      onChanged: _selectedCity == null 
-                          ? null 
-                          : (String? newValue) {
-                              setState(() {
-                                _selectedHospital = newValue;
-                              });
-                            },
-                    ),
-                  ),
-                ),
-                
-                SizedBox(height: 16),
-                
-                // Add Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: (_selectedCity == null || _selectedHospital == null) 
-                        ? null 
-                        : _addHospital,
-                    icon: Icon(Icons.add),
-                    label: Text(
-                      "Add To My Hospitals",
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF2B8FEB),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      disabledForegroundColor: Colors.grey.shade500,
-                    ),
-                  ),
-                ),
-                
-                SizedBox(height: 20),
-                
-                if (_selectedHospitals.isNotEmpty) 
-                  Text(
-                    "Selected Hospitals",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          
-          SizedBox(height: 10),
-          
-          // Show selected hospitals
-          Expanded(
-            child: _selectedHospitals.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            LucideIcons.building2,
-                            size: 60,
-                            color: Colors.grey.shade300,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            "No Hospitals Selected",
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            "Select a city and hospital, then tap 'Add' to include it in your profile.",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    itemCount: _selectedHospitals.length,
-                    itemBuilder: (context, index) {
-                      final hospital = _selectedHospitals[index];
-                      List<String> parts = hospital.split(', ');
-                      String hospitalName = parts.length > 1 
-                          ? parts.sublist(0, parts.length - 1).join(', ') 
-                          : hospital;
-                      String cityName = parts.length > 1 ? parts.last : "";
-                      
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: Offset(0, 0.1),
-                          end: Offset.zero,
-                        ).animate(CurvedAnimation(
-                          parent: _animationController,
-                          curve: Interval(
-                            0.05 * index, 
-                            0.5 + 0.05 * index, 
-                            curve: Curves.easeOut
-                          ),
-                        )),
-                        child: Container(
-                          margin: EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                            ],
+                                      child: Icon(
+                                        LucideIcons.building2,
+                                color: Colors.white,
+                                size: 24,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                    "Hospital Affiliations",
+                                      style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1E3A8A),
+                                      height: 1.2,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                    "Select where you practice",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF1F5FE),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.grey.shade200,
+                              color: Color(0xFFD1E0FF),
                               width: 1,
                             ),
                           ),
-                          child: ListTile(
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16, 
-                              vertical: 8
-                            ),
-                            leading: Container(
-                              padding: EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF2B8FEB).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(
+                                LucideIcons.info,
+                                color: Color(0xFF1E74FD),
+                                size: 20,
                               ),
-                              child: Icon(
-                                LucideIcons.building2,
-                                color: Color(0xFF2B8FEB),
-                                size: 24,
+                              SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                  "This will allow patients to book appointments with you at your selected locations.",
+                                            style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    color: Color(0xFF64748B),
+                                    height: 1.4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                          ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            title: Text(
-                              hospitalName,
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                ),
+                
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    child: Container(
+                                        color: Colors.white,
+                      child: _buildMainContent(),
+                    ),
+                  ),
                               ),
-                            ),
-                            subtitle: Text(
-                              cityName,
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(
-                                Icons.delete_outline_rounded,
-                                color: Colors.red.shade400,
-                              ),
-                              onPressed: () => _removeHospital(hospital),
-                            ),
+                            ],
                           ),
                         ),
-                      );
-                    },
+          
+          // Loading overlay
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.4),
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF1E74FD),
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Text(
+                        "Saving...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ),
           ),
         ],
       ),
@@ -668,13 +585,14 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
             child: ElevatedButton(
               onPressed: _isLoading ? null : _saveSelection,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF2B8FEB),
+                backgroundColor: Color(0xFF1E74FD),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
+                shadowColor: Color(0xFF1E74FD).withOpacity(0.4),
               ),
               child: _isLoading
                   ? SizedBox(
@@ -694,6 +612,495 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
                     ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    return SingleChildScrollView(
+      physics: BouncingScrollPhysics(),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 25, 20, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // City selector
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF1F5FE),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            LucideIcons.mapPin,
+                            color: Color(0xFF1E74FD),
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          "Select City",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    margin: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF8FAFF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Color(0xFFD1E0FF),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: ButtonTheme(
+                        alignedDropdown: true,
+                        child: DropdownButton<String>(
+                          value: _selectedCity,
+                          isExpanded: true,
+                          hint: Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: Text(
+                              "Select a city",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                          icon: Container(
+                            padding: EdgeInsets.all(8),
+                            margin: EdgeInsets.only(right: 4),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF1E74FD).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Color(0xFF1E74FD),
+                              size: 20,
+                            ),
+                          ),
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          items: _pakistaniCities.map((String city) {
+                            return DropdownMenuItem<String>(
+                              value: city,
+                              child: Text(
+                                city,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF334155),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedCity = newValue;
+                              _selectedHospital = null; // Reset hospital selection
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: 24),
+            
+            // Hospital selector
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF1F5FE),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            LucideIcons.building2,
+                            color: Color(0xFF1E74FD),
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          "Select Hospital",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E3A8A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    margin: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF8FAFF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Color(0xFFD1E0FF),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: ButtonTheme(
+                        alignedDropdown: true,
+                        child: DropdownButton<String>(
+                          value: _selectedHospital,
+                          isExpanded: true,
+                          hint: Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: Text(
+                              _selectedCity == null 
+                                  ? "Select a city first" 
+                                  : "Select a hospital in ${_selectedCity!}",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                          icon: Container(
+                            padding: EdgeInsets.all(8),
+                            margin: EdgeInsets.only(right: 4),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF1E74FD).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Color(0xFF1E74FD),
+                              size: 20,
+                            ),
+                          ),
+                          dropdownColor: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          items: _selectedCity == null 
+                              ? null 
+                              : _hospitalsByCity[_selectedCity]!.map((Map<String, dynamic> hospital) {
+                                  return DropdownMenuItem<String>(
+                                    value: hospital['name'],
+                                    child: Text(
+                                      hospital['name']!,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF334155),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                          onChanged: _selectedCity == null 
+                              ? null 
+                              : (String? newValue) {
+                                  setState(() {
+                                    _selectedHospital = newValue;
+                                  });
+                                },
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Add Button
+                  Container(
+                    margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: ElevatedButton.icon(
+                      onPressed: (_selectedCity == null || _selectedHospital == null) 
+                          ? null 
+                          : _addHospital,
+                      icon: Icon(LucideIcons.plus, size: 18),
+                      label: Text(
+                        "Add To My Hospitals",
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF1E74FD),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                        elevation: 0,
+                        minimumSize: Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        disabledBackgroundColor: Color(0xFFE2E8F0),
+                        disabledForegroundColor: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: 24),
+            
+            // Selected hospitals
+            if (_selectedHospitals.isNotEmpty) ...[
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.listChecks,
+                      color: Color(0xFF1E74FD),
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      "Selected Hospitals",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1E3A8A),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF1E74FD),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "${_selectedHospitals.length}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // List of selected hospitals
+              ...List.generate(
+                _selectedHospitals.length,
+                (index) {
+                  final hospital = _selectedHospitals[index];
+                  List<String> parts = hospital.split(', ');
+                  String hospitalName = parts.length > 1 
+                      ? parts.sublist(0, parts.length - 1).join(', ') 
+                      : hospital;
+                  String cityName = parts.length > 1 ? parts.last : "";
+                  
+                  return AnimatedScale(
+                    scale: 1.0,
+                    duration: Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: Container(
+                      margin: EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: Color(0xFFEDF2F7),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF1E74FD).withOpacity(0.1),
+                                    Color(0xFF1E3A8A).withOpacity(0.1),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Color(0xFF1E74FD).withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                LucideIcons.building2,
+                                color: Color(0xFF1E74FD),
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    hospitalName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF334155),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        LucideIcons.mapPin,
+                                        size: 14,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        cityName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => _removeHospital(hospital),
+                              borderRadius: BorderRadius.circular(30),
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFFEE2E2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  LucideIcons.trash2,
+                                  color: Color(0xFFEF4444),
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ] else ...[
+              // Empty state
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(40),
+                margin: EdgeInsets.only(top: 40),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Color(0xFFEDF2F7),
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF1F5FE),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        LucideIcons.building2,
+                        size: 50,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      "No Hospitals Selected",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      "Choose your city and hospital, then tap 'Add' to include it in your profile.",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -754,9 +1161,9 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
             
             batch.set(docRef, {
               'doctorId': doctorId,
-              'hospitalId': hospitalData['id'],
+              'hospitalId': hospitalData['id'] ?? 'unknown',
               'hospitalName': hospitalName, // Full name with city
-              'city': hospitalData['city'],
+              'city': hospitalData['city'] ?? '',
               'created': FieldValue.serverTimestamp(),
             });
           }
@@ -773,80 +1180,11 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
       });
       
       // Show success dialog
-      bool? shouldReturn = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext dialogContext) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF4CAF50).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check_circle,
-                    color: Color(0xFF4CAF50),
-                    size: 40,
-                  ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Hospitals Updated',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Your hospital selection has been saved successfully.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop(true);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF2B8FEB),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Done',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            contentPadding: EdgeInsets.all(24),
-          );
-        },
-      );
+      bool? shouldReturn = await _showSuccessDialog();
       
       // Return to previous screen if confirmed
       if (shouldReturn == true && mounted) {
-        Navigator.pop(context, _selectedHospitals);
+      Navigator.pop(context, _selectedHospitals);
       }
     } catch (e) {
       print('Error saving hospital selection: $e');
@@ -858,21 +1196,242 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
       });
       
       // Show error dialog
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Error'),
-            content: Text('Failed to save hospital selection. Please try again.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      _showErrorDialog(e.toString());
     }
+  }
+  
+  Future<bool?> _showSuccessDialog() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Color(0xFF10B981).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                    Positioned(
+                      top: -10,
+                      right: -10,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1E74FD),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 3,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            LucideIcons.building2,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Hospitals Updated',
+                  style: GoogleFonts.poppins(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E3A8A),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Your hospital selections have been saved successfully.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    color: Color(0xFF64748B),
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop(true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF1E74FD),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      'Done',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  void _showErrorDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFEE2E2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.error_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 40,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'Oops! Something went wrong',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E3A8A),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Failed to save hospital selections. Please try again.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFF8FAFF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    errorMessage,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF1E74FD),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(
+                      'OK',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 } 
