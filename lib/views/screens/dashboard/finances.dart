@@ -33,12 +33,76 @@ class _FinancesScreenState extends State<FinancesScreen> {
   
   // Transactions
   List<TransactionItem> _transactions = [];
+  
+  // Pagination variables
+  DocumentSnapshot? _lastTransactionDoc;
+  bool _hasMoreTransactions = true;
+  bool _isLoadingMoreTransactions = false;
+  final int _transactionsPerPage = 10;
+  
+  // Scroll controller for infinite scrolling
+  late ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
     _financialRepository = FinancialRepository();
+    
+    // Initialize scroll controller
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
+    
     _loadFinancialData();
+  }
+  
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+  
+  // Scroll listener to detect when user scrolls to bottom
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8 &&
+        !_isLoadingMoreTransactions &&
+        _hasMoreTransactions) {
+      _loadMoreTransactions();
+    }
+  }
+  
+  // Load more transactions when scrolling
+  Future<void> _loadMoreTransactions() async {
+    if (_isLoadingMoreTransactions || !_hasMoreTransactions) return;
+    
+    setState(() {
+      _isLoadingMoreTransactions = true;
+    });
+    
+    try {
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          _isLoadingMoreTransactions = false;
+        });
+        return;
+      }
+      
+      // Load more transactions
+      await _loadTransactions(currentUser.uid, isFirstLoad: false);
+      
+      // Recalculate financial summaries if needed
+      // (Could be optimized to only add new values instead of recalculating everything)
+      _calculateFinancialSummaries();
+    } catch (e) {
+      print('Error loading more transactions: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMoreTransactions = false;
+        });
+      }
+    }
   }
   
   // Load all financial data
@@ -46,6 +110,10 @@ class _FinancesScreenState extends State<FinancesScreen> {
     if (mounted) {
       setState(() {
         _isLoading = true;
+        // Reset pagination data on fresh load
+        _lastTransactionDoc = null;
+        _hasMoreTransactions = true;
+        _transactions.clear();
       });
     }
     
@@ -67,7 +135,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
       // If not successful, fallback to direct Firestore loading
       if (!success) {
         // Load transactions
-        await _loadTransactions(currentUser.uid);
+        await _loadTransactions(currentUser.uid, isFirstLoad: true);
       }
       
       // Calculate financial summaries
@@ -87,11 +155,13 @@ class _FinancesScreenState extends State<FinancesScreen> {
   // Attempt to load transactions using the FinancialRepository
   Future<bool> _loadTransactionsFromRepository() async {
     try {
-      // Clear existing transactions
-      _transactions.clear();
+      // Clear existing transactions if first load
+      if (_lastTransactionDoc == null) {
+        _transactions.clear();
+      }
       
       // Get transactions stream from the repository
-      final transactionsStream = _financialRepository.getTransactions(limit: 20);
+      final transactionsStream = _financialRepository.getTransactions(limit: _transactionsPerPage);
       
       // Convert stream to list
       final transactionsList = await transactionsStream.first;
@@ -137,28 +207,47 @@ class _FinancesScreenState extends State<FinancesScreen> {
   }
   
   // Load transactions from Firestore
-  Future<void> _loadTransactions(String userId) async {
+  Future<void> _loadTransactions(String userId, {required bool isFirstLoad}) async {
     try {
-      // Clear existing transactions
-      _transactions.clear();
+      // Clear existing transactions if first load
+      if (isFirstLoad) {
+        _transactions.clear();
+        _lastTransactionDoc = null;
+      }
       
-      // Fetch all transactions where the doctor is the recipient (doctorId matches userId)
-      final transactionsSnapshot = await _firestore
+      // Create base query
+      Query query = _firestore
           .collection('transactions')
           .where('doctorId', isEqualTo: userId)
           .where('type', isEqualTo: 'payment')
           .where('status', isEqualTo: 'completed')
-          .orderBy('date', descending: true)
-          .limit(20)
-          .get();
+          .orderBy('date', descending: true);
       
-      // If no transactions found, try loading from appointments
-      if (transactionsSnapshot.docs.isEmpty) {
-        await _loadTransactionsFromAppointments(userId);
+      // Apply pagination
+      if (_lastTransactionDoc != null) {
+        query = query.startAfterDocument(_lastTransactionDoc!);
+      }
+      
+      // Limit results
+      query = query.limit(_transactionsPerPage);
+      
+      // Execute query
+      final transactionsSnapshot = await query.get();
+      
+      // Update pagination info
+      _hasMoreTransactions = transactionsSnapshot.docs.length >= _transactionsPerPage;
+      
+      if (transactionsSnapshot.docs.isNotEmpty) {
+        _lastTransactionDoc = transactionsSnapshot.docs.last;
+      }
+      
+      // If no transactions found on first load, try loading from appointments
+      if (transactionsSnapshot.docs.isEmpty && isFirstLoad) {
+        await _loadTransactionsFromAppointments(userId, isFirstLoad: true);
       } else {
         // Process transactions
         for (var doc in transactionsSnapshot.docs) {
-          final data = doc.data();
+          final data = doc.data() as Map<String, dynamic>;
           
           // Get patient name for better description
           String patientName = "Patient";
@@ -195,26 +284,50 @@ class _FinancesScreenState extends State<FinancesScreen> {
       }
     } catch (e) {
       print('Error loading transactions: $e');
-      // If there was an error, load from appointments as fallback
-      await _loadTransactionsFromAppointments(userId);
+      // If there was an error on first load, try appointments as fallback
+      if (isFirstLoad) {
+        await _loadTransactionsFromAppointments(userId, isFirstLoad: true);
+      }
     }
   }
   
   // Load transactions from appointments as an alternative source
-  Future<void> _loadTransactionsFromAppointments(String userId) async {
+  Future<void> _loadTransactionsFromAppointments(String userId, {required bool isFirstLoad}) async {
     try {
-      // Fetch completed appointments for doctor
-      final appointmentsSnapshot = await _firestore
+      // Clear existing transactions if this is first load
+      if (isFirstLoad) {
+        _transactions.clear();
+        _lastTransactionDoc = null;
+      }
+      
+      // Create base query
+      Query query = _firestore
           .collection('appointments')
           .where('doctorId', isEqualTo: userId)
           .where('status', isEqualTo: 'confirmed')
           .where('paymentStatus', isEqualTo: 'completed')
-          .orderBy('paymentDate', descending: true)
-          .limit(20)
-          .get();
+          .orderBy('paymentDate', descending: true);
+      
+      // Apply pagination
+      if (_lastTransactionDoc != null) {
+        query = query.startAfterDocument(_lastTransactionDoc!);
+      }
+      
+      // Limit results
+      query = query.limit(_transactionsPerPage);
+      
+      // Execute query
+      final appointmentsSnapshot = await query.get();
+      
+      // Update pagination info
+      _hasMoreTransactions = appointmentsSnapshot.docs.length >= _transactionsPerPage;
+      
+      if (appointmentsSnapshot.docs.isNotEmpty) {
+        _lastTransactionDoc = appointmentsSnapshot.docs.last;
+      }
       
       for (var doc in appointmentsSnapshot.docs) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
         
         // Get patient name
         String patientName = "Patient";
@@ -226,7 +339,8 @@ class _FinancesScreenState extends State<FinancesScreen> {
                 .get();
             
             if (patientDoc.exists && patientDoc.data() != null) {
-              patientName = patientDoc.data()!['fullName'] ?? "Patient";
+              final patientData = patientDoc.data()! as Map<String, dynamic>;
+              patientName = patientData['fullName'] ?? "Patient";
             }
           } catch (e) {
             print('Error fetching patient: $e');
@@ -513,13 +627,39 @@ class _FinancesScreenState extends State<FinancesScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _transactions.length,
-                itemBuilder: (context, index) {
-                        return _buildTransactionCard(_transactions[index]);
-                },
-              ),
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: _transactions.length + (_hasMoreTransactions ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              // If we reached the end of the actual transactions list
+                              if (index == _transactions.length) {
+                                // Show loading indicator
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Center(
+                                    child: SizedBox(
+                                      height: 30,
+                                      width: 30,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Color.fromRGBO(64, 124, 226, 1),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              
+                              // Display transaction card
+                              return _buildTransactionCard(_transactions[index]);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
