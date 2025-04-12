@@ -26,6 +26,12 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   List<Map<String, dynamic>> _patients = [];
   bool _isLoading = true;
   String? _errorMessage;
+  
+  // Pagination variables
+  DocumentSnapshot? _lastDocument;
+  bool _hasMoreData = true;
+  bool _isLoadingMore = false;
+  final int _patientsPerPage = 3;
 
   List<String> selectedFilters = [];
   int _selectedSortIndex = 0;
@@ -42,7 +48,12 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text;
+        // Reset pagination when search query changes
+        _lastDocument = null;
+        _hasMoreData = true;
+        _patients.clear();
       });
+      _fetchPatientData();
     });
     
     // Fetch data when screen initializes
@@ -58,14 +69,33 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     super.dispose();
   }
   
-  // Fetch patient data from Firestore
+  // Fetch initial patient data from Firestore
   Future<void> _fetchPatientData() async {
     if (!mounted) return;
     
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      // Reset pagination when doing a fresh fetch
+      _lastDocument = null;
+      _hasMoreData = true;
+      _patients.clear();
     });
+    
+    await _loadPatients(true);
+  }
+  
+  // Load patients with pagination
+  Future<void> _loadPatients(bool isInitialLoad) async {
+    if (!mounted || (!isInitialLoad && (!_hasMoreData || _isLoadingMore))) {
+      return;
+    }
+    
+    if (!isInitialLoad) {
+      setState(() {
+        _isLoadingMore = true;
+      });
+    }
     
     try {
       // Get the current user ID (should be a doctor)
@@ -76,33 +106,57 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       }
       
       // Debug: Print doctor ID
-      debugPrint('Fetching patients for doctor: $doctorId');
+      debugPrint('Fetching patients for doctor: $doctorId with pagination');
       
-      // Get all appointments for this doctor
-      final appointmentsSnapshot = await _firestore
+      // Create base query
+      Query query = _firestore
           .collection('appointments')
           .where('doctorId', isEqualTo: doctorId)
-          // Use createdAt instead of appointmentDate for ordering (matches what appointment_booking_flow.dart uses)
-          .orderBy('createdAt', descending: true)
-          .get();
+          .orderBy('createdAt', descending: true);
       
-      debugPrint('Found ${appointmentsSnapshot.docs.length} appointments');
+      // Apply search filter if provided
+      if (_searchQuery.isNotEmpty) {
+        // Note: Since Firestore doesn't support direct text search like this,
+        // we'll need to filter the results client-side later
+        // A real solution would involve creating specific fields for search or using a service like Algolia
+      }
+      
+      // Apply pagination
+      if (_lastDocument != null) {
+        query = query.startAfterDocument(_lastDocument!);
+      }
+      
+      // Limit the number of documents
+      query = query.limit(_patientsPerPage);
+      
+      // Execute query
+      final appointmentsSnapshot = await query.get();
+      
+      debugPrint('Found ${appointmentsSnapshot.docs.length} appointments for this page');
+      
+      // Check if there are more documents to fetch later
+      _hasMoreData = appointmentsSnapshot.docs.length == _patientsPerPage;
+      
+      // Save the last document for pagination
+      if (appointmentsSnapshot.docs.isNotEmpty) {
+        _lastDocument = appointmentsSnapshot.docs.last;
+      }
           
       if (appointmentsSnapshot.docs.isEmpty) {
         if (!mounted) return;
         setState(() {
-          _patients = [];
           _isLoading = false;
+          _isLoadingMore = false;
         });
         return;
       }
       
       // Create a list to store processed patient data
-      List<Map<String, dynamic>> patientsData = [];
+      List<Map<String, dynamic>> newPatientsData = [];
       
       // Process each appointment
       for (var appointmentDoc in appointmentsSnapshot.docs) {
-        final appointmentData = appointmentDoc.data();
+        final appointmentData = appointmentDoc.data() as Map<String, dynamic>;
         debugPrint('Processing appointment: ${appointmentDoc.id}');
         
         final patientId = appointmentData['patientId'] as String?;
@@ -192,7 +246,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
             }
             
             // Format data
-            patientsData.add({
+            newPatientsData.add({
               "patientId": patientId,
               "name": patientData['fullName'] ?? patientData['name'] ?? 'Unknown',
               "age": patientData['age'] != null ? '${patientData['age']} Years' : 'Unknown',
@@ -215,12 +269,27 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       
       if (!mounted) return;
       
+      // Apply client-side filtering for search if needed
+      if (_searchQuery.isNotEmpty) {
+        newPatientsData = newPatientsData.where((patient) {
+          return patient["name"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                 patient["location"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                 patient["appointment"]["hospital"].toLowerCase().contains(_searchQuery.toLowerCase());
+        }).toList();
+      }
+      
       setState(() {
-        _patients = patientsData;
+        // Append new data to existing patients
+        if (isInitialLoad) {
+          _patients = newPatientsData;
+        } else {
+          _patients.addAll(newPatientsData);
+        }
         _isLoading = false;
+        _isLoadingMore = false;
       });
       
-      debugPrint('Loaded ${_patients.length} patients');
+      debugPrint('Total patients loaded: ${_patients.length}');
     } catch (e) {
       if (!mounted) return;
       
@@ -228,8 +297,14 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       setState(() {
         _errorMessage = 'Failed to load patients: ${e.toString()}';
         _isLoading = false;
+        _isLoadingMore = false;
       });
     }
+  }
+  
+  // Helper method to load more patients
+  Future<void> _loadMorePatients() async {
+    await _loadPatients(false);
   }
   
   // Helper method to get month name
@@ -242,53 +317,33 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   }
 
   List<Map<String, dynamic>> get filteredPatients {
-    List<Map<String, dynamic>> result = _patients.where((patient) {
-      final matchesSearch = patient["name"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                          patient["location"]!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                          patient["appointment"]["hospital"].toLowerCase().contains(_searchQuery.toLowerCase());
-      
-      if (selectedFilters.isEmpty) {
-        return matchesSearch;
-      }
-      
+    return _patients.where((patient) {
+      // Only apply further filtering by status and location
+      // Search filtering is now handled server-side in _loadPatients
       bool matchesFilters = true;
       
       // Filter by location
       if (selectedFilters.contains("Karachi")) {
         matchesFilters = matchesFilters && 
-                         patient["appointment"]["hospital"].toString().toLowerCase().contains("karachi");
+                        patient["appointment"]["hospital"].toString().toLowerCase().contains("karachi");
       }
       
-      // Fix the parentheses issue in this condition
-      // Filter by appointment status - use lowercase for comparison
+      // Filter by appointment status
       if (selectedFilters.contains("Upcoming")) {
         matchesFilters = matchesFilters && (
-                         patient["appointment"]["status"].toString().toLowerCase() == "upcoming" || 
-                         patient["appointment"]["status"].toString().toLowerCase() == "confirmed" ||
-                         patient["appointment"]["status"].toString().toLowerCase() == "pending"
-                         );
+                        patient["appointment"]["status"].toString().toLowerCase() == "upcoming" || 
+                        patient["appointment"]["status"].toString().toLowerCase() == "confirmed" ||
+                        patient["appointment"]["status"].toString().toLowerCase() == "pending"
+                        );
       }
       
       if (selectedFilters.contains("Completed")) {
         matchesFilters = matchesFilters && 
-                         patient["appointment"]["status"].toString().toLowerCase() == "completed";
+                        patient["appointment"]["status"].toString().toLowerCase() == "completed";
       }
-                              
-      return matchesSearch && matchesFilters;
+                            
+      return matchesFilters;
     }).toList();
-    
-    // Sort based on selected option - fix the same parentheses issue
-    if (_selectedSortIndex == 1) { // Upcoming Appointments
-      result = result.where((p) => (
-        p["appointment"]["status"].toString().toLowerCase() == "upcoming" || 
-        p["appointment"]["status"].toString().toLowerCase() == "confirmed" ||
-        p["appointment"]["status"].toString().toLowerCase() == "pending"
-      )).toList();
-    } else if (_selectedSortIndex == 2) { // Completed Appointments
-      result = result.where((p) => p["appointment"]["status"].toString().toLowerCase() == "completed").toList();
-    }
-    
-    return result;
   }
 
   void toggleFilter(String filter) {
@@ -299,262 +354,313 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
         selectedFilters.add(filter);
       }
     });
+    
+    // Reset pagination and fetch data again when filters change
+    _lastDocument = null;
+    _hasMoreData = true;
+    _patients.clear();
+    _fetchPatientData();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Get filtered patients
+    final displayedPatients = filteredPatients;
+    
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _fetchPatientData,
         child: Stack(
-        children: [
-          // Background gradient
-          Container(
-            height: 220,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.fromRGBO(64, 124, 226, 1),
-                  Color.fromRGBO(84, 144, 246, 1),
+          children: [
+            // Background gradient
+            Container(
+              height: 220,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.fromRGBO(64, 124, 226, 1),
+                    Color.fromRGBO(84, 144, 246, 1),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color.fromRGBO(64, 124, 226, 0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Color.fromRGBO(64, 124, 226, 0.3),
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
             ),
-          ),
-          
-          // Main content
-          SafeArea(
-            child: Column(
-              children: [
-                // Custom app bar with gradient background
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
+            
+            // Main content
+            SafeArea(
+              child: Column(
+                children: [
+                  // Custom app bar with gradient background
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 15),
+                        Text(
+                          "Patient Appointments",
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Spacer(),
+                        Container(
                           padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            Icons.arrow_back_ios_new_rounded,
+                            LucideIcons.bell,
                             color: Colors.white,
                             size: 20,
                           ),
                         ),
-                      ),
-                      SizedBox(width: 15),
-                      Text(
-                        "Patient Appointments",
-                        style: GoogleFonts.poppins(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Spacer(),
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          LucideIcons.bell,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                
-                  // Search bar - elevated above main content
-                  SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.5),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: _controller,
-                      curve: Interval(0.2, 0.7, curve: Curves.easeOut),
-                    )),
-                    child: FadeTransition(
-                      opacity: Tween<double>(
-                        begin: 0.0,
-                        end: 1.0,
+                  
+                    // Search bar - elevated above main content
+                    SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.5),
+                        end: Offset.zero,
                       ).animate(CurvedAnimation(
                         parent: _controller,
                         curve: Interval(0.2, 0.7, curve: Curves.easeOut),
                       )),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Container(
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
+                      child: FadeTransition(
+                        opacity: Tween<double>(
+                          begin: 0.0,
+                          end: 1.0,
+                        ).animate(CurvedAnimation(
+                          parent: _controller,
+                          curve: Interval(0.2, 0.7, curve: Curves.easeOut),
+                        )),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                prefixIcon: Icon(
+                                  LucideIcons.search,
+                                  color: Colors.grey.shade600,
+                                ),
+                                hintText: "Search patients or hospitals",
+                                hintStyle: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(
+                                          Icons.clear,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                        },
+                                      )
+                                    : null,
                               ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              prefixIcon: Icon(
-                                LucideIcons.search,
-                                color: Colors.grey.shade600,
-                              ),
-                              hintText: "Search patients or hospitals",
-                              hintStyle: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade500,
-                              ),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: Icon(
-                                        Icons.clear,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                      },
-                                    )
-                                  : null,
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  
-                  // Main content - scrollable area
-                Expanded(
-                    child: _isLoading
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                  color: Color(0xFF3366CC),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  "Loading patients...",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade600,
+                    
+                    // Main content - scrollable area
+                  Expanded(
+                      child: _isLoading && _patients.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: Color(0xFF3366CC),
                                   ),
-                        ),
-                      ],
-                    ),
-                          )
-                        : _errorMessage != null
-                            ? Center(
-                    child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                                    Icon(
-                                      Icons.error_outline,
-                                      color: Colors.red.shade400,
-                                      size: 48,
-                                    ),
-                              SizedBox(height: 16),
+                                  SizedBox(height: 16),
                                   Text(
-                                      "Error Loading Data",
+                                    "Loading patients...",
                                     style: GoogleFonts.poppins(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey.shade800,
-                                      ),
-                              ),
-                              SizedBox(height: 8),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                                      child: Text(
-                                        _errorMessage!,
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
+                                      fontSize: 16,
+                                      color: Colors.grey.shade600,
                                     ),
-                                    SizedBox(height: 24),
-                                    ElevatedButton(
-                                      onPressed: _fetchPatientData,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Color(0xFF3366CC),
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
+                          ),
+                        ],
+                      ),
+                            )
+                          : _errorMessage != null
+                              ? Center(
+                      child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red.shade400,
+                                        size: 48,
+                                      ),
+                                SizedBox(height: 16),
+                                    Text(
+                                        "Error Loading Data",
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey.shade800,
                                         ),
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                          vertical: 12,
+                                ),
+                                SizedBox(height: 8),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                        child: Text(
+                                          _errorMessage!,
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Colors.grey.shade600,
+                                          ),
                                         ),
                                       ),
-                                      child: Text("Try Again"),
-                ),
-              ],
-            ),
-                              )
-                            : _patients.isEmpty
-                                ? _buildEmptyState()
-                                : CustomScrollView(
-                                    slivers: [
-                                      SliverPadding(
-                                        padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
-                                        sliver: SliverToBoxAdapter(
-                                          child: _buildFiltersSection(),
+                                      SizedBox(height: 24),
+                                      ElevatedButton(
+                                        onPressed: _fetchPatientData,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Color(0xFF3366CC),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 12,
+                                          ),
                                         ),
-                                      ),
-                                      SliverPadding(
-                                        padding: EdgeInsets.fromLTRB(16, 16, 16, 20),
-                                        sliver: filteredPatients.isEmpty
-                                            ? SliverToBoxAdapter(
-                                                child: _buildNoResultsFound(),
-                                              )
-                                            : SliverList(
-                                                delegate: SliverChildBuilderDelegate(
-                                                  (context, index) {
-                                                    final patient = filteredPatients[index];
-                                                    return _buildPatientCard(patient);
-                                                  },
-                                                  childCount: filteredPatients.length,
+                                        child: Text("Try Again"),
+                  ),
+                ],
+              ),
+                                )
+                              : _patients.isEmpty
+                                  ? _buildEmptyState()
+                                  : CustomScrollView(
+                                      slivers: [
+                                        SliverPadding(
+                                          padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
+                                          sliver: SliverToBoxAdapter(
+                                            child: _buildFiltersSection(),
+                                          ),
+                                        ),
+                                        SliverPadding(
+                                          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                                          sliver: displayedPatients.isEmpty
+                                              ? SliverToBoxAdapter(
+                                                  child: _buildNoResultsFound(),
+                                                )
+                                              : SliverList(
+                                                  delegate: SliverChildBuilderDelegate(
+                                                    (context, index) {
+                                                      final patient = displayedPatients[index];
+                                                      return _buildPatientCard(patient);
+                                                    },
+                                                    childCount: displayedPatients.length,
+                                                  ),
+                                                ),
+                                        ),
+                                        
+                                        // Show loading indicator or load more button
+                                        if (!_isLoading && _hasMoreData)
+                                          SliverPadding(
+                                            padding: EdgeInsets.fromLTRB(16, 0, 16, 20),
+                                            sliver: SliverToBoxAdapter(
+                                              child: _buildLoadMoreButton(),
+                                            ),
+                                          ),
+                                          
+                                        // Show loading indicator when loading more data
+                                        if (_isLoadingMore)
+                                          SliverPadding(
+                                            padding: EdgeInsets.only(bottom: 20, top: 10),
+                                            sliver: SliverToBoxAdapter(
+                                              child: Center(
+                                                child: CircularProgressIndicator(
+                                                  color: Color(0xFF3366CC),
                                                 ),
                                               ),
-                                      ),
-                                    ],
-                                  ),
-                ),
-              ],
-            ),
-            ),
-          ],
+                                            ),
+                                          ),
+                                          
+                                        // Add bottom padding if all items are loaded
+                                        if (!_hasMoreData && !_isLoadingMore)
+                                          SliverPadding(
+                                            padding: EdgeInsets.only(bottom: 20),
+                                            sliver: SliverToBoxAdapter(
+                                              child: Center(
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(8.0),
+                                                  child: Text(
+                                                    "No more patients to load",
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 14,
+                                                      color: Colors.grey.shade500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                  ),
+                ],
+              ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildEmptyState() {
@@ -1258,6 +1364,39 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // New method to build the "Load More" button
+  Widget _buildLoadMoreButton() {
+    return Container(
+      margin: EdgeInsets.only(top: 10, bottom: 10),
+      child: ElevatedButton(
+        onPressed: _loadMorePatients,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF3366CC),
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.plus, size: 18),
+            SizedBox(width: 8),
+            Text(
+              "Load More Patients",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
