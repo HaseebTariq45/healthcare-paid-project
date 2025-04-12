@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';
 import 'package:healthcare/views/screens/patient/appointment/patient_payment_screen.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'package:healthcare/views/screens/patient/appointment/completed_appointments_screen.dart';
 
 class AppointmentBookingFlow extends StatefulWidget {
   final String? specialty;
@@ -21,6 +25,7 @@ class AppointmentBookingFlow extends StatefulWidget {
 class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with SingleTickerProviderStateMixin {
   int _currentStep = 0;
   String? _selectedLocation;
+  String? _selectedHospitalId;
   DateTime? _selectedDate;
   String? _selectedTime;
   String? _selectedDoctor;
@@ -30,7 +35,23 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   
-  // Remove the PageController that's causing conflicts with the Stepper
+  // Firestore and Auth instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Doctor data
+  late Map<String, dynamic> _doctorData;
+  
+  // Available locations (hospitals) for the selected doctor
+  List<Map<String, dynamic>> _doctorHospitals = [];
+  
+  // Available time slots for the selected date and hospital
+  List<String> _availableTimesForSelectedDate = [];
+  bool _loadingTimeSlots = false;
+  
+  // Map to store available time slots for each date
+  Map<String, List<String>> _dateTimeSlots = {};
+  
   final Map<String, GlobalKey> _stepKeys = {
     'location': GlobalKey(),
     'date': GlobalKey(),
@@ -42,9 +63,24 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   @override
   void initState() {
     super.initState();
+    
+    // Initialize doctor data
+    _doctorData = widget.preSelectedDoctor ?? {};
+    
     if (widget.preSelectedDoctor != null) {
       _selectedDoctor = widget.preSelectedDoctor!['name'];
       _currentStep = 0; // Start with hospital selection when doctor is pre-selected
+      
+      // Extract the doctor's hospitals from the data
+      if (widget.preSelectedDoctor!.containsKey('hospitals')) {
+        _doctorHospitals = List<Map<String, dynamic>>.from(widget.preSelectedDoctor!['hospitals']);
+      } else {
+        // Fetch hospitals if not included in the doctor data
+        _fetchDoctorHospitals(widget.preSelectedDoctor!['id']);
+      }
+    } else {
+      // If no doctor is pre-selected, fetch all available doctors from Firestore
+      _fetchAllDoctors();
     }
     
     _animationController = AnimationController(
@@ -65,27 +101,121 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   @override
   void dispose() {
     _animationController.dispose();
-    // Remove PageController disposal
     super.dispose();
   }
-
-  // Sample data - Replace with actual API calls
-  final List<String> _locations = [
-    "Aga Khan Hospital, Karachi",
-    "Shaukat Khanum Hospital, Lahore",
-    "Jinnah Hospital, Karachi",
-    "Liaquat National Hospital, Karachi",
-  ];
-
-  final List<String> _availableTimes = [
-    "09:00 AM",
-    "10:00 AM",
-    "11:00 AM",
-    "12:00 PM",
-    "02:00 PM",
-    "03:00 PM",
-    "04:00 PM",
-  ];
+  
+  // Fetch doctor's hospitals from Firestore
+  Future<void> _fetchDoctorHospitals(String doctorId) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final hospitalsQuery = await _firestore
+          .collection('doctor_hospitals')
+          .where('doctorId', isEqualTo: doctorId)
+          .get();
+      
+      final List<Map<String, dynamic>> hospitalsList = [];
+      
+      for (var hospitalDoc in hospitalsQuery.docs) {
+        final hospitalData = hospitalDoc.data();
+        final hospitalId = hospitalData['hospitalId'];
+        final hospitalName = hospitalData['hospitalName'] ?? 'Unknown Hospital';
+        final address = hospitalData['address'] ?? '';
+        
+        hospitalsList.add({
+          'hospitalId': hospitalId,
+          'hospitalName': hospitalName,
+          'address': address,
+        });
+      }
+      
+      if (mounted) {
+        setState(() {
+          // Update the doctor's data with the hospitals
+          if (_doctorData.containsKey('id') && _doctorData['id'] == doctorId) {
+            _doctorData['hospitals'] = hospitalsList;
+          }
+          
+          // If we're in the hospital selection step (not doctor selection step)
+          if (_selectedDoctor != null || widget.preSelectedDoctor != null) {
+            _doctorHospitals = hospitalsList;
+          }
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error loading hospital information: $e';
+          _isLoading = false;
+        });
+      }
+      debugPrint('Error fetching doctor hospitals: $e');
+    }
+  }
+  
+  // Fetch time slots for a specific date and hospital
+  Future<void> _fetchTimeSlotsForDate(String hospitalId, DateTime date) async {
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    
+    // Check if we already have this data cached
+    if (_dateTimeSlots.containsKey('$hospitalId-$dateStr')) {
+      setState(() {
+        _availableTimesForSelectedDate = _dateTimeSlots['$hospitalId-$dateStr'] ?? [];
+      });
+      return;
+    }
+    
+    setState(() {
+      _loadingTimeSlots = true;
+    });
+    
+    try {
+      final doctorId = _doctorData['id'];
+      
+      // Query Firestore for availability
+      final availabilityQuery = await _firestore
+          .collection('doctor_availability')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('hospitalId', isEqualTo: hospitalId)
+          .where('date', isEqualTo: dateStr)
+          .limit(1)
+          .get();
+      
+      List<String> timeSlots = [];
+      if (availabilityQuery.docs.isNotEmpty) {
+        final availabilityData = availabilityQuery.docs.first.data();
+        timeSlots = List<String>.from(availabilityData['timeSlots'] ?? []);
+      }
+      
+      // Cache the result
+      _dateTimeSlots['$hospitalId-$dateStr'] = timeSlots;
+      
+      if (mounted) {
+        setState(() {
+          _availableTimesForSelectedDate = timeSlots;
+          _loadingTimeSlots = false;
+          
+          // Clear selected time if it's not available for this date
+          if (_selectedTime != null && !timeSlots.contains(_selectedTime)) {
+            _selectedTime = null;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error loading time slots: $e';
+          _loadingTimeSlots = false;
+        });
+      }
+      debugPrint('Error fetching time slots: $e');
+    }
+  }
 
   final List<String> _appointmentReasons = [
     "Regular Checkup",
@@ -94,53 +224,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     "Prescription Refill",
     "Test Results Review",
     "Emergency Consultation",
-  ];
-
-  final List<Map<String, dynamic>> _doctors = [
-    {
-      'name': 'Dr. Sarah Ahmed',
-      'specialty': 'Cardiologist',
-      'image': 'assets/images/User.png',
-      'rating': 4.9,
-      'experience': '15 years',
-      'fee': 'Rs. 2000',
-      'languages': ['English', 'Urdu'],
-      'qualifications': ['MBBS', 'FCPS', 'MRCP'],
-      'hospital_availability': [
-        {
-          'hospital': 'Aga Khan Hospital, Karachi',
-          'days': ['Monday', 'Wednesday', 'Friday'],
-          'times': ['09:00 AM', '10:00 AM', '11:00 AM']
-        },
-        {
-          'hospital': 'Liaquat National Hospital, Karachi',
-          'days': ['Tuesday', 'Thursday'],
-          'times': ['02:00 PM', '03:00 PM', '04:00 PM']
-        }
-      ]
-    },
-    {
-      'name': 'Dr. John Miller',
-      'specialty': 'Neurologist',
-      'image': 'assets/images/User.png',
-      'rating': 4.8,
-      'experience': '12 years',
-      'fee': 'Rs. 2500',
-      'languages': ['English'],
-      'qualifications': ['MBBS', 'MD', 'DM'],
-      'hospital_availability': [
-        {
-          'hospital': 'Shaukat Khanum Hospital, Lahore',
-          'days': ['Monday', 'Tuesday', 'Wednesday'],
-          'times': ['02:00 PM', '03:00 PM', '04:00 PM']
-        },
-        {
-          'hospital': 'Jinnah Hospital, Karachi',
-          'days': ['Thursday', 'Friday'],
-          'times': ['10:00 AM', '11:00 AM', '12:00 PM']
-        }
-      ]
-    }
   ];
 
   List<Step> _buildSteps() {
@@ -214,7 +297,16 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               fontWeight: FontWeight.w600,
             ),
           ),
-          content: _buildAppointmentDetailsStep(),
+          subtitle: _selectedReason != null
+              ? Text(
+                  _selectedReason!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                )
+              : null,
+          content: _buildDetailsStep(),
           isActive: _currentStep >= 3,
           state: _currentStep > 3 ? StepState.complete : StepState.indexed,
         ),
@@ -311,7 +403,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               fontWeight: FontWeight.w600,
             ),
           ),
-          content: _buildAppointmentDetailsStep(),
+          content: _buildDetailsStep(),
           isActive: _currentStep >= 4,
           state: _currentStep > 4 ? StepState.complete : StepState.indexed,
         ),
@@ -337,7 +429,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(LucideIcons.arrowLeft, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -533,7 +625,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                           ),
                           IconButton(
                             icon: Icon(
-                              LucideIcons.x,
+                              Icons.close,
                               color: Colors.red.shade900,
                               size: 20,
                             ),
@@ -645,23 +737,63 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   void _processPayment() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(Duration(seconds: 2));
+      // First check if the slot is still available
+      final String dateStr = _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '';
+      final String slotAvailabilityId = '${_selectedHospitalId}_${dateStr}_${_selectedTime}';
+      
+      // Check slot availability in a transaction to prevent race conditions
+      bool isSlotAvailable = await _firestore.runTransaction<bool>((transaction) async {
+        final slotDoc = await transaction.get(_firestore
+            .collection('appointment_slots')
+            .doc(slotAvailabilityId));
+            
+        if (slotDoc.exists) {
+          final slotData = slotDoc.data() as Map<String, dynamic>;
+          return !(slotData['isBooked'] ?? false);
+        }
+        return true; // Slot document doesn't exist means it's available
+      });
+
+      if (!isSlotAvailable) {
+        setState(() {
+          _errorMessage = 'Sorry, this slot has just been booked by someone else. Please select another time slot.';
+          _isLoading = false;
+        });
+        return;
+      }
 
       // Collect appointment details
       Map<String, dynamic> appointmentDetails = {
-        'doctor': _selectedDoctor ?? '',
-        'date': _selectedDate != null ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}' : '',
+        'doctorId': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['id'] : _doctorData['id'],
+        'doctorName': _selectedDoctor ?? '',
+        'doctorSpecialty': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['specialty'] : _doctorData['specialty'] ?? '',
+        'hospitalId': _selectedHospitalId ?? '',
+        'hospitalName': _selectedLocation ?? '',
+        'date': dateStr,
         'time': _selectedTime ?? '',
-        'location': _selectedLocation ?? '',
         'reason': _selectedReason ?? '',
-        'fee': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['fee'] : 'Rs. 2000', // Default fee
+        'fee': _parseFeeAmount(widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['fee'] : _doctorData['fee'] ?? 'Rs. 2000'),
+        'displayFee': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['fee'] : _doctorData['fee'] ?? 'Rs. 2000',
+        'patientId': _auth.currentUser?.uid ?? '',
+        'status': 'pending_payment',
+        'slotId': slotAvailabilityId,
+        'createdAt': FieldValue.serverTimestamp(),
       };
 
-      Navigator.push(
+      // Place a temporary hold on the slot
+      await _firestore.collection('appointment_slots').doc(slotAvailabilityId).set({
+        'isBooked': false,
+        'tempHoldUntil': FieldValue.serverTimestamp(),
+        'tempHoldBy': _auth.currentUser?.uid,
+        'appointmentDetails': appointmentDetails,
+      }, SetOptions(merge: true));
+
+      // Navigate to payment screen
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => PatientPaymentScreen(
@@ -669,14 +801,94 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
         ),
       );
+
+      // Check payment result
+      if (result == 'payment_successful') {
+        try {
+          // Update both the appointment and slot status in a single transaction
+          await _firestore.runTransaction((transaction) async {
+            // Create a new appointment document
+            final appointmentRef = _firestore.collection('appointments').doc();
+            
+            // Update appointment details with confirmed status
+            appointmentDetails['status'] = 'confirmed';
+            appointmentDetails['paymentStatus'] = 'completed';
+            appointmentDetails['paymentDate'] = FieldValue.serverTimestamp();
+            transaction.set(appointmentRef, appointmentDetails);
+
+            // Update slot status
+            final slotRef = _firestore.collection('appointment_slots').doc(slotAvailabilityId);
+            transaction.set(slotRef, {
+              'isBooked': true,
+              'tempHoldUntil': null,
+              'tempHoldBy': null,
+              'bookedBy': _auth.currentUser?.uid,
+              'bookedAt': FieldValue.serverTimestamp(),
+              'appointmentId': appointmentRef.id,
+              'appointmentDetails': appointmentDetails,
+            }, SetOptions(merge: true));
+          });
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Appointment booked successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // Navigate to completed appointments screen, replacing the entire stack
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CompletedAppointmentsScreen(),
+            ),
+            (route) => false, // This will remove all previous routes
+          );
+        } catch (e) {
+          setState(() {
+            _errorMessage = 'Failed to save appointment. Please contact support.';
+          });
+          debugPrint('Error saving appointment after payment: $e');
+        }
+      } else {
+        // Payment failed or cancelled, release the hold on the slot
+        await _firestore.collection('appointment_slots').doc(slotAvailabilityId).delete();
+        
+        setState(() {
+          _errorMessage = 'Payment was not completed. Please try again.';
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to process payment. Please try again.';
       });
+      debugPrint('Error in _processPayment: $e');
     } finally {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  // Add a periodic cleanup function for temporary holds
+  void _cleanupExpiredHolds() async {
+    try {
+      final now = DateTime.now();
+      final expiryThreshold = now.subtract(Duration(minutes: 15));
+      
+      final expiredHolds = await _firestore
+          .collection('appointment_slots')
+          .where('tempHoldUntil', isLessThan: expiryThreshold)
+          .where('isBooked', isEqualTo: false)
+          .get();
+          
+      for (var doc in expiredHolds.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('Error cleaning up expired holds: $e');
     }
   }
 
@@ -748,25 +960,14 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
 
   Widget _buildLocationStep() {
     // Get available hospitals for the selected doctor
-    List<String> availableHospitals = [];
-    if (_selectedDoctor != null) {
-      final selectedDoctorData = _doctors.firstWhere(
-        (doctor) => doctor['name'] == _selectedDoctor,
-        orElse: () => widget.preSelectedDoctor ?? {},
-      );
-      
-      if (selectedDoctorData.containsKey('hospital_availability')) {
-        availableHospitals = (selectedDoctorData['hospital_availability'] as List)
-            .map((hospital) => hospital['hospital'] as String)
-            .toList();
-      }
+    List<Map<String, dynamic>> doctorHospitals = [];
+    
+    if (_selectedDoctor != null && _doctorData.containsKey('hospitals')) {
+      // If a doctor is selected in the first step, use their hospitals
+      doctorHospitals = List<Map<String, dynamic>>.from(_doctorData['hospitals']);
     } else if (widget.preSelectedDoctor != null) {
-      availableHospitals = (widget.preSelectedDoctor!['hospital_availability'] as List)
-          .map((hospital) => hospital['hospital'] as String)
-          .toList();
-    } else {
-      // If no doctor is selected yet, show all locations
-      availableHospitals = List.from(_locations);
+      // If doctor was pre-selected (from specialty screen), use the fetched hospitals
+      doctorHospitals = _doctorHospitals;
     }
     
     return AnimatedOpacity(
@@ -798,7 +999,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
           SizedBox(height: 24),
           
-          if (availableHospitals.isEmpty) ...[
+          if (doctorHospitals.isEmpty) ...[
             Center(
               child: Column(
                 children: [
@@ -833,17 +1034,25 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
             ListView.builder(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
-              itemCount: availableHospitals.length,
+              itemCount: doctorHospitals.length,
               itemBuilder: (context, index) {
-                final location = availableHospitals[index];
-                final isSelected = location == _selectedLocation;
+                final hospital = doctorHospitals[index];
+                final hospitalName = hospital['hospitalName'];
+                final hospitalId = hospital['hospitalId'];
+                final isSelected = hospitalId == _selectedHospitalId || hospitalName == _selectedLocation;
                 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: InkWell(
                     onTap: () {
                       setState(() {
-                        _selectedLocation = location;
+                        _selectedLocation = hospitalName;
+                        _selectedHospitalId = hospitalId;
+                        
+                        // If date is selected, fetch time slots for this hospital and date
+                        if (_selectedDate != null) {
+                          _fetchTimeSlotsForDate(hospitalId, _selectedDate!);
+                        }
                       });
                     },
                     borderRadius: BorderRadius.circular(16),
@@ -877,7 +1086,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              LucideIcons.building2,
+                              MdiIcons.officeBuildingOutline,
                               color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
                               size: 24,
                             ),
@@ -888,21 +1097,25 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  location.split(',')[0],
+                                  hospitalName,
                                   style: GoogleFonts.poppins(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.black87,
                                   ),
                                 ),
-                                SizedBox(height: 4),
-                                Text(
-                                  location.split(',')[1].trim(),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
+                                if (hospital.containsKey('address')) ...[
+                                  SizedBox(height: 4),
+                                  Text(
+                                    hospital['address'],
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
+                                ],
                               ],
                             ),
                           ),
@@ -1107,11 +1320,11 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 ),
                 formatButtonVisible: false,
                 leftChevronIcon: Icon(
-                  LucideIcons.chevronLeft,
+                  Icons.chevron_left,
                   color: Color(0xFF2B8FEB),
                 ),
                 rightChevronIcon: Icon(
-                  LucideIcons.chevronRight,
+                  Icons.chevron_right,
                   color: Color(0xFF2B8FEB),
                 ),
               ),
@@ -1147,7 +1360,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      LucideIcons.calendar,
+                      Icons.calendar_today,
                       color: Color(0xFF2B8FEB),
                       size: 24,
                     ),
@@ -1186,37 +1399,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildTimeStep() {
-    // Get available time slots for the selected doctor at the selected hospital
-    List<String> availableTimes = [];
-    
-    if (_selectedDoctor != null && _selectedLocation != null) {
-      final selectedDoctorData = _doctors.firstWhere(
-        (doctor) => doctor['name'] == _selectedDoctor,
-        orElse: () => widget.preSelectedDoctor ?? {},
-      );
-      
-      if (selectedDoctorData.containsKey('hospital_availability')) {
-        final hospitalData = (selectedDoctorData['hospital_availability'] as List).firstWhere(
-          (hospital) => hospital['hospital'] == _selectedLocation,
-          orElse: () => {'times': []},
-        );
-        
-        if (hospitalData.containsKey('times')) {
-          availableTimes = List<String>.from(hospitalData['times']);
-        }
-      }
-    } else if (widget.preSelectedDoctor != null && _selectedLocation != null) {
-      final hospitalData = (widget.preSelectedDoctor!['hospital_availability'] as List).firstWhere(
-        (hospital) => hospital['hospital'] == _selectedLocation,
-        orElse: () => {'times': []},
-      );
-      
-      if (hospitalData.containsKey('times')) {
-        availableTimes = List<String>.from(hospitalData['times']);
-      }
-    } else {
-      // If no doctor or location is selected, show default times
-      availableTimes = List.from(_availableTimes);
+    // Fetch available time slots for selected doctor at selected hospital
+    if (_selectedHospitalId != null && _selectedDate != null && _availableTimesForSelectedDate.isEmpty && !_loadingTimeSlots) {
+      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
     }
     
     // Get day of week for selected date
@@ -1260,7 +1445,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
           SizedBox(height: 24),
           
-          if (availableTimes.isEmpty) ...[
+          if (_availableTimesForSelectedDate.isEmpty) ...[
             Center(
               child: Column(
                 children: [
@@ -1320,7 +1505,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
-                    children: availableTimes
+                    children: _availableTimesForSelectedDate
                         .map((time) => _buildTimeSlot(time))
                         .toList(),
                   ),
@@ -1349,7 +1534,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      LucideIcons.clock,
+                      Icons.schedule,
                       color: Color(0xFF2B8FEB),
                       size: 24,
                     ),
@@ -1502,234 +1687,346 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
             ),
           ),
           SizedBox(height: 24),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: _doctors.length,
-            itemBuilder: (context, index) {
-              final doctor = _doctors[index];
-              final isSelected = doctor['name'] == _selectedDoctor;
-              
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedDoctor = doctor['name'];
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isSelected
-                              ? Color(0xFF2B8FEB).withOpacity(0.1)
-                              : Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+          
+          if (_isLoading)
+            Center(
+              child: Column(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading doctors...',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: Color(0xFFEDF7FF),
-                                borderRadius: BorderRadius.circular(16),
-                                image: DecorationImage(
-                                  image: AssetImage(doctor['image']),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    doctor['name'],
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    doctor['specialty'],
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        LucideIcons.star,
-                                        color: Colors.amber,
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        doctor['rating'].toString(),
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      SizedBox(width: 16),
-                                      Icon(
-                                        LucideIcons.briefcase,
-                                        color: Colors.grey[600],
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        doctor['experience'],
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isSelected)
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF2B8FEB),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                          ],
+                  ),
+                ],
+              ),
+            )
+          else if (_errorMessage != null)
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: Colors.red[300],
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Error loading doctors',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    _errorMessage!,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _fetchAllDoctors,
+                    icon: Icon(Icons.refresh),
+                    label: Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_doctorHospitals.isEmpty)
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.local_hospital_outlined,
+                    size: 48,
+                    color: Colors.grey[400],
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No doctors available',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Please try again later',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemCount: _doctorHospitals.length,
+              itemBuilder: (context, index) {
+                final doctor = _doctorHospitals[index];
+                final isSelected = _selectedDoctor == doctor['name'];
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedDoctor = doctor['name'];
+                        _doctorData = doctor;
+                        
+                        // When selecting a doctor, also prepare their hospitals for the next step
+                        if (doctor['hospitals'] != null && (doctor['hospitals'] as List).isNotEmpty) {
+                          // Just store the hospitals data; don't replace _doctorHospitals
+                          // as it contains the list of all doctors in this step
+                        } else {
+                          // If hospitals are missing, fetch them
+                          _fetchDoctorHospitals(doctor['id']);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
+                          width: isSelected ? 2 : 1,
                         ),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isSelected
+                                ? Color(0xFF2B8FEB).withOpacity(0.1)
+                                : Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              _buildInfoItem(
-                                LucideIcons.speech,
-                                'Languages',
-                                (doctor['languages'] as List).join(', '),
-                              ),
                               Container(
-                                width: 1,
-                                height: 40,
-                                color: Colors.grey.shade300,
-                              ),
-                              _buildInfoItem(
-                                Icons.school,
-                                'Qualifications',
-                                (doctor['qualifications'] as List).join(', '),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              flex: 3,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Consultation Fee',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    doctor['fee'],
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF2B8FEB),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: 6),
-                            Flexible(
-                              flex: 4,
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
+                                width: 64,
+                                height: 64,
                                 decoration: BoxDecoration(
                                   color: Color(0xFFEDF7FF),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      LucideIcons.clock,
-                                      color: Color(0xFF2B8FEB),
-                                      size: 14,
-                                    ),
-                                    SizedBox(width: 3),
-                                    Flexible(
-                                      child: Text(
-                                        'Available Today',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF2B8FEB),
+                                child: doctor['image'].toString().startsWith('assets/')
+                                    ? Image.asset(
+                                        doctor['image'],
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.network(
+                                        doctor['image'],
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Icon(
+                                          MdiIcons.doctor,
+                                          color: Colors.blue[300],
+                                          size: 40,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      doctor['name'],
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      doctor['specialty'],
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.star,
+                                          color: Colors.amber,
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          doctor['rating'].toString(),
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        SizedBox(width: 16),
+                                        Icon(
+                                          MdiIcons.briefcase,
+                                          color: Colors.grey[600],
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          doctor['experience'],
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
+                              if (isSelected)
+                                Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF2B8FEB),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ],
-                        ),
-                      ],
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildInfoItem(
+                                  Icons.message,
+                                  'Languages',
+                                  doctor['languages'] != null 
+                                      ? (doctor['languages'] as List).join(', ')
+                                      : 'English, Urdu',
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 40,
+                                  color: Colors.grey.shade300,
+                                ),
+                                _buildInfoItem(
+                                  Icons.school,
+                                  'Qualifications',
+                                  doctor['qualifications'] != null
+                                      ? (doctor['qualifications'] as List).join(', ')
+                                      : 'MBBS',
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                flex: 3,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Consultation Fee',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      doctor['fee'] ?? 'Rs 1500',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF2B8FEB),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Flexible(
+                                flex: 4,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFEDF7FF),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.schedule,
+                                        color: Color(0xFF2B8FEB),
+                                        size: 14,
+                                      ),
+                                      SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          doctor['hospitalName'] ?? 'Multiple Hospitals',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF2B8FEB),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -1784,7 +2081,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     );
   }
 
-  Widget _buildAppointmentDetailsStep() {
+  Widget _buildDetailsStep() {
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
       opacity: _currentStep == (widget.preSelectedDoctor != null ? 3 : 4) ? 1.0 : 0.8,
@@ -1826,7 +2123,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               children: [
                 if (widget.preSelectedDoctor == null) ...[
                   _buildSummaryItem(
-                    LucideIcons.stethoscope,
+                    MdiIcons.stethoscope,
                     'Doctor',
                     _selectedDoctor ?? 'Not selected',
                     Color(0xFFE91E63),
@@ -1836,7 +2133,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   SizedBox(height: 16),
                 ] else ...[
                   _buildSummaryItem(
-                    LucideIcons.stethoscope,
+                    MdiIcons.stethoscope,
                     'Doctor',
                     widget.preSelectedDoctor!['name'],
                     Color(0xFFE91E63),
@@ -1846,7 +2143,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   SizedBox(height: 16),
                 ],
                 _buildSummaryItem(
-                  LucideIcons.building2,
+                  MdiIcons.hospitalBuilding,
                   'Hospital',
                   _selectedLocation ?? 'Not selected',
                   Color(0xFF2B8FEB),
@@ -1855,7 +2152,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 Divider(),
                 SizedBox(height: 16),
                 _buildSummaryItem(
-                  LucideIcons.calendar,
+                  Icons.calendar_today,
                   'Date',
                   _selectedDate != null
                       ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
@@ -1866,7 +2163,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 Divider(),
                 SizedBox(height: 16),
                 _buildSummaryItem(
-                  LucideIcons.clock,
+                  Icons.schedule,
                   'Time',
                   _selectedTime ?? 'Not selected',
                   Color(0xFFFFA000),
@@ -1931,7 +2228,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      LucideIcons.wallet,
+                      MdiIcons.walletOutline,
                       color: Color(0xFF2B8FEB),
                       size: 22,
                     ),
@@ -1955,9 +2252,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                           builder: (context, scale, child) {
                             final String fee = widget.preSelectedDoctor != null 
                                 ? widget.preSelectedDoctor!['fee']
-                                : _doctors
+                                : _doctorHospitals
                                     .firstWhere(
-                                      (d) => d['name'] == _selectedDoctor,
+                                      (d) => d['hospitalId'] == _selectedHospitalId,
                                       orElse: () => {'fee': 'Not available'},
                                     )['fee']
                                     .toString();
@@ -2119,6 +2416,182 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         );
       },
     );
+  }
+
+  // Fetch all available doctors from Firestore
+  Future<void> _fetchAllDoctors() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      // Query doctor_hospitals to get doctors with hospital associations
+      final QuerySnapshot doctorHospitalsSnapshot = await _firestore
+          .collection('doctor_hospitals')
+          .get();
+      
+      // Extract unique doctor IDs from hospital associations
+      final Set<String> doctorIds = {};
+      for (var doc in doctorHospitalsSnapshot.docs) {
+        final hospitalData = doc.data() as Map<String, dynamic>;
+        if (hospitalData.containsKey('doctorId')) {
+          doctorIds.add(hospitalData['doctorId']);
+        }
+      }
+      
+      if (doctorIds.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _doctorHospitals = _getDefaultDoctors();
+          });
+        }
+        return;
+      }
+      
+      final List<Map<String, dynamic>> doctorsList = [];
+      
+      // For each doctor ID, get their information from the doctors collection
+      for (String doctorId in doctorIds) {
+        try {
+          final doctorDoc = await _firestore.collection('doctors').doc(doctorId).get();
+          
+          if (doctorDoc.exists) {
+            final doctorData = doctorDoc.data() as Map<String, dynamic>;
+            
+            // Get doctor's hospitals
+            final hospitalsQuery = await _firestore
+                .collection('doctor_hospitals')
+                .where('doctorId', isEqualTo: doctorId)
+                .get();
+            
+            final List<Map<String, dynamic>> hospitalsList = [];
+            
+            for (var hospitalDoc in hospitalsQuery.docs) {
+              final hospitalData = hospitalDoc.data();
+              hospitalsList.add({
+                'hospitalId': hospitalData['hospitalId'],
+                'hospitalName': hospitalData['hospitalName'] ?? 'Unknown Hospital',
+                'address': hospitalData['address'] ?? '',
+              });
+            }
+            
+            // Create doctor entry with all relevant information
+            doctorsList.add({
+              'id': doctorId,
+              'name': doctorData['fullName'] ?? 'Unknown Doctor',
+              'specialty': doctorData['specialty'] ?? 'General Practitioner',
+              'rating': doctorData['rating']?.toString() ?? "4.5",
+              'experience': doctorData['experience']?.toString() ?? "5 years",
+              'fee': 'Rs ${doctorData['fee']?.toString() ?? "1500"}',
+              'image': doctorData['profileImageUrl'] ?? "assets/images/User.png",
+              'languages': doctorData['languages'] ?? ['English', 'Urdu'],
+              'qualifications': doctorData['qualifications'] ?? ['MBBS'],
+              'hospitals': hospitalsList,
+              'hospitalId': hospitalsList.isNotEmpty ? hospitalsList.first['hospitalId'] : null,
+              'hospitalName': hospitalsList.isNotEmpty ? hospitalsList.first['hospitalName'] : 'Not Available',
+            });
+          }
+        } catch (e) {
+          debugPrint('Error fetching doctor $doctorId: $e');
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          if (doctorsList.isEmpty) {
+            _doctorHospitals = _getDefaultDoctors();
+          } else {
+            _doctorHospitals = doctorsList;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error loading doctors: $e';
+          _isLoading = false;
+          _doctorHospitals = _getDefaultDoctors();
+        });
+      }
+      debugPrint('Error fetching doctors: $e');
+    }
+  }
+  
+  // Default doctors to use if Firestore data is unavailable
+  List<Map<String, dynamic>> _getDefaultDoctors() {
+    return [
+      {
+        'id': 'default1',
+        'hospitalId': 'hospital1',
+        'hospitalName': 'Aga Khan Hospital',
+        'name': 'Dr. Sarah Ahmed',
+        'specialty': 'Cardiologist',
+        'rating': '4.9',
+        'experience': '10 years',
+        'fee': 'Rs 2000',
+        'image': 'assets/images/doctor_1.jpg',
+        'languages': ['English', 'Urdu'],
+        'qualifications': ['MBBS', 'FCPS Cardiology'],
+        'hospitals': [
+          {
+            'hospitalId': 'hospital1',
+            'hospitalName': 'Aga Khan Hospital',
+          }
+        ],
+      },
+      {
+        'id': 'default2',
+        'hospitalId': 'hospital2',
+        'hospitalName': 'Shifa International',
+        'name': 'Dr. Ali Hassan',
+        'specialty': 'Neurologist',
+        'rating': '4.8',
+        'experience': '12 years',
+        'fee': 'Rs 2500',
+        'image': 'assets/images/doctor_2.jpg',
+        'languages': ['English', 'Urdu', 'Punjabi'],
+        'qualifications': ['MBBS', 'FCPS Neurology'],
+        'hospitals': [
+          {
+            'hospitalId': 'hospital2',
+            'hospitalName': 'Shifa International',
+          }
+        ],
+      },
+      {
+        'id': 'default3',
+        'hospitalId': 'hospital3',
+        'hospitalName': 'CMH Rawalpindi',
+        'name': 'Dr. Fatima Khan',
+        'specialty': 'Gynecologist',
+        'rating': '4.7',
+        'experience': '8 years',
+        'fee': 'Rs 1800',
+        'image': 'assets/images/doctor_3.jpg',
+        'languages': ['English', 'Urdu'],
+        'qualifications': ['MBBS', 'FCPS Gynecology'],
+        'hospitals': [
+          {
+            'hospitalId': 'hospital3',
+            'hospitalName': 'CMH Rawalpindi',
+          }
+        ],
+      },
+    ];
+  }
+
+  // Helper method to parse fee amount
+  int _parseFeeAmount(String feeString) {
+    try {
+      // Remove 'Rs. ' prefix and any commas, then parse to double and convert to int
+      return double.parse(feeString.replaceAll('Rs. ', '').replaceAll(',', '')).toInt();
+    } catch (e) {
+      print('Error parsing fee amount: $e');
+      return 2000; // Default to 2000 if parsing fails
+    }
   }
 } 
 

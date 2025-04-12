@@ -6,6 +6,9 @@ import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart'
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class CompleteProfilePatient2Screen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
@@ -2453,7 +2456,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     );
   }
   
-  void _saveProfileAndShowSuccess(BuildContext context) {
+  void _saveProfileAndShowSuccess(BuildContext context) async {
     // First, recalculate the percentage to ensure it's up to date
     _calculateCompletionPercentage();
     
@@ -2476,7 +2479,6 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       _completionPercentage = finalPercentage;
     });
     
-    // Here you would normally save all profile data to Firebase/database
     // Combine data from both screens
     Map<String, dynamic> completeProfile = {
       ..._profileData,
@@ -2487,20 +2489,80 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
       'height': _heightController.text,
       'weight': _weightController.text,
       'notes': _notesController.text,
-      'completionPercentage': finalPercentage, // Set based on calculated value
-      'medicalReport1Path': _medicalReport1?.path,
-      'medicalReport2Path': _medicalReport2?.path,
+      'completionPercentage': finalPercentage,
       'isProfileComplete': true,
     };
     
-    print("Profile saved with completion: ${finalPercentage.toStringAsFixed(1)}%");
-    if (!hasProfileImage) {
-      print("Note: Profile image is missing - completion capped at 95%");
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId != null) {
+        // Update patient profile in patients collection
+        await firestore.collection('patients').doc(userId).update({
+          'age': _ageController.text,
+          'bloodGroup': selectedBloodGroup,
+          'allergies': selectedAllergies,
+          'diseases': selectedDiseases,
+          'height': _heightController.text,
+          'weight': _weightController.text,
+          'notes': _notesController.text,
+          'completionPercentage': finalPercentage,
+          'profileComplete': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        // Upload medical reports if available
+        List<String> medicalReportUrls = [];
+        
+        if (_medicalReport1 != null) {
+          final ref = firebase_storage.FirebaseStorage.instance
+              .ref()
+              .child('patients')
+              .child(userId)
+              .child('medical_report_1.jpg');
+          await ref.putFile(_medicalReport1!);
+          String downloadUrl = await ref.getDownloadURL();
+          medicalReportUrls.add(downloadUrl);
+          
+          // Update profile with report URL
+          await firestore.collection('patients').doc(userId).update({
+            'medicalReport1Url': downloadUrl,
+          });
+        }
+        
+        if (_medicalReport2 != null) {
+          final ref = firebase_storage.FirebaseStorage.instance
+              .ref()
+              .child('patients')
+              .child(userId)
+              .child('medical_report_2.jpg');
+          await ref.putFile(_medicalReport2!);
+          String downloadUrl = await ref.getDownloadURL();
+          medicalReportUrls.add(downloadUrl);
+          
+          // Update profile with report URL
+          await firestore.collection('patients').doc(userId).update({
+            'medicalReport2Url': downloadUrl,
+          });
+        }
+        
+        // Also update the main users collection with profile completion status
+        await firestore.collection('users').doc(userId).update({
+          'profileComplete': true,
+          'profileType': 'patient',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        print("Profile saved to Firestore with completion: ${finalPercentage.toStringAsFixed(1)}%");
+      } else {
+        print("Error: User not authenticated");
+      }
+    } catch (e) {
+      print("Error saving profile to Firestore: $e");
+      // Consider showing an error message to the user
     }
-    
-    // In a real app, you would save this data to Firebase/database here
-    // For example:
-    // FirebaseFirestore.instance.collection('users').doc(userId).update(completeProfile);
     
     // Show success popup
     showDialog(
@@ -2514,7 +2576,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
             MaterialPageRoute(
               builder: (context) => BottomNavigationBarPatientScreen(
                 profileStatus: "complete",
-                profileCompletionPercentage: finalPercentage.toInt(), // Use calculated percentage
+                profileCompletionPercentage: finalPercentage.toInt(),
               ),
             ),
           ),

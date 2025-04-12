@@ -13,6 +13,12 @@ import 'package:healthcare/views/screens/doctor/availability/doctor_availability
 import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
 import 'package:healthcare/views/screens/developer/developer_tools.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:healthcare/services/auth_service.dart';
+import 'package:healthcare/services/doctor_profile_service.dart';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
+import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
 
 enum UserType { doctor, patient }
 
@@ -35,37 +41,180 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
   late List<MenuItem> menuItems;
   
+  // Firebase instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
+  final DoctorProfileService _doctorProfileService = DoctorProfileService();
+  
+  // User profile data
+  String _userName = "";
+  String _userRole = "";
+  String? _profileImageUrl;
+  bool _isLoading = true;
+  
+  // Doctor profile data
+  String _specialty = "";
+  double _rating = 0.0;
+  String _experience = "";
+  String _consultationFee = "";
+  
+  // Stats for doctors
+  int _appointmentsCount = 0;
+  double _totalEarnings = 0;
+  
   @override
   void initState() {
     super.initState();
+    
+    // Set up global error handling
+    FlutterError.onError = (FlutterErrorDetails details) {
+      debugPrint('FLUTTER ERROR: ${details.exception}');
+      debugPrint('STACK TRACE: ${details.stack}');
+      FlutterError.presentError(details);
+    };
+    
     _initializeMenuItems();
+    _fetchUserData();
+  }
+  
+  // Fetch user data from Firestore
+  Future<void> _fetchUserData() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    
+    try {
+      // Get current user ID
+      final String? userId = _auth.currentUser?.uid;
+      
+      if (userId == null) {
+        // User not logged in
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _userName = widget.name;
+            _userRole = widget.role;
+          });
+        }
+        return;
+      }
+      
+      // Get user data from Firestore
+      final userData = await _authService.getUserData();
+      
+      if (userData == null) {
+        // User data not found
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _userName = widget.name;
+            _userRole = widget.role;
+          });
+        }
+        return;
+      }
+      
+      // Get user role
+      final UserRole userRole = await _authService.getUserRole();
+      
+      // Load relevant data based on user role
+      if (userRole == UserRole.doctor) {
+        // For doctor, get profile data using doctor profile service
+        await _fetchDoctorProfileData();
+      } else {
+        // For other user types, use regular user data
+        if (mounted) {
+          setState(() {
+            _userName = userData['fullName'] ?? userData['name'] ?? widget.name;
+            _userRole = "Patient";
+            _profileImageUrl = userData['profileImageUrl'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching user data: $e');
+      // Use default data in case of error
+      if (mounted) {
+        setState(() {
+          _userName = widget.name;
+          _userRole = widget.role;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Fetch doctor profile data using the new service
+  Future<void> _fetchDoctorProfileData() async {
+    try {
+      // Get doctor profile
+      final doctorProfile = await _doctorProfileService.getDoctorProfile();
+      
+      // Get doctor stats
+      final doctorStats = await _doctorProfileService.getDoctorStats();
+      
+      if (mounted) {
+        setState(() {
+          // Set basic info
+          _userName = doctorProfile['fullName'] ?? "Doctor";
+          _specialty = doctorProfile['specialty'] ?? "";
+          _userRole = _specialty; // Use specialty as role for display
+          _profileImageUrl = doctorProfile['profileImageUrl'];
+          
+          // Set doctor-specific info
+          _rating = doctorProfile.containsKey('rating') 
+              ? (doctorProfile['rating'] as num).toDouble() 
+              : 0.0;
+          _experience = doctorProfile['experience'] != null 
+              ? "${doctorProfile['experience']} years" 
+              : "";
+          _consultationFee = doctorProfile['fee'] != null 
+              ? "Rs. ${doctorProfile['fee']}" 
+              : "";
+          
+          // Set statistics
+          if (doctorStats['success'] == true) {
+            _appointmentsCount = doctorStats['totalAppointments'] ?? 0;
+            _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching doctor profile data: $e');
+    }
   }
   
   void _initializeMenuItems() {
     if (widget.userType == UserType.doctor) {
       menuItems = [
-        MenuItem("Edit Profile", Icons.person, const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Manage Hospitals", Icons.business, const ManageHospitalsScreen(), category: "Appointment"),
-        MenuItem("Update Availability", Icons.calendar_month, const DoctorAvailabilityScreen(), category: "Appointment"),
-        MenuItem("Appointments History", Icons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-        MenuItem("Payment Methods", Icons.credit_card, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
-        MenuItem("Withdrawal History", Icons.account_balance_wallet, const WithdrawalHistoryScreen(), category: "Payment"),
-        MenuItem("FAQs", Icons.info_outline, const FAQScreen(), category: "Support"),
-        MenuItem("Help Center", Icons.headset_mic, null, category: "Support"),
-        MenuItem("Developer Tools", Icons.terminal, const DeveloperToolsScreen(), category: "Development"),
-        MenuItem("Logout", Icons.logout, null, category: ""),
+        MenuItem("Edit Profile", Icons.person, () => const ProfileEditorScreen(), category: "Account"),
+        MenuItem("Appointments History", Icons.history, () => const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Payment Methods", Icons.credit_card, () => PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
+        MenuItem("Withdrawal History", Icons.account_balance_wallet, () => const WithdrawalHistoryScreen(), category: "Payment"),
+        MenuItem("FAQs", Icons.info_outline, () => const FAQScreen(), category: "Support"),
+        MenuItem("Help Center", Icons.headset_mic, () => const Scaffold(body: Center(child: Text("Help Center Coming Soon"))), category: "Support"),
+        MenuItem("Developer Tools", Icons.terminal, () => const DeveloperToolsScreen(), category: "Development"),
+        MenuItem("Logout", Icons.logout, () => Container(), category: ""),
       ];
     } else {
       // Patient menu items
       menuItems = [
-        MenuItem("Edit Profile", Icons.person, const ProfileEditorScreen(), category: "Account"),
-        MenuItem("Medical Records", Icons.description, null, category: "Health"),
-        MenuItem("Appointments History", Icons.history, const AppointmentHistoryScreen(), category: "Appointment"),
-        MenuItem("Payment Methods", Icons.credit_card, PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
-        MenuItem("FAQs", Icons.info_outline, const FAQScreen(), category: "Support"),
-        MenuItem("Help Center", Icons.headset_mic, null, category: "Support"),
-        MenuItem("Developer Tools", Icons.terminal, const DeveloperToolsScreen(), category: "Development"),
-        MenuItem("Logout", Icons.logout, null, category: ""),
+        MenuItem("Edit Profile", Icons.person, () => const ProfileEditorScreen(), category: "Account"),
+        MenuItem("Medical Records", Icons.description, () => const Scaffold(body: Center(child: Text("Medical Records Coming Soon"))), category: "Health"),
+        MenuItem("Appointments History", Icons.history, () => const AppointmentHistoryScreen(), category: "Appointment"),
+        MenuItem("Payment Methods", Icons.credit_card, () => PaymentMethodsScreen(userType: widget.userType), category: "Payment"),
+        MenuItem("FAQs", Icons.info_outline, () => const FAQScreen(), category: "Support"),
+        MenuItem("Help Center", Icons.headset_mic, () => const Scaffold(body: Center(child: Text("Help Center Coming Soon"))), category: "Support"),
+        MenuItem("Developer Tools", Icons.terminal, () => const DeveloperToolsScreen(), category: "Development"),
+        MenuItem("Logout", Icons.logout, () => Container(), category: ""),
       ];
     }
   }
@@ -87,14 +236,277 @@ class _MenuScreenState extends State<MenuScreen> {
     return result;
   }
 
+  // Debug test screen to isolate navigation issues
+  void _openTestScreen() {
+    try {
+      debugPrint('Attempting to open TestScreen');
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Test Screen'),
+              backgroundColor: Colors.blue,
+            ),
+            body: const Center(
+              child: Text('This is a test screen. If you see this, navigation works!'),
+            ),
+          ),
+        ),
+      );
+      debugPrint('TestScreen navigation successful');
+    } catch (e) {
+      debugPrint('*** Navigation ERROR: $e ***');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 10),
+        ),
+      );
+    }
+  }
+
+  // Optimized navigation with loading indicator
+  void _navigateWithLoadingIndicator(Widget Function() screenBuilder, String screenName) {
+    // Show loading dialog immediately
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  color: Color(0xFF3366CC),
+                ),
+                const SizedBox(height: 20),
+                Text('Loading $screenName...'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Use micro-task to ensure UI updates before heavy computation
+    Future.microtask(() async {
+      try {
+        // Delay to ensure dialog shows
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        final screen = screenBuilder();
+        
+        // Close loading dialog
+        if (context.mounted) Navigator.of(context).pop();
+        
+        // Navigate to the screen
+        if (context.mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => screen),
+          );
+        }
+      } catch (e) {
+        // Close loading dialog if there's an error
+        if (context.mounted) Navigator.of(context).pop();
+        
+        debugPrint('Error loading $screenName: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to load $screenName: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  // Navigate directly to a specific screen with web-friendly routing
+  void _navigateToSpecificScreen(String screenType) {
+    // Show loading dialog immediately
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  color: Color(0xFF3366CC),
+                ),
+                const SizedBox(height: 20),
+                Text('Loading $screenType...'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Use microtask to ensure UI updates before heavy computation
+    Future.microtask(() async {
+      try {
+        // Ensure dialog is shown
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Create the appropriate screen based on type
+        late Widget screen;
+        
+        switch (screenType) {
+          case "Edit Profile":
+            screen = const ProfileEditorScreen();
+            break;
+          case "Appointments History":
+            screen = const AppointmentHistoryScreen();
+            break;
+          case "Payment Methods":
+            screen = PaymentMethodsScreen(userType: widget.userType);
+            break;
+          case "Withdrawal History":
+            screen = const WithdrawalHistoryScreen();
+            break;
+          case "FAQs":
+            screen = const FAQScreen();
+            break;
+          case "Help Center":
+            screen = Scaffold(
+              appBar: AppBar(title: const Text("Help Center")),
+              body: const Center(child: Text("Help Center Coming Soon")),
+            );
+            break;
+          case "Medical Records":
+            screen = Scaffold(
+              appBar: AppBar(title: const Text("Medical Records")),
+              body: const Center(child: Text("Medical Records Coming Soon")),
+            );
+            break;
+          case "Developer Tools":
+            screen = const DeveloperToolsScreen();
+            break;
+          default:
+            // Close loading dialog
+            if (context.mounted) Navigator.of(context).pop();
+            throw Exception("Unknown screen type: $screenType");
+        }
+        
+        // Close loading dialog
+        if (context.mounted) Navigator.of(context).pop();
+        
+        // Navigate using direct MaterialPageRoute
+        if (context.mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => screen,
+              settings: RouteSettings(name: '/${screenType.toLowerCase().replaceAll(' ', '_')}'),
+            ),
+          );
+        }
+      } catch (e) {
+        // Close loading dialog if there's an error
+        if (context.mounted) Navigator.of(context).pop();
+        
+        debugPrint('Error navigating to $screenType: $e');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to navigate to $screenType: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  // Fallback method for direct navigation if named routes fail
+  void _fallbackToDirectNavigation(String screenType) {
+    try {
+      debugPrint('Using fallback navigation for: $screenType');
+      
+      // Create the appropriate screen based on type
+      late Widget screen;
+      
+      switch (screenType) {
+        case "Edit Profile":
+          screen = const ProfileEditorScreen();
+          break;
+        case "Appointments History":
+          screen = const AppointmentHistoryScreen();
+          break;
+        case "Payment Methods":
+          screen = PaymentMethodsScreen(userType: widget.userType);
+          break;
+        case "Withdrawal History":
+          screen = const WithdrawalHistoryScreen();
+          break;
+        case "FAQs":
+          screen = const FAQScreen();
+          break;
+        case "Help Center":
+          screen = Scaffold(
+            appBar: AppBar(title: const Text("Help Center")),
+            body: const Center(child: Text("Help Center Coming Soon")),
+          );
+          break;
+        case "Medical Records":
+          screen = Scaffold(
+            appBar: AppBar(title: const Text("Medical Records")),
+            body: const Center(child: Text("Medical Records Coming Soon")),
+          );
+          break;
+        case "Developer Tools":
+          screen = const DeveloperToolsScreen();
+          break;
+        default:
+          throw Exception("Unknown screen type: $screenType");
+      }
+      
+      // Navigate to the screen
+      if (context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => screen,
+            settings: RouteSettings(name: '/${screenType.toLowerCase().replaceAll(' ', '_')}'),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error in fallback navigation: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: Column(
+        child: _isLoading 
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF3366CC),
+                ),
+              )
+            : Column(
           children: [
             _buildProfileHeader(),
+            _buildTestButton(),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -181,7 +593,39 @@ class _MenuScreenState extends State<MenuScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  // Debug info about Navigator
+                  debugPrint('Back button pressed, Navigator stack depth: ${Navigator.of(context).canPop()}');
+                  
+                  // Try to pop if possible, otherwise navigate to the appropriate home screen
+                  if (Navigator.of(context).canPop()) {
+                    debugPrint('Can pop - using Navigator.pop()');
+                    Navigator.of(context).pop();
+                  } else {
+                    // Navigate to the appropriate bottom navigation screen based on user type
+                    debugPrint('Cannot pop - using pushReplacement to bottom nav');
+                    if (widget.userType == UserType.doctor) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BottomNavigationBarScreen(
+                            profileStatus: "complete",
+                          ),
+                        ),
+                      );
+                    } else {
+                      // For patients, use the patient bottom navigation
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BottomNavigationBarPatientScreen(
+                            profileStatus: "complete",
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -225,7 +669,12 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                     ],
                   ),
-                  child: CircleAvatar(
+                  child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                    ? CircleAvatar(
+                        radius: widget.userType == UserType.patient ? 40 : 55,
+                        backgroundImage: NetworkImage(_profileImageUrl!),
+                      )
+                    : CircleAvatar(
                     radius: widget.userType == UserType.patient ? 40 : 55,
                     backgroundImage: const AssetImage("assets/images/User.png"),
                   ),
@@ -237,7 +686,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.name,
+                      _userName,
                       style: GoogleFonts.poppins(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -252,7 +701,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                     ),
                     Text(
-                      widget.role,
+                      _userRole,
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
@@ -283,7 +732,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 children: [
                   _buildStatCard(
                     "Appointments", 
-                    "25",
+                    _appointmentsCount.toString(),
                     Icons.calendar_today,
                   ),
                   Container(
@@ -293,7 +742,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                   _buildStatCard(
                     "Earnings", 
-                    "Rs 15,000",
+                    "Rs ${_totalEarnings.toStringAsFixed(0)}",
                     Icons.account_balance_wallet,
                   ),
                 ],
@@ -402,47 +851,113 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Widget _buildMenuItem(MenuItem item) {
-    return GestureDetector(
-      onTap: item.navigationScreen != null
-          ? () {
-              NavigationHelper.navigateWithBottomBar(context, item.navigationScreen!);
-            }
-          : () {
-              _showLogoutDialog();
-            },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          children: [
-            Container(
-              width: 45,
-              height: 45,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F7FF),
-                borderRadius: BorderRadius.circular(14),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        splashColor: Colors.grey.withOpacity(0.1),
+        highlightColor: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          debugPrint('Menu item clicked: ${item.title}');
+          
+          // Capture the current context for navigation
+          final BuildContext currentContext = context;
+          
+          if (item.title == "Logout") {
+            _showLogoutDialog();
+          } else if (item.title == "Test Navigation") {
+            _openTestScreen();
+          } else if (item.title == "Edit Profile") {
+            // Direct navigation for Edit Profile
+            debugPrint('Direct navigation to Edit Profile');
+            
+            // Use async/await for better navigation flow
+            Future.microtask(() async {
+              try {
+                // Show loading indicator using the captured context
+                showDialog(
+                  context: currentContext,
+                  barrierDismissible: false,
+                  builder: (dialogContext) => const Dialog(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 20),
+                          Text('Loading Profile Editor...'),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+                
+                // Wait a bit for dialog to show
+                await Future.delayed(const Duration(milliseconds: 100));
+                
+                // Close the dialog first if the context is still valid
+                if (currentContext.mounted) {
+                  Navigator.of(currentContext).pop();
+                }
+                
+                // Navigate to the profile screen using captured context
+                if (currentContext.mounted) {
+                  Navigator.of(currentContext).push(
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileEditorScreen(),
+                    ),
+                  );
+                }
+              } catch (e) {
+                debugPrint('Navigation error: $e');
+                // Try to show error if context is still valid
+                if (currentContext.mounted) {
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            });
+          } else {
+            // Use the web-friendly navigation for all other screens
+            _navigateToSpecificScreen(item.title);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 45,
+                height: 45,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F7FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  item.icon,
+                  color: const Color(0xFF3366CC),
+                  size: 20,
+                ),
               ),
-              child: Icon(
-                item.icon,
-                color: const Color(0xFF3366CC),
+              const SizedBox(width: 15),
+              Text(
+                item.title,
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey.shade400,
                 size: 20,
               ),
-            ),
-            const SizedBox(width: 15),
-            Text(
-              item.title,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              Icons.chevron_right,
-              color: Colors.grey.shade400,
-              size: 20,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -472,6 +987,8 @@ class _MenuScreenState extends State<MenuScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () => _showLogoutDialog(),
+          splashColor: Colors.red.withOpacity(0.1),
+          highlightColor: Colors.red.withOpacity(0.05),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Row(
@@ -581,12 +1098,57 @@ class _MenuScreenState extends State<MenuScreen> {
                     const SizedBox(width: 15),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(context);
-                          Navigator.pushReplacement(
-                            context, 
-                            MaterialPageRoute(builder: (context) => SignUpOptions()),
+                          
+                          // Show loading indicator
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (BuildContext context) {
+                              return Dialog(
+                                backgroundColor: Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      CircularProgressIndicator(
+                                        color: Color(0xFF3366CC),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text('Logging out...'),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
+                          
+                          // Sign out
+                          try {
+                            await _authService.signOut();
+                            
+                            // Close loading dialog
+                            Navigator.pop(context);
+                            
+                            // Navigate to Onboarding3 screen and clear navigation stack
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (context) => const Onboarding3()),
+                              (route) => false, // Remove all previous routes
+                            );
+                          } catch (e) {
+                            // Close loading dialog
+                            Navigator.pop(context);
+                            
+                            // Show error message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('An error occurred: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5252),
@@ -615,13 +1177,32 @@ class _MenuScreenState extends State<MenuScreen> {
       },
     );
   }
+
+  // Add a test button below profile header
+  Widget _buildTestButton() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
+      child: ElevatedButton(
+        onPressed: _openTestScreen,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: const Text('Test Navigation'),
+      ),
+    );
+  }
 }
 
 class MenuItem {
   final String title;
   final IconData icon;
-  final Widget? navigationScreen;
+  final Widget Function() screenBuilder;
   final String category;
 
-  MenuItem(this.title, this.icon, this.navigationScreen, {this.category = ""});
+  MenuItem(this.title, this.icon, this.screenBuilder, {this.category = ""});
 }

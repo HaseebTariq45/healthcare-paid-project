@@ -3,6 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
+import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
+import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
+import 'package:healthcare/views/screens/onboarding/splash.dart';
 
 enum UserRole {
   patient,
@@ -37,22 +42,31 @@ class AuthService {
   // Get user role from shared preferences (for quicker access)
   Future<UserRole> getUserRole() async {  
     // If not logged in, return unknown
-    if (currentUser == null) return UserRole.unknown;
+    if (currentUser == null) {
+      print('***** NO CURRENT USER, RETURNING UNKNOWN ROLE *****');
+      return UserRole.unknown;
+    }
     
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? roleStr = prefs.getString('user_role_${currentUser!.uid}');
+    print('***** ROLE FROM PREFS: $roleStr for user ${currentUser!.uid} *****');
     
     if (roleStr == null) {
+      print('***** NO CACHED ROLE, FETCHING FROM FIRESTORE *****');
       return await _fetchUserRoleFromFirestore();
     }
     
+    UserRole role;
     switch (roleStr) {
-      case 'patient': return UserRole.patient;
-      case 'doctor': return UserRole.doctor;
-      case 'ladyHealthWorker': return UserRole.ladyHealthWorker;
-      case 'admin': return UserRole.admin;
-      default: return UserRole.unknown;
+      case 'patient': role = UserRole.patient; break;
+      case 'doctor': role = UserRole.doctor; break;
+      case 'ladyHealthWorker': role = UserRole.ladyHealthWorker; break;
+      case 'admin': role = UserRole.admin; break;
+      default: role = UserRole.unknown; break;
     }
+    
+    print('***** RETURNING ROLE FROM PREFS: $role *****');
+    return role;
   }
 
   // Save user role to shared preferences
@@ -70,7 +84,9 @@ class AuthService {
       default: roleStr = 'unknown'; break;
     }
     
+    print('***** SAVING USER ROLE TO PREFS: $roleStr for user ${currentUser!.uid} *****');
     await prefs.setString('user_role_${currentUser!.uid}', roleStr);
+    print('***** ROLE SAVED TO PREFS *****');
   }
 
   // Fetch user role from Firestore
@@ -79,22 +95,61 @@ class AuthService {
     
     try {
       final doc = await _firestore.collection('users').doc(currentUser!.uid).get();
+      print('***** FETCHING USER ROLE - DOC EXISTS: ${doc.exists} *****');
+      print('***** USER ID: ${currentUser!.uid} *****');
+      
       if (!doc.exists) return UserRole.unknown;
       
       final data = doc.data();
-      if (data == null || !data.containsKey('role')) return UserRole.unknown;
+      print('***** FIRESTORE USER DATA: $data *****');
       
-      final String role = data['role'];
+      if (data == null || !data.containsKey('role')) {
+        print('***** NO ROLE FIELD FOUND IN USER DATA *****');
+        // Check if there might be a casing issue with the role field
+        if (data != null) {
+          final keys = data.keys.toList();
+          print('***** AVAILABLE FIELDS: $keys *****');
+          // Check for alternative casing of 'role'
+          for (final key in keys) {
+            if (key.toLowerCase() == 'role') {
+              print('***** FOUND ROLE WITH DIFFERENT CASING: $key *****');
+              final String role = data[key].toString().toLowerCase();
+              print('***** ROLE VALUE WITH DIFFERENT CASING: $role *****');
+              
+              UserRole userRole;
+              switch (role) {
+                case 'patient': userRole = UserRole.patient; break;
+                case 'doctor': userRole = UserRole.doctor; break;
+                case 'ladyhealthworker': userRole = UserRole.ladyHealthWorker; break;
+                case 'admin': userRole = UserRole.admin; break;
+                default: userRole = UserRole.unknown; break;
+              }
+              
+              print('***** DETERMINED USER ROLE FROM ALTERNATIVE CASING: $userRole *****');
+              await _saveUserRole(userRole);
+              return userRole;
+            }
+          }
+        }
+        return UserRole.unknown;
+      }
+      
+      final String role = data['role'].toString().toLowerCase();  // Convert to lowercase for case-insensitive comparison
+      print('***** ROLE STRING FROM FIRESTORE (normalized): $role *****');
       
       UserRole userRole;
       switch (role) {
         case 'patient': userRole = UserRole.patient; break;
         case 'doctor': userRole = UserRole.doctor; break;
-        case 'ladyHealthWorker': userRole = UserRole.ladyHealthWorker; break;
+        case 'ladyhealthworker': userRole = UserRole.ladyHealthWorker; break;
         case 'admin': userRole = UserRole.admin; break;
-        default: userRole = UserRole.unknown; break;
+        default: 
+          print('***** UNKNOWN ROLE STRING: $role *****');
+          userRole = UserRole.unknown; 
+          break;
       }
       
+      print('***** DETERMINED USER ROLE: $userRole *****');
       // Cache the result
       await _saveUserRole(userRole);
       return userRole;
@@ -285,28 +340,36 @@ class AuthService {
     required UserRole role,
   }) async {
     try {
-      // Prepare role string for Firestore
+      print('***** REGISTERING USER: $fullName with role: $role *****');
+      
+      // Prepare role string for Firestore - use lowercase for consistency
       String roleStr;
       switch (role) {
         case UserRole.patient: roleStr = 'patient'; break;
         case UserRole.doctor: roleStr = 'doctor'; break;
-        case UserRole.ladyHealthWorker: roleStr = 'ladyHealthWorker'; break;
+        case UserRole.ladyHealthWorker: roleStr = 'ladyhealthworker'; break;
         case UserRole.admin: roleStr = 'admin'; break;
         default: roleStr = 'unknown'; break;
       }
+      
+      print('***** ROLE STR FOR FIRESTORE: $roleStr *****');
       
       // Prepare user data
       final Map<String, dynamic> userData = {
         'fullName': fullName,
         'phoneNumber': phoneNumber,
-        'role': roleStr,
+        'role': roleStr,  // Always use lowercase for consistency
         'createdAt': FieldValue.serverTimestamp(),
         'profileComplete': false,
         'lastLogin': FieldValue.serverTimestamp(),
       };
       
+      print('***** WRITING USER DATA TO FIRESTORE: $userData *****');
+      
       // Save user data to Firestore
       await _firestore.collection('users').doc(uid).set(userData);
+      
+      print('***** USER DATA WRITTEN SUCCESSFULLY *****');
       
       // Cache user role
       await _saveUserRole(role);
@@ -316,6 +379,7 @@ class AuthService {
         'message': 'User registered successfully'
       };
     } catch (e) {
+      print('***** ERROR REGISTERING USER: $e *****');
       return {
         'success': false,
         'message': 'Failed to register user: ${e.toString()}'
@@ -402,6 +466,19 @@ class AuthService {
     }
   }
   
+  // Clear role cache for current user
+  Future<void> clearRoleCache() async {
+    try {
+      if (currentUser != null) {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.remove('user_role_${currentUser!.uid}');
+        print('***** CLEARED ROLE CACHE FOR ${currentUser!.uid} *****');
+      }
+    } catch (e) {
+      debugPrint('Error clearing role cache: $e');
+    }
+  }
+  
   // Helper method to get readable auth error messages
   String _getReadableAuthError(FirebaseAuthException e) {
     switch (e.code) {
@@ -460,6 +537,54 @@ class AuthService {
     } catch (e) {
       debugPrint('Error checking user by phone number: $e');
       return {'error': e.toString()};
+    }
+  }
+
+  // Navigate user to correct screen based on role - simple and direct approach
+  Future<Widget> getNavigationScreenForUser({required bool isProfileComplete}) async {
+    final userRole = await getUserRole();
+    print('***** SIMPLE NAVIGATION: Got user role: $userRole *****');
+    
+    // Simple direct routing based on role
+    if (userRole == UserRole.doctor) {
+      print('***** SIMPLE NAVIGATION: Routing to DOCTOR home screen *****');
+      if (!isProfileComplete) {
+        return DoctorProfilePage1Screen();
+      } else {
+        return BottomNavigationBarScreen(
+          key: BottomNavigationBarScreen.navigatorKey,
+          profileStatus: "complete",
+          userType: "Doctor"
+        );
+      }
+    } 
+    else if (userRole == UserRole.patient) {
+      print('***** SIMPLE NAVIGATION: Routing to PATIENT home screen *****');
+      if (!isProfileComplete) {
+        return CompleteProfilePatient1Screen();
+      } else {
+        return BottomNavigationBarPatientScreen(
+          key: BottomNavigationBarPatientScreen.navigatorKey,
+          profileStatus: "complete"
+        );
+      }
+    }
+    else if (userRole == UserRole.ladyHealthWorker) {
+      print('***** SIMPLE NAVIGATION: Routing to LHW home screen *****');
+      if (!isProfileComplete) {
+        return CompleteProfilePatient1Screen();
+      } else {
+        return BottomNavigationBarScreen(
+          key: BottomNavigationBarScreen.navigatorKey,
+          profileStatus: "complete",
+          userType: "LadyHealthWorker"
+        );
+      }
+    }
+    else {
+      // Default/fallback
+      print('***** SIMPLE NAVIGATION: Unknown role, routing to onboarding *****');
+      return SplashScreen();
     }
   }
 } 

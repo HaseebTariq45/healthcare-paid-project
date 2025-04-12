@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
+import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -51,89 +55,82 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
         title: Text(
           "Reports",
           style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
             color: Colors.black,
-            fontWeight: FontWeight.bold,
           ),
         ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      backgroundColor: Colors.white,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FadeTransition(
-            opacity: Tween<double>(
-              begin: 0.0,
-              end: 1.0,
-            ).animate(CurvedAnimation(
-              parent: _controller,
-              curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-            )),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Your Reports",
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Access and download all your reports",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Quick Actions",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          FadeTransition(
-            opacity: Tween<double>(
-              begin: 0.0,
-              end: 1.0,
-            ).animate(CurvedAnimation(
-              parent: _controller,
-              curve: const Interval(0.2, 0.8, curve: Curves.easeOut),
-            )),
-            child: _buildCategoryTabs(),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: filteredReports.isEmpty 
-                  ? _buildNoReportsFound() 
-                  : _buildReportsList(),
+            SizedBox(height: 16),
+            
+            // Quick actions cards
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickActionCard(
+                    title: "Manage Hospitals",
+                    icon: LucideIcons.building2,
+                    color: Color(0xFF3F51B5),
+                    onTap: () {
+                      // Use cached navigation for better performance
+                      NavigationHelper.navigateToCachedScreen(
+                        context, 
+                        "ManageHospitalsScreen", 
+                        () => ManageHospitalsScreen()
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildQuickActionCard(
+                    title: "Update Availability",
+                    icon: LucideIcons.calendar,
+                    color: Color(0xFF009688),
+                    onTap: () {
+                      // Use cached navigation for better performance
+                      NavigationHelper.navigateToCachedScreen(
+                        context, 
+                        "DoctorAvailabilityScreen", 
+                        () => DoctorAvailabilityScreen()
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Generate new report functionality
-        },
-        backgroundColor: Colors.blue.shade600,
-        child: const Icon(Icons.add, color: Colors.white),
+            
+            // More implementation here...
+          ],
+        ),
       ),
     );
   }
@@ -362,6 +359,47 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+            SizedBox(height: 12),
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
         ),
       ),
     );

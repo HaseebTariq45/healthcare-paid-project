@@ -10,6 +10,11 @@ import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:healthcare/services/auth_service.dart';
+import 'package:healthcare/services/doctor_profile_service.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   final String profileStatus;
@@ -17,7 +22,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key, 
     this.profileStatus = "incomplete", 
-    this.userType = "Patient"
+    this.userType = "Doctor"
   });
 
   @override
@@ -28,12 +33,37 @@ class _HomeScreenState extends State<HomeScreen> {
   late String profileStatus;
   late String userType;
   int _selectedIndex = 0;
+  
+  // Firebase instances
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService();
+  final DoctorProfileService _doctorProfileService = DoctorProfileService();
+  
+  // User data
+  String _userName = "Dr. Asmara";
+  String _specialty = "";
+  String? _profileImageUrl;
+  bool _isLoading = true;
+  
+  // Financial data
+  double _totalEarnings = 0.0;
+  
+  // Rating data
+  double _overallRating = 0.0;
+  int _reviewCount = 0;
+  
+  // Appointments data
+  List<Map<String, dynamic>> _upcomingAppointments = [];
 
   @override
   void initState() {
     super.initState();
     profileStatus = widget.profileStatus;
     userType = widget.userType;
+    
+    print('***** HOME SCREEN INITIALIZED WITH USER TYPE: $userType *****');
+    _loadUserData();
     
     // Auto-redirect to profile completion screens if profile is incomplete
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -55,6 +85,111 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Load all user data
+  Future<void> _loadUserData() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    
+    try {
+      // Get current user
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      
+      // We'll use the userType from widget instead of querying again
+      if (userType == "Doctor") {
+        // Load doctor profile and data
+        await _loadDoctorProfileData();
+      } else {
+        // For other user types, load basic profile data
+        await _loadProfileData();
+      }
+      
+      // Load upcoming appointments
+      await _loadUpcomingAppointments(currentUser.uid);
+      
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Load doctor profile data using the new service
+  Future<void> _loadDoctorProfileData() async {
+    try {
+      // Get doctor profile
+      final doctorProfile = await _doctorProfileService.getDoctorProfile();
+      
+      // Get doctor stats
+      final doctorStats = await _doctorProfileService.getDoctorStats();
+      
+      if (mounted) {
+        setState(() {
+          // Set doctor profile info
+          _userName = doctorProfile['fullName'] ?? "Doctor";
+          _specialty = doctorProfile['specialty'] ?? "";
+          _profileImageUrl = doctorProfile['profileImageUrl'];
+          _overallRating = doctorProfile.containsKey('rating') 
+              ? (doctorProfile['rating'] as num).toDouble() 
+              : 0.0;
+          
+          // Set statistics
+          if (doctorStats['success'] == true) {
+            _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
+            _reviewCount = doctorStats['totalReviews'] ?? 0;
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading doctor profile data: $e');
+    }
+  }
+  
+  // Load profile data from Firestore (legacy method for non-doctor users)
+  Future<void> _loadProfileData() async {
+    try {
+      final userData = await _authService.getUserData();
+      
+      if (userData != null && mounted) {
+        setState(() {
+          _userName = userData['fullName'] ?? "User";
+          _profileImageUrl = userData['profileImageUrl'];
+        });
+      }
+    } catch (e) {
+      print('Error loading profile data: $e');
+    }
+  }
+  
+  // Load upcoming appointments
+  Future<void> _loadUpcomingAppointments(String userId) async {
+    try {
+      final appointments = await _doctorProfileService.getUpcomingAppointments(limit: 5);
+      
+      if (mounted) {
+        setState(() {
+          _upcomingAppointments = appointments;
+        });
+      }
+    } catch (e) {
+      print('Error loading upcoming appointments: $e');
+    }
+  }
+
   void _onItemTapped(int index) {
     NavigationHelper.navigateToTab(context, index);
   }
@@ -65,7 +200,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Color.fromRGBO(64, 124, 226, 1),
+              ),
+            )
+          : SingleChildScrollView(
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Text(
-                      "Dr. Asmara",
+                      _userName,
                       style: GoogleFonts.poppins(
                         fontSize: 26,
                         fontWeight: FontWeight.w600,
@@ -141,10 +282,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
                           child: Hero(
                             tag: 'profileImage',
-                            child: CircleAvatar(
-                              radius: 28,
-                              backgroundImage: AssetImage("assets/images/User.png"),
-                            ),
+                            child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                ? CircleAvatar(
+                                    radius: 28,
+                                    backgroundImage: NetworkImage(_profileImageUrl!),
+                                  )
+                                : CircleAvatar(
+                                    radius: 28,
+                                    backgroundImage: AssetImage("assets/images/User.png"),
+                                  ),
                           ),
                         ),
                       ),
@@ -184,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                              "Rs 400.00",
+                              "Rs ${_totalEarnings.toStringAsFixed(2)}",
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                                 fontSize: 22,
@@ -312,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       Text(
-                              "4.2",
+                              _overallRating.toStringAsFixed(1),
                         style: GoogleFonts.poppins(
                                 fontSize: 30,
                           fontWeight: FontWeight.bold,
@@ -325,16 +471,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.star, color: Colors.amber, size: 18),
-                                    Icon(Icons.star, color: Colors.amber, size: 18),
-                                    Icon(Icons.star, color: Colors.amber, size: 18),
-                                    Icon(Icons.star, color: Colors.amber, size: 18),
-                                    Icon(Icons.star_half, color: Colors.amber, size: 18),
+                                    for (int i = 1; i <= 5; i++)
+                                      Icon(
+                                        i <= _overallRating
+                                            ? Icons.star
+                                            : i <= _overallRating + 0.5
+                                                ? Icons.star_half
+                                                : Icons.star_border,
+                                        color: Colors.amber,
+                                        size: 18,
+                                      ),
                                   ],
                                 ),
                                 SizedBox(height: 5),
                   Text(
-                    "Based on 121 reviews",
+                    "Based on $_reviewCount reviews",
                                   style: GoogleFonts.poppins(
                                     color: Colors.grey,
                                     fontSize: 12,
@@ -383,26 +534,52 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(height: 15),
 
             Column(
-              children: List.generate(3, (index) {
-                return Container(
+              children: _upcomingAppointments.isEmpty
+                  ? [
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 30),
+                          child: Column(
+                            children: [
+                              Icon(
+                                LucideIcons.calendar,
+                                size: 50,
+                                color: Colors.grey.shade300,
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                "No upcoming appointments",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    ]
+                  : _upcomingAppointments.map((appointment) {
+                      final index = _upcomingAppointments.indexOf(appointment);
+                      return Container(
                         margin: EdgeInsets.only(bottom: 15),
                         padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
+                          boxShadow: [
+                            BoxShadow(
                               color: Color.fromRGBO(158, 158, 158, 0.15),
                               blurRadius: 10,
                               offset: Offset(0, 3),
-                      ),
-                    ],
+                            ),
+                          ],
                           border: Border.all(
                             color: Colors.grey.shade100,
                             width: 1,
                           ),
-                  ),
-                  child: Row(
+                        ),
+                        child: Row(
                           children: [
                             Container(
                               width: 40,
@@ -417,7 +594,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               child: Center(
                                 child: Text(
-                                  "${10 + index}",
+                                  appointment['dateTime'] != null
+                                      ? DateFormat('d').format(appointment['dateTime'])
+                                      : "${10 + index}",
                                   style: GoogleFonts.poppins(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -434,17 +613,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Appointment with Hania",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                                children: [
+                                  Text(
+                                    "Appointment with ${appointment['patientName']}",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   SizedBox(height: 4),
-                      Text(
-                                    "Jan ${10 + index}, 2025 • 12:00 pm",
+                                  Text(
+                                    "${appointment['date']} • ${appointment['time']}",
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
                                       color: Colors.grey.shade700,
@@ -453,25 +632,38 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Color.fromRGBO(64, 124, 226, 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                "View",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color.fromRGBO(64, 124, 226, 1),
+                            GestureDetector(
+                              onTap: () {
+                                // Navigate to appointment details
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AppointmentDetailsScreen(
+                                      appointmentId: appointment['id'],
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Color.fromRGBO(64, 124, 226, 0.1),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
+                                child: Text(
+                                  "View",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color.fromRGBO(64, 124, 226, 1),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                      );
+                    }).toList(),
                   ),
                   SizedBox(height: 25),
                 ],

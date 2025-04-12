@@ -3,48 +3,306 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../models/transaction_model.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:healthcare/services/auth_service.dart';
+import 'package:healthcare/services/financial_repository.dart';
+import 'package:intl/intl.dart';
 
-class FinancesScreen extends StatelessWidget {
-  final List<TransactionItem> transactions = [
-    TransactionItem(
-      "Appointment with Maheen",
-      "Rs 1,800",
-      "12 June, 2023",
-      TransactionType.income,
-    ),
-    TransactionItem(
-      "Appointment with Dr Akbar",
-      "Rs 5,500",
-      "10 June, 2023",
-      TransactionType.expense,
-    ),
-    TransactionItem(
-      "Appointment with Ajmal",
-      "Rs 2,990",
-      "8 June, 2023",
-      TransactionType.income,
-    ),
-    TransactionItem(
-      "Service Charges",
-      "Rs 300",
-      "5 June, 2023",
-      TransactionType.income,
-    ),
-    TransactionItem(
-      "Equipment Purchase",
-      "Rs 8,500",
-      "2 June, 2023",
-      TransactionType.expense,
-    ),
-  ];
+class FinancesScreen extends StatefulWidget {
+  const FinancesScreen({super.key});
 
-  FinancesScreen({super.key});
+  @override
+  State<FinancesScreen> createState() => _FinancesScreenState();
+}
+
+class _FinancesScreenState extends State<FinancesScreen> {
+  // Firebase instances
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService();
+  late final FinancialRepository _financialRepository;
+  
+  // Financial data
+  bool _isLoading = true;
+  double _totalBalance = 0.0;
+  double _totalIncome = 0.0;
+  double _totalExpenses = 0.0;
+  double _currentMonthIncome = 0.0;
+  double _pendingAmount = 0.0;
+  
+  // Transactions
+  List<TransactionItem> _transactions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _financialRepository = FinancialRepository();
+    _loadFinancialData();
+  }
+  
+  // Load all financial data
+  Future<void> _loadFinancialData() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    
+    try {
+      // Get current user
+      final User? currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      
+      // First try to load using FinancialRepository
+      bool success = await _loadTransactionsFromRepository();
+      
+      // If not successful, fallback to direct Firestore loading
+      if (!success) {
+        // Load transactions
+        await _loadTransactions(currentUser.uid);
+      }
+      
+      // Calculate financial summaries
+      _calculateFinancialSummaries();
+      
+    } catch (e) {
+      print('Error loading financial data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Attempt to load transactions using the FinancialRepository
+  Future<bool> _loadTransactionsFromRepository() async {
+    try {
+      // Clear existing transactions
+      _transactions.clear();
+      
+      // Get transactions stream from the repository
+      final transactionsStream = _financialRepository.getTransactions(limit: 20);
+      
+      // Convert stream to list
+      final transactionsList = await transactionsStream.first;
+      
+      // If no transactions, return false to use fallback
+      if (transactionsList.isEmpty) {
+        return false;
+      }
+      
+      // Convert FinancialTransaction to TransactionItem
+      for (var transaction in transactionsList) {
+        _transactions.add(TransactionItem(
+          transaction.title,
+          'Rs ${transaction.amount.toStringAsFixed(0)}',
+          DateFormat('dd MMM, yyyy').format(transaction.date),
+          _convertTransactionType(transaction.type),
+        ));
+      }
+      
+      return true;
+    } catch (e) {
+      print('Error loading from repository: $e');
+      return false;
+    }
+  }
+  
+  // Helper method to convert between TransactionType enums
+  TransactionType _convertTransactionType(dynamic modelType) {
+    if (modelType == null) return TransactionType.income;
+    
+    // Check if it's a string first
+    if (modelType is String) {
+      return modelType == 'expense' ? TransactionType.expense : TransactionType.income;
+    }
+    
+    // Handle the case where it's the model's TransactionType enum
+    try {
+      final typeValue = modelType.toString().split('.').last;
+      return typeValue == 'expense' ? TransactionType.expense : TransactionType.income;
+    } catch (e) {
+      return TransactionType.income;
+    }
+  }
+  
+  // Load transactions from Firestore
+  Future<void> _loadTransactions(String userId) async {
+    try {
+      // Clear existing transactions
+      _transactions.clear();
+      
+      // Fetch all transactions where the doctor is the recipient (doctorId matches userId)
+      final transactionsSnapshot = await _firestore
+          .collection('transactions')
+          .where('doctorId', isEqualTo: userId)
+          .where('type', isEqualTo: 'payment')
+          .where('status', isEqualTo: 'completed')
+          .orderBy('date', descending: true)
+          .limit(20)
+          .get();
+      
+      // If no transactions found, try loading from appointments
+      if (transactionsSnapshot.docs.isEmpty) {
+        await _loadTransactionsFromAppointments(userId);
+      } else {
+        // Process transactions
+        for (var doc in transactionsSnapshot.docs) {
+          final data = doc.data();
+          
+          // Get patient name for better description
+          String patientName = "Patient";
+          if (data['patientId'] != null) {
+            try {
+              final patientDoc = await _firestore
+                  .collection('users')
+                  .doc(data['patientId'])
+                  .get();
+              
+              if (patientDoc.exists && patientDoc.data() != null) {
+                patientName = patientDoc.data()!['fullName'] ?? "Patient";
+              }
+            } catch (e) {
+              print('Error fetching patient name: $e');
+            }
+          }
+
+          String title = data['title'] ?? 'Payment Received';
+          String description = data['description'] ?? 'Payment from $patientName';
+          double amount = data['amount'] is num ? (data['amount'] as num).toDouble() : 0.0;
+          DateTime date = data['date'] is Timestamp 
+              ? (data['date'] as Timestamp).toDate() 
+              : DateTime.now();
+          
+          // For doctors, all payments received are considered income
+          _transactions.add(TransactionItem(
+            description,
+            'Rs ${amount.toStringAsFixed(0)}',
+            DateFormat('dd MMM, yyyy').format(date),
+            TransactionType.income,
+          ));
+        }
+      }
+    } catch (e) {
+      print('Error loading transactions: $e');
+      // If there was an error, load from appointments as fallback
+      await _loadTransactionsFromAppointments(userId);
+    }
+  }
+  
+  // Load transactions from appointments as an alternative source
+  Future<void> _loadTransactionsFromAppointments(String userId) async {
+    try {
+      // Fetch completed appointments for doctor
+      final appointmentsSnapshot = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: userId)
+          .where('status', isEqualTo: 'confirmed')
+          .where('paymentStatus', isEqualTo: 'completed')
+          .orderBy('paymentDate', descending: true)
+          .limit(20)
+          .get();
+      
+      for (var doc in appointmentsSnapshot.docs) {
+        final data = doc.data();
+        
+        // Get patient name
+        String patientName = "Patient";
+        if (data.containsKey('patientId')) {
+          try {
+            final patientDoc = await _firestore
+                .collection('users')
+                .doc(data['patientId'])
+                .get();
+            
+            if (patientDoc.exists && patientDoc.data() != null) {
+              patientName = patientDoc.data()!['fullName'] ?? "Patient";
+            }
+          } catch (e) {
+            print('Error fetching patient: $e');
+          }
+        }
+        
+        // Prepare transaction data
+        String title = "Payment from $patientName";
+        double amount = data['fee'] is num ? (data['fee'] as num).toDouble() : 0.0;
+        DateTime date = data['paymentDate'] is Timestamp 
+            ? (data['paymentDate'] as Timestamp).toDate() 
+            : (data['date'] is Timestamp ? (data['date'] as Timestamp).toDate() : DateTime.now());
+        
+        // For doctors, all appointment payments are income
+        _transactions.add(TransactionItem(
+          title,
+          'Rs ${amount.toStringAsFixed(0)}',
+          DateFormat('dd MMM, yyyy').format(date),
+          TransactionType.income,
+        ));
+      }
+    } catch (e) {
+      print('Error loading transactions from appointments: $e');
+    }
+  }
+  
+  // Calculate financial summaries based on loaded transactions
+  void _calculateFinancialSummaries() {
+    _totalIncome = 0.0;
+    _totalExpenses = 0.0;
+    _currentMonthIncome = 0.0;
+    _pendingAmount = 0.0;
+    
+    // Get current month and year
+    final now = DateTime.now();
+    final currentMonth = now.month;
+    final currentYear = now.year;
+    
+    for (var transaction in _transactions) {
+      // Extract amount (remove 'Rs ' and convert to double)
+      final amountStr = transaction.amount.replaceAll('Rs ', '').replaceAll(',', '');
+      final amount = double.tryParse(amountStr) ?? 0.0;
+      
+      // Calculate totals based on transaction type
+      if (transaction.type == TransactionType.income) {
+        _totalIncome += amount;
+        
+        // Check if transaction is from current month
+        final transactionDate = DateFormat('dd MMM, yyyy').parse(transaction.date);
+        if (transactionDate.month == currentMonth && transactionDate.year == currentYear) {
+          _currentMonthIncome += amount;
+        }
+      } else {
+        _totalExpenses += amount;
+      }
+    }
+    
+    // Calculate total balance
+    _totalBalance = _totalIncome - _totalExpenses;
+    
+    // Set pending amount (10% of total income as an example)
+    // In a real app, you would query pending transactions
+    _pendingAmount = _totalIncome * 0.1;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Color.fromRGBO(64, 124, 226, 1),
+              ),
+            )
+          : SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -139,7 +397,7 @@ class FinancesScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 15),
                   Text(
-                    "Rs 32,500",
+                    "Rs ${_totalBalance.toStringAsFixed(0)}",
                     style: GoogleFonts.poppins(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -152,7 +410,7 @@ class FinancesScreen extends StatelessWidget {
                     children: [
                       _buildBalanceItem(
                         "Income",
-                        "Rs 40,300",
+                        "Rs ${_totalIncome.toStringAsFixed(0)}",
                         LucideIcons.arrowDown,
                         Colors.greenAccent,
                       ),
@@ -163,7 +421,7 @@ class FinancesScreen extends StatelessWidget {
                       ),
                       _buildBalanceItem(
                         "Expenses",
-                        "Rs 7,800",
+                        "Rs ${_totalExpenses.toStringAsFixed(0)}",
                         LucideIcons.arrowUp,
                         Colors.redAccent,
                       ),
@@ -181,7 +439,7 @@ class FinancesScreen extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       "This Month",
-                      "Rs 15,000",
+                      "Rs ${_currentMonthIncome.toStringAsFixed(0)}",
                       Color(0xFFE8F5E9),
                       LucideIcons.calendar,
                       Color(0xFF4CAF50),
@@ -191,7 +449,7 @@ class FinancesScreen extends StatelessWidget {
                   Expanded(
                     child: _buildStatCard(
                       "Pending",
-                      "Rs 1,200",
+                      "Rs ${_pendingAmount.toStringAsFixed(0)}",
                       Color(0xFFFFF3E0),
                       LucideIcons.hourglass,
                       Color(0xFFFF9800),
@@ -216,10 +474,11 @@ class FinancesScreen extends StatelessWidget {
                   ),
                   TextButton(
                     onPressed: () {
-                      NavigationHelper.navigateWithBottomBar(context, FinancesScreen());
+                      // Refresh transactions
+                      _loadFinancialData();
                     },
                     child: Text(
-                      "See All",
+                      "Refresh",
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -233,11 +492,32 @@ class FinancesScreen extends StatelessWidget {
             
             // Transactions list
             Expanded(
-              child: ListView.builder(
+              child: _transactions.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            LucideIcons.database,
+                            size: 50,
+                            color: Colors.grey.shade300,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            "No transactions found",
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
                 padding: EdgeInsets.symmetric(horizontal: 20),
-                itemCount: transactions.length,
+                      itemCount: _transactions.length,
                 itemBuilder: (context, index) {
-                  return _buildTransactionCard(transactions[index]);
+                        return _buildTransactionCard(_transactions[index]);
                 },
               ),
             ),

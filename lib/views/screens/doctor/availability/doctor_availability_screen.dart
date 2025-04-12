@@ -49,8 +49,10 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
       duration: Duration(milliseconds: 800),
     )..forward();
     
-    // Load data
-    _loadHospitals();
+    // Delay loading to allow UI to render first
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadHospitals();
+    });
   }
   
   @override
@@ -61,6 +63,8 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
 
   // Load hospitals where doctor works
   Future<void> _loadHospitals() async {
+    if (!mounted) return;
+    
     setState(() {
       _isInitializing = true;
     });
@@ -68,19 +72,28 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     try {
       final hospitals = await _availabilityService.getDoctorHospitals();
       
+      if (!mounted) return;
+      
       if (hospitals.isNotEmpty) {
+        // Set hospitals first to show some UI
         setState(() {
           _hospitals = hospitals;
           _selectedHospital = hospitals[0]['hospitalName'];
           _selectedHospitalId = hospitals[0]['hospitalId'];
+          _isInitializing = false;
         });
         
-        // Load availability for the selected hospital
-        await _loadAvailability();
+        // Then load availability without blocking the UI
+        _loadAvailability();
+      } else {
+        setState(() {
+          _isInitializing = false;
+        });
       }
     } catch (e) {
+      if (!mounted) return;
+      
       _showErrorMessage('Failed to load hospitals: ${e.toString()}');
-    } finally {
       setState(() {
         _isInitializing = false;
       });
@@ -89,12 +102,19 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
   
   // Load availability for selected hospital
   Future<void> _loadAvailability() async {
-    if (_selectedHospitalId == null) return;
+    if (_selectedHospitalId == null || !mounted) return;
+    
+    // Use a local loading indicator instead of global initializing state
+    setState(() {
+      _isLoading = true;
+    });
     
     try {
       final availability = await _availabilityService.getDoctorAvailability(
         hospitalId: _selectedHospitalId!,
       );
+      
+      if (!mounted) return;
       
       setState(() {
         if (!_doctorSchedule.containsKey(_selectedHospital)) {
@@ -105,12 +125,19 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
         availability.forEach((date, slots) {
           _doctorSchedule[_selectedHospital!]![date] = slots;
         });
+        
+        _isLoading = false;
       });
       
       // Now load time slots for selected date
       _loadTimeSlots();
     } catch (e) {
+      if (!mounted) return;
+      
       _showErrorMessage('Failed to load availability: ${e.toString()}');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -148,13 +175,29 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
 
   // Navigate to manage hospitals screen
   void _navigateToManageHospitals() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => ManageHospitalsScreen()),
-    );
+    // Show loading indicator before navigation
+    setState(() {
+      _isLoading = true;
+    });
     
-    // Reload hospitals when returning from manage hospitals screen
-    _loadHospitals();
+    try {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ManageHospitalsScreen()),
+      );
+      
+      if (!mounted) return;
+      
+      // Reload hospitals when returning from manage hospitals screen
+      _loadHospitals();
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorMessage('Failed to navigate: ${e.toString()}');
+    }
   }
 
   @override
@@ -162,69 +205,86 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: _isInitializing 
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: Color(0xFF2B8FEB),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      "Loading your hospitals...",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: Colors.grey.shade700,
+        child: RefreshIndicator(
+          onRefresh: _loadHospitals,
+          child: _isInitializing 
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        color: Color(0xFF2B8FEB),
                       ),
+                      SizedBox(height: 16),
+                      Text(
+                        "Loading your hospitals...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Stack(
+                  children: [
+                    Column(
+                      children: [
+                        _buildHeader(),
+                        Expanded(
+                          child: _hospitals.isEmpty
+                              ? _buildNoHospitalsView()
+                              : SingleChildScrollView(
+                                  physics: AlwaysScrollableScrollPhysics(),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Introduction
+                                        _buildIntroSection(),
+                                        
+                                        SizedBox(height: 24),
+                                        
+                                        // Hospital Selection
+                                        _buildHospitalSelection(),
+                                        
+                                        SizedBox(height: 24),
+                                        
+                                        // Calendar
+                                        _buildCalendarSection(),
+                                        
+                                        SizedBox(height: 24),
+                                        
+                                        // Time Slots
+                                        _buildTimeSlotsSection(),
+                                        
+                                        SizedBox(height: 30),
+                                        
+                                        // Save Button
+                                        _buildSaveButton(),
+                                        
+                                        SizedBox(height: 30),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ],
                     ),
+                    // Overlay loading indicator when performing actions but not initializing
+                    if (_isLoading && !_isInitializing)
+                      Container(
+                        color: Colors.black.withOpacity(0.3),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF2B8FEB),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-              )
-            : Column(
-                children: [
-                  _buildHeader(),
-                  Expanded(
-                    child: _hospitals.isEmpty
-                        ? _buildNoHospitalsView()
-                        : SingleChildScrollView(
-                            physics: BouncingScrollPhysics(),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Introduction
-                                  _buildIntroSection(),
-                                  
-                                  SizedBox(height: 24),
-                                  
-                                  // Hospital Selection
-                                  _buildHospitalSelection(),
-                                  
-                                  SizedBox(height: 24),
-                                  
-                                  // Calendar
-                                  _buildCalendarSection(),
-                                  
-                                  SizedBox(height: 24),
-                                  
-                                  // Time Slots
-                                  _buildTimeSlotsSection(),
-                                  
-                                  SizedBox(height: 30),
-                                  
-                                  // Save Button
-                                  _buildSaveButton(),
-                                  
-                                  SizedBox(height: 30),
-                                ],
-                              ),
-                            ),
-                          ),
-                  ),
-                ],
-              ),
+        ),
       ),
     );
   }

@@ -12,54 +12,30 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Document type enum for upload functionality
 enum DocumentType { identification, medical }
 
 class PatientDetailProfileScreen extends StatefulWidget {
-  final String name;
-  final String age;
-  final String bloodGroup;
-  final String phoneNumber;
-  final List<String> allergies;
-  final List<String> diseases;
-  final String? disability;
-  final double? height;
-  final double? weight;
-  final File? profileImage;
-  final File? cnicFront;
-  final File? cnicBack;
-  final File? medicalReport1;
-  final File? medicalReport2;
-  final String? email;
-  final String? address;
-  final String? city;
-  final String? state;
-  final String? country;
-  final String? zipCode;
+  final String? userId; // Add userId parameter to fetch specific user data
+  final String? name;
+  final String? age;
+  final String? bloodGroup;
+  final String? phoneNumber;
+  final List<String>? allergies;
+  final List<String>? diseases;
 
   const PatientDetailProfileScreen({
     super.key,
-    this.name = "Amna Khan",
-    this.age = "28",
-    this.bloodGroup = "B+",
-    this.phoneNumber = "+92 300 1234567",
-    this.allergies = const ["Peanuts", "Penicillin", "Dust Mites"],
-    this.diseases = const ["Asthma", "Migraine"],
-    this.disability,
-    this.height = 165,
-    this.weight = 65,
-    this.profileImage,
-    this.cnicFront,
-    this.cnicBack,
-    this.medicalReport1,
-    this.medicalReport2,
-    this.email,
-    this.address,
-    this.city,
-    this.state,
-    this.country,
-    this.zipCode,
+    this.userId,
+    this.name,
+    this.age,
+    this.bloodGroup,
+    this.phoneNumber,
+    this.allergies,
+    this.diseases,
   });
 
   @override
@@ -70,6 +46,33 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   late TabController _tabController;
   String searchQuery = '';
 
+  // Patient data fields
+  late String name;
+  late String age;
+  late String bloodGroup;
+  late String phoneNumber;
+  String cnic = "";
+  List<String> allergies = [];
+  List<String> diseases = [];
+  String? disability;
+  String? height;
+  String? weight;
+  String? email;
+  String? address;
+  String? city;
+  String? state;
+  String? country;
+  String? zipCode;
+  String? notes;
+  bool profileComplete = false;
+  
+  // Image URLs
+  String? profileImageUrl;
+  String? medicalReport1Url;
+  String? medicalReport2Url;
+  
+  bool isLoading = true;
+
   // Categorized diseases for detailed view
   final Map<String, List<String>> diseasesMap = {};
 
@@ -78,13 +81,109 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     
-    // Initialize diseases map from the list
-    _categorizeDiseases();
+    // Initialize with widget values if provided
+    name = widget.name ?? "Loading...";
+    age = widget.age ?? "";
+    bloodGroup = widget.bloodGroup ?? "";
+    phoneNumber = widget.phoneNumber ?? "";
+    allergies = widget.allergies ?? [];
+    diseases = widget.diseases ?? [];
+    
+    // Fetch user data from Firestore
+    _fetchPatientData();
+  }
+  
+  Future<void> _fetchPatientData() async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      
+      // Use provided userId or current user id
+      final userId = widget.userId ?? auth.currentUser?.uid;
+      
+      if (userId != null) {
+        // First try to get data from users collection
+        final userDoc = await firestore.collection('users').doc(userId).get();
+        
+        // Then get data from patients collection which has medical details
+        final patientDoc = await firestore.collection('patients').doc(userId).get();
+        
+        Map<String, dynamic> userData = {};
+        
+        if (userDoc.exists) {
+          userData.addAll(userDoc.data() ?? {});
+        }
+        
+        if (patientDoc.exists) {
+          userData.addAll(patientDoc.data() ?? {});
+        }
+        
+        if (userDoc.exists || patientDoc.exists) {
+          setState(() {
+            // Basic Info
+            name = userData['fullName'] ?? userData['name'] ?? "No Name";
+            email = userData['email'] ?? "";
+            phoneNumber = userData['phoneNumber'] ?? "";
+            cnic = userData['cnic'] ?? "";
+            
+            // Address Info
+            address = userData['address'] ?? "";
+            city = userData['city'] ?? "";
+            state = userData['state'] ?? "";
+            country = userData['country'] ?? "";
+            zipCode = userData['zipCode'] ?? "";
+            
+            // Medical Info
+            age = userData['age']?.toString() ?? "";
+            bloodGroup = userData['bloodGroup'] ?? "";
+            height = userData['height']?.toString() ?? "";
+            weight = userData['weight']?.toString() ?? "";
+            allergies = List<String>.from(userData['allergies'] ?? []);
+            diseases = List<String>.from(userData['diseases'] ?? []);
+            notes = userData['notes'] ?? "";
+            disability = userData['disability'];
+            
+            // Image URLs
+            profileImageUrl = userData['profileImageUrl'];
+            medicalReport1Url = userData['medicalReport1Url'];
+            medicalReport2Url = userData['medicalReport2Url'];
+            
+            // Profile completion status
+            profileComplete = userData['profileComplete'] ?? false;
+            
+            // Initialize diseases map
+            _categorizeDiseases();
+            
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            name = "Profile Not Found";
+            isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          name = "Not Signed In";
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching patient data: $e');
+      setState(() {
+        name = "Error Loading Profile";
+        isLoading = false;
+      });
+    }
   }
 
   void _categorizeDiseases() {
     // This would normally map diseases to categories, but for now we'll put all in one category
-    diseasesMap["Current Conditions"] = widget.diseases;
+    diseasesMap["Current Conditions"] = diseases;
   }
 
   @override
@@ -98,7 +197,13 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: Column(
+        child: isLoading 
+          ? Center(
+              child: CircularProgressIndicator(
+                color: const Color(0xFF3366CC),
+              ),
+            )
+          : Column(
           children: [
             _buildProfileHeader(),
             _buildTabBar(),
@@ -227,7 +332,12 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                       ),
                       child: CircleAvatar(
                         radius: 42,
-                        backgroundImage: const AssetImage("assets/images/User.png"),
+                        backgroundImage: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                            ? NetworkImage(profileImageUrl!) as ImageProvider
+                            : const AssetImage("assets/images/User.png"),
+                        onBackgroundImageError: (exception, stackTrace) {
+                          // If network image fails to load, it will show the default image
+                        },
                       ),
                     ),
                   ),
@@ -262,7 +372,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.name,
+                      name,
                       style: GoogleFonts.poppins(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -277,7 +387,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                       ),
                     ),
                     Text(
-                      "${widget.age} years",
+                      "${age} years",
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
@@ -290,7 +400,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: _getBloodGroupColor(widget.bloodGroup),
+                            color: _getBloodGroupColor(bloodGroup),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -301,7 +411,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                             ],
                           ),
                           child: Text(
-                            widget.bloodGroup,
+                            bloodGroup,
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -405,31 +515,34 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   Widget _buildSummaryTab() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Vital statistics card
-          _buildSectionTitle("Vital Statistics"),
-          _buildVitalStatisticsCard(),
-          
-          const SizedBox(height: 20),
-          
-          // Contact information card
-          _buildSectionTitle("Contact Information"),
-          _buildContactInformationCard(),
-          
-          const SizedBox(height: 20),
-          
-          // Allergies card
-          _buildSectionTitle("Allergies"),
-          _buildAllergiesCard(),
-          
-          const SizedBox(height: 20),
-          
-          // Current conditions card
-          _buildSectionTitle("Current Conditions"),
-          _buildCurrentConditionsCard(),
+          _buildInfoSection("Personal Information", [
+            _buildInfoItem("Full Name", name),
+            _buildInfoItem("Email", email ?? "Not provided"),
+            _buildInfoItem("Phone", phoneNumber),
+            _buildInfoItem("CNIC", cnic ?? "Not provided"),
+          ]),
+          const SizedBox(height: 16),
+          _buildInfoSection("Medical Information", [
+            _buildInfoItem("Age", "$age years"),
+            _buildInfoItem("Blood Group", bloodGroup),
+            _buildInfoItem("Height", height != null ? "$height cm" : "Not provided"),
+            _buildInfoItem("Weight", weight != null ? "$weight kg" : "Not provided"),
+          ]),
+          const SizedBox(height: 16),
+          _buildInfoSection("Address Information", [
+            _buildInfoItem("Address", address ?? "Not provided"),
+            _buildInfoItem("City", city ?? "Not provided"),
+          ]),
+          if (notes?.isNotEmpty == true) ...[
+            const SizedBox(height: 16),
+            _buildInfoSection("Medical Notes", [
+              _buildInfoItem("Notes", notes ?? ""),
+            ]),
+          ],
         ],
       ),
     );
@@ -454,37 +567,37 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
       ),
       child: Column(
         children: [
-          if (widget.email != null) 
+          if (email != null) 
             _buildContactItem(
               icon: LucideIcons.mail,
               title: "Email",
-              value: widget.email!,
+              value: email!,
               iconColor: Colors.blue.shade600,
             ),
-          if (widget.phoneNumber.isNotEmpty) ...[
-            if (widget.email != null) const Divider(height: 1),
+          if (phoneNumber.isNotEmpty) ...[
+            if (email != null) const Divider(height: 1),
             _buildContactItem(
               icon: LucideIcons.phone,
               title: "Phone",
-              value: widget.phoneNumber,
+              value: phoneNumber,
               iconColor: Colors.green.shade600,
             ),
           ],
-          if (widget.address != null) ...[
+          if (address != null) ...[
             const Divider(height: 1),
             _buildContactItem(
               icon: LucideIcons.building,
               title: "Address",
-              value: widget.address!,
+              value: address!,
               iconColor: Colors.orange.shade700,
             ),
           ],
-          if (widget.city != null && widget.country != null) ...[
+          if (city != null && country != null) ...[
             const Divider(height: 1),
             _buildContactItem(
               icon: LucideIcons.mapPin,
               title: "Location",
-              value: "${widget.city}, ${widget.state ?? ''} ${widget.zipCode ?? ''}\n${widget.country}",
+              value: "${city}, ${state ?? ''} ${zipCode ?? ''}\n${country}",
               iconColor: Colors.red.shade600,
             ),
           ],
@@ -544,439 +657,97 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   }
 
   Widget _buildMedicalHistoryTab() {
-    return Column(
-      children: [
-        // Search bar
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: "Search medical history...",
-                hintStyle: GoogleFonts.poppins(
-                  color: Colors.grey.shade500,
-                  fontSize: 14,
-                ),
-                prefixIcon: Icon(
-                  LucideIcons.search,
-                  color: Colors.grey.shade600,
-                  size: 20,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-            ),
-          ),
-        ),
-        
-        // Expandable list of diseases by category
-        Expanded(
-          child: ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemCount: diseasesMap.length,
-            itemBuilder: (context, index) {
-              final category = diseasesMap.keys.elementAt(index);
-              final diseases = diseasesMap[category]!;
-              
-              // Filter by search query if present
-              final filteredDiseases = searchQuery.isEmpty
-                  ? diseases
-                  : diseases.where((disease) => 
-                      disease.toLowerCase().contains(searchQuery.toLowerCase())).toList();
-              
-              if (filteredDiseases.isEmpty) return const SizedBox.shrink();
-              
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: Colors.grey.shade200,
-                    width: 1,
-                  ),
-                ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    dividerColor: Colors.transparent,
-                  ),
-                  child: ExpansionTile(
-                    initiallyExpanded: true,
-                    childrenPadding: const EdgeInsets.all(16),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3366CC).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        _getCategoryIcon(category),
-                        color: const Color(0xFF3366CC),
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      category,
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                        fontSize: 15,
-                      ),
-                    ),
-                    subtitle: Text(
-                      "${filteredDiseases.length} condition${filteredDiseases.length != 1 ? 's' : ''}",
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    children: filteredDiseases.map((disease) => _buildDiseaseItem(disease)).toList(),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoSection("Allergies", [
+            if (allergies.isEmpty)
+              _buildInfoItem("Status", "No known allergies")
+            else
+              ...allergies.map((allergy) => _buildInfoItem("Allergy", allergy)),
+          ]),
+          const SizedBox(height: 16),
+          _buildInfoSection("Medical Conditions", [
+            if (diseases.isEmpty)
+              _buildInfoItem("Status", "No medical conditions reported")
+            else
+              ...diseases.map((disease) => _buildInfoItem("Condition", disease)),
+          ]),
+          if (notes?.isNotEmpty == true) ...[
+            const SizedBox(height: 16),
+            _buildInfoSection("Additional Notes", [
+              _buildInfoItem("Notes", notes ?? ""),
+            ]),
+          ],
+        ],
+      ),
     );
   }
 
   Widget _buildDocumentsTab() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Upload action buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _uploadDocument(DocumentType.identification),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3366CC),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(LucideIcons.idCard, size: 18),
-                  label: Text(
-                    "Upload ID",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
+          _buildInfoSection("Medical Reports", [
+            if (medicalReport1Url == null && medicalReport2Url == null)
+              _buildInfoItem("Status", "No medical reports uploaded")
+            else ...[
+              if (medicalReport1Url != null)
+                _buildDocumentItem(
+                  "Medical Report 1",
+                  medicalReport1Url!,
+                  onTap: () => _viewDocument(medicalReport1Url!),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _uploadDocument(DocumentType.medical),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(LucideIcons.fileText, size: 18),
-                  label: Text(
-                    "Upload Medical",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
+              if (medicalReport2Url != null)
+                _buildDocumentItem(
+                  "Medical Report 2",
+                  medicalReport2Url!,
+                  onTap: () => _viewDocument(medicalReport2Url!),
                 ),
-              ),
             ],
-          ),
-          
-          const SizedBox(height: 24),
-
-          // Identification Documents
-          _buildSectionTitle("Identification Documents"),
-          const SizedBox(height: 10),
-          _buildDocumentGrid([
-            if (widget.cnicFront != null)
-              _buildDocumentCard(
-                title: "CNIC Front",
-                icon: LucideIcons.idCard,
-                color: Colors.blue.shade700,
-                file: widget.cnicFront!,
-                onTap: () => _viewDocument(widget.cnicFront!),
-              ),
-            if (widget.cnicBack != null)
-              _buildDocumentCard(
-                title: "CNIC Back",
-                icon: LucideIcons.idCard,
-                color: Colors.blue.shade700,
-                file: widget.cnicBack!,
-                onTap: () => _viewDocument(widget.cnicBack!),
-              ),
-          ]),
-
-          const SizedBox(height: 30),
-
-          // Medical Reports
-          _buildSectionTitle("Medical Reports"),
-          const SizedBox(height: 10),
-          _buildDocumentGrid([
-            if (widget.medicalReport1 != null)
-              _buildDocumentCard(
-                title: "Medical Report 1",
-                icon: LucideIcons.clipboardList,
-                color: Colors.green.shade700,
-                file: widget.medicalReport1!,
-                onTap: () => _viewDocument(widget.medicalReport1!),
-              ),
-            if (widget.medicalReport2 != null)
-              _buildDocumentCard(
-                title: "Medical Report 2",
-                icon: LucideIcons.clipboardList,
-                color: Colors.green.shade700,
-                file: widget.medicalReport2!,
-                onTap: () => _viewDocument(widget.medicalReport2!),
-              ),
           ]),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentGrid(List<Widget> documents) {
-    if (documents.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              Icon(
-                LucideIcons.fileX,
-                size: 50,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "No documents available",
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Tap the upload button above to add documents",
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: Colors.grey.shade500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 0.8,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      children: documents,
-    );
-  }
-
-  Widget _buildDocumentCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required File file,
-    required VoidCallback onTap,
-  }) {
-    final bool isImage = _isImageFile(file.path);
-    final bool isPdf = _isPdfFile(file.path);
-    
+  Widget _buildDocumentItem(String label, String url, {required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
       child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-          border: Border.all(
-            color: Colors.grey.shade100,
-            width: 1,
-          ),
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Preview section
+            Icon(
+              url.toLowerCase().endsWith('.pdf') ? LucideIcons.fileText : LucideIcons.image,
+              color: const Color(0xFF3366CC),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.05),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.black87,
                 ),
-                width: double.infinity,
-                child: isImage 
-                    ? ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                        child: Image.file(
-                          file,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Icon(
-                                LucideIcons.imageOff,
-                                color: color,
-                                size: 32,
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    : isPdf
-                        ? Center(
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Icon(
-                                  LucideIcons.fileText,
-                                  color: color,
-                                  size: 42,
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      "PDF",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(15),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                icon,
-                                color: color,
-                                size: 32,
-                              ),
-                            ),
-                          ),
               ),
             ),
-            
-            // Info section
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _getFileSize(file),
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _getFileExtension(file.path).toUpperCase(),
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            Icon(
+              LucideIcons.externalLink,
+              color: Colors.grey[600],
+              size: 16,
             ),
           ],
         ),
@@ -984,161 +755,54 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     );
   }
 
-  void _viewDocument(File file) {
-    if (_isImageFile(file.path)) {
-      _showImageViewer(file);
-    } else if (_isPdfFile(file.path)) {
-      _showPdfViewer(file);
-    } else {
-      // For other file types, just show info for now
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Viewing file: ${path.basename(file.path)}"),
-          duration: const Duration(seconds: 2),
+  void _viewDocument(String url) {
+    if (url.toLowerCase().endsWith('.pdf')) {
+      // View PDF
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text(
+                'Medical Report',
+                style: GoogleFonts.poppins(),
+              ),
+            ),
+            body: PDFView(
+              filePath: url,
+            ),
+          ),
         ),
       );
-    }
-  }
-
-  void _showImageViewer(File imageFile) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: Text(
-              path.basename(imageFile.path),
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+    } else {
+      // View Image
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text(
+                'Medical Report',
+                style: GoogleFonts.poppins(),
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(LucideIcons.share2),
-                onPressed: () {
-                  // Implement share functionality
-                },
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.download),
-                onPressed: () {
-                  // Implement download functionality
-                },
-              ),
-            ],
-          ),
-          body: PhotoView(
-            imageProvider: FileImage(imageFile),
-            backgroundDecoration: const BoxDecoration(color: Colors.black),
-            minScale: PhotoViewComputedScale.contained,
-            maxScale: PhotoViewComputedScale.covered * 2,
-            loadingBuilder: (context, event) => Center(
-              child: CircularProgressIndicator(
-                value: event?.expectedTotalBytes != null
-                    ? event!.cumulativeBytesLoaded / event.expectedTotalBytes!
-                    : null,
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            body: PhotoViewGallery.builder(
+              itemCount: 1,
+              builder: (context, index) {
+                return PhotoViewGalleryPageOptions(
+                  imageProvider: NetworkImage(url),
+                  minScale: PhotoViewComputedScale.contained,
+                  maxScale: PhotoViewComputedScale.covered * 2,
+                );
+              },
+              scrollPhysics: const BouncingScrollPhysics(),
+              backgroundDecoration: const BoxDecoration(
+                color: Colors.black,
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _showPdfViewer(File pdfFile) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: Text(
-              path.basename(pdfFile.path),
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(LucideIcons.share2),
-                onPressed: () {
-                  // Implement share functionality
-                },
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.download),
-                onPressed: () {
-                  // Implement download functionality
-                },
-              ),
-            ],
-          ),
-          body: PDFView(
-            filePath: pdfFile.path,
-            enableSwipe: true,
-            swipeHorizontal: true,
-            autoSpacing: false,
-            pageFling: false,
-            pageSnap: true,
-            defaultPage: 0,
-            fitPolicy: FitPolicy.BOTH,
-            preventLinkNavigation: false,
-            onRender: (_pages) {
-              // PDF rendered
-            },
-            onError: (error) {
-              // Handle error
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Error loading PDF: $error"),
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-            },
-            onPageError: (page, error) {
-              // Handle page error
-            },
-            onViewCreated: (PDFViewController pdfViewController) {
-              // PDF view created
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper methods for document handling
-  bool _isImageFile(String filePath) {
-    final ext = _getFileExtension(filePath).toLowerCase();
-    return ext == 'jpg' || ext == 'jpeg' || ext == 'png' || ext == 'gif';
-  }
-  
-  bool _isPdfFile(String filePath) {
-    return _getFileExtension(filePath).toLowerCase() == 'pdf';
-  }
-  
-  String _getFileExtension(String filePath) {
-    return path.extension(filePath).replaceAll('.', '');
-  }
-  
-  String _getFileSize(File file) {
-    try {
-      final bytes = file.lengthSync();
-      if (bytes < 1024) {
-        return "$bytes B";
-      } else if (bytes < 1024 * 1024) {
-        return "${(bytes / 1024).toStringAsFixed(1)} KB";
-      } else {
-        return "${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB";
-      }
-    } catch (e) {
-      return "Unknown";
+      );
     }
   }
 
@@ -1147,7 +811,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     final source = await _showDocumentSourceDialog();
     if (source == null) return;
     
-    File? pickedFile;
+    String? pickedUrl;
     
     if (source == 'camera') {
       final picker = ImagePicker();
@@ -1158,7 +822,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
       );
       
       if (image != null) {
-        pickedFile = File(image.path);
+        pickedUrl = image.path;
       }
     } else if (source == 'gallery') {
       final picker = ImagePicker();
@@ -1169,7 +833,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
       );
       
       if (image != null) {
-        pickedFile = File(image.path);
+        pickedUrl = image.path;
       }
     } else if (source == 'file') {
       final XTypeGroup typeGroup = XTypeGroup(
@@ -1182,11 +846,11 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
       );
       
       if (result != null) {
-        pickedFile = File(result.path);
+        pickedUrl = result.path;
       }
     }
     
-    if (pickedFile == null) return;
+    if (pickedUrl == null) return;
     
     // Here we would normally upload the file to a backend server
     // For now, we'll just show a confirmation and simulate success
@@ -1333,15 +997,15 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           _buildVitalStatItem(
             icon: LucideIcons.droplet,
             title: "Blood Group",
-            value: widget.bloodGroup,
-            iconColor: _getBloodGroupColor(widget.bloodGroup),
+            value: bloodGroup,
+            iconColor: _getBloodGroupColor(bloodGroup),
             showGradient: true,
           ),
           const Divider(height: 1),
           _buildVitalStatItem(
             icon: LucideIcons.ruler,
             title: "Height",
-            value: "${widget.height} cm",
+            value: "${height} cm",
             iconColor: Colors.blue,
             showGradient: false,
           ),
@@ -1349,16 +1013,16 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           _buildVitalStatItem(
             icon: LucideIcons.weight,
             title: "Weight",
-            value: "${widget.weight} kg",
+            value: "${weight} kg",
             iconColor: Colors.amber.shade700,
             showGradient: false,
           ),
-          if (widget.disability != null) ...[
+          if (disability != null) ...[
             const Divider(height: 1),
             _buildVitalStatItem(
               icon: LucideIcons.userCog,
               title: "Disability",
-              value: widget.disability!,
+              value: disability!,
               iconColor: Colors.purple,
               showGradient: false,
             ),
@@ -1440,7 +1104,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   }
 
   Widget _buildAllergiesCard() {
-    if (widget.allergies.isEmpty) {
+    if (allergies.isEmpty) {
       return _buildEmptyCard(
         icon: LucideIcons.info,
         title: "No Allergies",
@@ -1467,7 +1131,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: widget.allergies.map((allergy) {
+            children: allergies.map((allergy) {
               return Chip(
                 label: Text(
                   allergy,
@@ -1492,7 +1156,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   }
 
   Widget _buildCurrentConditionsCard() {
-    if (widget.diseases.isEmpty) {
+    if (diseases.isEmpty) {
       return _buildEmptyCard(
         icon: LucideIcons.stethoscope,
         title: "No Conditions",
@@ -1515,7 +1179,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: widget.diseases.map((disease) {
+        children: diseases.map((disease) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
@@ -1729,6 +1393,70 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildInfoSection(String title, List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF3366CC),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 } 

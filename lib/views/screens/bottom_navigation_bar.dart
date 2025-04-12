@@ -6,11 +6,16 @@ import 'package:healthcare/views/screens/dashboard/menu.dart';
 
 class BottomNavigationBarScreen extends StatefulWidget {
   final String profileStatus;
+  final String userType;
   
   // Add static key to access navigator state
   static final GlobalKey<_BottomNavigationBarScreenState> navigatorKey = GlobalKey<_BottomNavigationBarScreenState>();
   
-  const BottomNavigationBarScreen({super.key, required this.profileStatus});
+  const BottomNavigationBarScreen({
+    super.key, 
+    required this.profileStatus,
+    this.userType = "Doctor", // Default to Doctor for backward compatibility
+  });
 
   @override
   State<BottomNavigationBarScreen> createState() => _BottomNavigationBarScreenState();
@@ -26,6 +31,7 @@ class BottomNavigationBarScreen extends StatefulWidget {
         MaterialPageRoute(
           builder: (context) => BottomNavigationBarScreen(
             profileStatus: "complete",
+            userType: "Doctor",
           ),
         ),
       );
@@ -35,19 +41,27 @@ class BottomNavigationBarScreen extends StatefulWidget {
 
 class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
   late String profileStatus;
+  late String userType;
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     profileStatus = widget.profileStatus;
+    userType = widget.userType;
+    print('***** BOTTOM NAV BAR INITIALIZED WITH USER TYPE: $userType *****');
   }
 
   List<Widget> _widgetOptions() => <Widget>[
-    HomeScreen(profileStatus: profileStatus),
+    HomeScreen(
+      profileStatus: profileStatus,
+      userType: userType,
+    ),
     AnalyticsScreen(),
     FinancesScreen(),
-    MenuScreen(),
+    MenuScreen(
+      role: userType,
+    ),
   ];
 
   void _onItemTapped(int index) {

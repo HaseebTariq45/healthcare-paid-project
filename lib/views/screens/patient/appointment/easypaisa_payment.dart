@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/successfull_appoinment.dart';
+import 'package:healthcare/views/screens/menu/appointment_history.dart';
+import 'package:healthcare/views/screens/patient/appointment/completed_appointments_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EasypaisaPaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? appointmentDetails;
@@ -28,17 +32,129 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
       });
 
       // Simulate API call
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(Duration(seconds: 2), () async {
+        // Get the current user ID
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final userId = user.uid;
+          
+          try {
+            // Get the fee amount directly as it's already a number
+            int amountValue = widget.appointmentDetails?['fee'] ?? 0;
+            
+            // 1. Save the appointment to Firestore
+            final appointmentRef = await FirebaseFirestore.instance.collection('appointments').add({
+              'patientId': userId,
+              'doctorId': widget.appointmentDetails?['doctorId'],
+              'doctorName': widget.appointmentDetails?['doctorName'],
+              'date': widget.appointmentDetails?['date'],
+              'time': widget.appointmentDetails?['time'],
+              'location': widget.appointmentDetails?['location'],
+              'fee': amountValue,
+              'displayFee': widget.appointmentDetails?['displayFee'],
+              'status': 'confirmed',
+              'paymentStatus': 'completed',
+              'paymentMethod': 'EasyPaisa',
+              'paymentDate': FieldValue.serverTimestamp(),
+              'createdAt': FieldValue.serverTimestamp(),
+              'notes': widget.appointmentDetails?['notes'],
+              'isPanelConsultation': widget.appointmentDetails?['isPanelConsultation'] ?? false,
+            });
+            
+            // 2. Save the transaction to Firestore
+            await FirebaseFirestore.instance.collection('transactions').add({
+              'userId': userId,
+              'patientId': userId,
+              'doctorId': widget.appointmentDetails?['doctorId'],
+              'appointmentId': appointmentRef.id,
+              'title': 'Appointment Payment',
+              'description': 'Consultation with ${widget.appointmentDetails?['doctorName']}',
+              'amount': amountValue,
+              'date': Timestamp.now(),
+              'type': 'payment',
+              'status': 'completed',
+              'paymentMethod': 'EasyPaisa',
+              'doctorName': widget.appointmentDetails?['doctorName'],
+              'hospitalName': widget.appointmentDetails?['location'],
+              'createdAt': Timestamp.now(),
+              'updatedAt': Timestamp.now(),
+            });
+            
+            print('Appointment and transaction saved successfully');
+            
+            // Show a success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text("Payment successful! Appointment confirmed."),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            
+            // Wait for the snackbar to be visible
+            await Future.delayed(Duration(milliseconds: 500));
+            
+            // Navigate to completed appointments screen, replacing the entire stack
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CompletedAppointmentsScreen(),
+              ),
+              (route) => false, // This will remove all previous routes
+            );
+          } catch (e) {
+            print('Error saving appointment and transaction: $e');
+            
+            // Show error message
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.white),
+                      SizedBox(width: 10),
+                      Text("Payment failed: ${e.toString()}"),
+                    ],
+                  ),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              
         setState(() {
           _isLoading = false;
         });
-        
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PatientAppointmentDetailsScreen(), 
-        ),
-      );
+            }
+          }
+        } else {
+          // User not signed in
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.white),
+                    SizedBox(width: 10),
+                    Text("You must be signed in to book an appointment"),
+                  ],
+                ),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

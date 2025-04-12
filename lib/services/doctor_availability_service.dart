@@ -7,8 +7,29 @@ class DoctorAvailabilityService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Cache data to avoid repeated queries
+  static List<Map<String, dynamic>>? _cachedDoctorHospitals;
+  static List<Map<String, dynamic>>? _cachedAllHospitals;
+  static Map<String, Map<String, List<String>>>? _cachedAvailability = {};
+  static DateTime? _lastFetchTime;
+  static const Duration _cacheExpiration = Duration(minutes: 10);
+
   // Get current user ID
   String? get currentUserId => _auth.currentUser?.uid;
+
+  // Check if cache is valid
+  bool _isCacheValid() {
+    if (_lastFetchTime == null) return false;
+    return DateTime.now().difference(_lastFetchTime!) < _cacheExpiration;
+  }
+
+  // Clear cache when needed (e.g., after updates)
+  void clearCache() {
+    _cachedDoctorHospitals = null;
+    _cachedAllHospitals = null;
+    _cachedAvailability = {};
+    _lastFetchTime = null;
+  }
 
   // Fetch all hospitals where the doctor works
   Future<List<Map<String, dynamic>>> getDoctorHospitals() async {
@@ -17,17 +38,28 @@ class DoctorAvailabilityService {
         throw Exception('User not authenticated');
       }
 
+      // Return cached data if available and not expired
+      if (_cachedDoctorHospitals != null && _isCacheValid()) {
+        return _cachedDoctorHospitals!;
+      }
+
       final snapshot = await _firestore
           .collection('doctor_hospitals')
           .where('doctorId', isEqualTo: currentUserId)
           .get();
 
-      return snapshot.docs
+      final hospitals = snapshot.docs
           .map((doc) => {
                 'id': doc.id,
                 ...doc.data(),
               })
           .toList();
+      
+      // Update cache
+      _cachedDoctorHospitals = hospitals;
+      _lastFetchTime = DateTime.now();
+      
+      return hospitals;
     } catch (e) {
       debugPrint('Error fetching doctor hospitals: $e');
       return [];
@@ -41,6 +73,13 @@ class DoctorAvailabilityService {
     try {
       if (currentUserId == null) {
         throw Exception('User not authenticated');
+      }
+
+      // Return cached data if available and not expired
+      if (_cachedAvailability != null && 
+          _cachedAvailability!.containsKey(hospitalId) && 
+          _isCacheValid()) {
+        return _cachedAvailability![hospitalId]!;
       }
 
       final snapshot = await _firestore
@@ -58,6 +97,12 @@ class DoctorAvailabilityService {
         result[dateStr] = timeSlots;
       }
 
+      // Update cache
+      if (_cachedAvailability == null) {
+        _cachedAvailability = {};
+      }
+      _cachedAvailability![hospitalId] = result;
+      
       return result;
     } catch (e) {
       debugPrint('Error fetching doctor availability: $e');
@@ -112,6 +157,9 @@ class DoctorAvailabilityService {
         });
       }
 
+      // Clear cache to ensure fresh data
+      clearCache();
+
       return {
         'success': true,
         'message': 'Availability saved successfully',
@@ -136,6 +184,9 @@ class DoctorAvailabilityService {
           .doc(availabilityId)
           .delete();
 
+      // Clear cache to ensure fresh data
+      clearCache();
+
       return {
         'success': true,
         'message': 'Availability deleted successfully',
@@ -152,14 +203,25 @@ class DoctorAvailabilityService {
   // Get all available hospitals (for admin to assign doctors)
   Future<List<Map<String, dynamic>>> getAllHospitals() async {
     try {
+      // Return cached data if available and not expired
+      if (_cachedAllHospitals != null && _isCacheValid()) {
+        return _cachedAllHospitals!;
+      }
+
       final snapshot = await _firestore.collection('hospitals').get();
 
-      return snapshot.docs
+      final hospitals = snapshot.docs
           .map((doc) => {
                 'id': doc.id,
                 ...doc.data(),
               })
           .toList();
+      
+      // Update cache
+      _cachedAllHospitals = hospitals;
+      _lastFetchTime = DateTime.now();
+      
+      return hospitals;
     } catch (e) {
       debugPrint('Error fetching hospitals: $e');
       return [];
@@ -198,6 +260,9 @@ class DoctorAvailabilityService {
         'hospitalName': hospitalName,
         'created': FieldValue.serverTimestamp(),
       });
+
+      // Clear cache to ensure fresh data
+      clearCache();
 
       return {
         'success': true,
@@ -246,6 +311,9 @@ class DoctorAvailabilityService {
         hospitalId: hospitalRef.id,
         hospitalName: hospitalName,
       );
+      
+      // Clear cache to ensure fresh data
+      clearCache();
       
       if (!result['success']) {
         // If adding to doctor failed, still return success for hospital creation

@@ -5,24 +5,65 @@ import 'package:healthcare/views/screens/dashboard/home.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'dart:io';
 
 class DoctorProfilePage2Screen extends StatefulWidget {
-  const DoctorProfilePage2Screen({super.key});
+  final String fullName;
+  final String email;
+  final String address;
+  final String city;
+  final XFile? profileImage;
+  final XFile? medicalLicenseFront;
+  final XFile? medicalLicenseBack;
+  final XFile? cnicFront;
+  final XFile? cnicBack;
+  
+  const DoctorProfilePage2Screen({
+    super.key, 
+    required this.fullName,
+    required this.email,
+    required this.address,
+    required this.city,
+    this.profileImage,
+    this.medicalLicenseFront,
+    this.medicalLicenseBack,
+    this.cnicFront,
+    this.cnicBack,
+  });
 
   @override
   State<DoctorProfilePage2Screen> createState() => _DoctorProfilePage2ScreenState();
 }
 
 class _DoctorProfilePage2ScreenState extends State<DoctorProfilePage2Screen> {
-  final TextEditingController _specializationController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _qualificationController = TextEditingController();
-  final TextEditingController _hospitalController = TextEditingController();
   final TextEditingController _consultationFeeController = TextEditingController();
-  final TextEditingController _availabilityController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _degreeInstitutionController = TextEditingController();
   final TextEditingController _degreeCompletionDateController = TextEditingController();
+
+  // Specialization dropdown
+  String? _selectedSpecialization;
+
+  // List of specialties from PatientHomeScreen
+  final List<Map<String, dynamic>> _specialties = [
+    {"name": "Cardiology", "nameUrdu": "امراض قلب", "icon": LucideIcons.heartPulse, "color": Color(0xFFF44336)},
+    {"name": "Neurology", "nameUrdu": "امراض اعصاب", "icon": LucideIcons.brain, "color": Color(0xFF2196F3)},
+    {"name": "Dermatology", "nameUrdu": "جلدی امراض", "icon": Icons.face_retouching_natural, "color": Color(0xFFFF9800)},
+    {"name": "Pediatrics", "nameUrdu": "اطفال", "icon": Icons.child_care, "color": Color(0xFF4CAF50)},
+    {"name": "Orthopedics", "nameUrdu": "ہڈیوں کے امراض", "icon": LucideIcons.bone, "color": Color(0xFF9C27B0)},
+    {"name": "ENT", "nameUrdu": "کان ناک گلے کے امراض", "icon": LucideIcons.ear, "color": Color(0xFF00BCD4)},
+    {"name": "Gynecology", "nameUrdu": "نسائی امراض", "icon": Icons.pregnant_woman, "color": Color(0xFFE91E63)},
+    {"name": "Ophthalmology", "nameUrdu": "آنکھوں کے امراض", "icon": LucideIcons.eye, "color": Color(0xFF3F51B5)},
+    {"name": "Dentistry", "nameUrdu": "دانتوں کے امراض", "icon": Icons.healing, "color": Color(0xFF607D8B)},
+    {"name": "Psychiatry", "nameUrdu": "نفسیاتی امراض", "icon": LucideIcons.brain, "color": Color(0xFF795548)},
+    {"name": "Pulmonology", "nameUrdu": "پھیپھڑوں کے امراض", "icon": Icons.air, "color": Color(0xFF009688)},
+    {"name": "Gastrology", "nameUrdu": "معدے کے امراض", "icon": Icons.local_dining, "color": Color(0xFFFF5722)},
+  ];
 
   XFile? _degreeImage;
 
@@ -62,18 +103,16 @@ class _DoctorProfilePage2ScreenState extends State<DoctorProfilePage2Screen> {
     if (value.isEmpty) return '';
     final number = int.tryParse(value);
     if (number == null) return value;
-    return '\$${number.toStringAsFixed(2)}';
+    return 'Rs ${number.toString()}';
   }
 
   bool _validateFields() {
     // Commenting out validation for debugging
     /*
-    if (_specializationController.text.isEmpty ||
+    if (_selectedSpecialization == null ||
         _experienceController.text.isEmpty ||
         _qualificationController.text.isEmpty ||
-        _hospitalController.text.isEmpty ||
         _consultationFeeController.text.isEmpty ||
-        _availabilityController.text.isEmpty ||
         _degreeInstitutionController.text.isEmpty ||
         _degreeCompletionDateController.text.isEmpty ||
         _degreeImage == null) {
@@ -181,6 +220,288 @@ class _DoctorProfilePage2ScreenState extends State<DoctorProfilePage2Screen> {
     );
   }
 
+  // Build specialization dropdown
+  Widget _buildSpecializationDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: DropdownButtonFormField<String>(
+        value: _selectedSpecialization,
+        hint: Text(
+          "Select Specialization",
+          style: GoogleFonts.poppins(
+            color: Colors.grey.shade600,
+            fontSize: 14,
+          ),
+        ),
+        decoration: InputDecoration(
+          prefixIcon: Container(
+            padding: const EdgeInsets.all(12),
+            child: Icon(
+              LucideIcons.stethoscope,
+              color: const Color(0xFF3366CC),
+              size: 20,
+            ),
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        isExpanded: true,
+        elevation: 8,
+        style: GoogleFonts.poppins(
+          color: Colors.black87,
+          fontSize: 14,
+        ),
+        onChanged: (String? value) {
+          setState(() {
+            _selectedSpecialization = value;
+          });
+        },
+        items: _specialties.map<DropdownMenuItem<String>>((Map<String, dynamic> specialty) {
+          return DropdownMenuItem<String>(
+            value: specialty["name"],
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: (specialty["color"] as Color).withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    specialty["icon"] as IconData,
+                    color: specialty["color"] as Color,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  specialty["name"],
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  "(${specialty["nameUrdu"]})",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // Submit the profile data to Firestore
+  Future<void> _submitProfile() async {
+    if (!_validateFields()) return;
+
+    try {
+      // Show loading indicator
+      setState(() {
+        // Set loading state if needed
+      });
+
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('User not authenticated'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Get user data from the users collection
+      final userDoc = await firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('User profile not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      
+      // Update the user's fullName in the users collection
+      await firestore.collection('users').doc(userId).update({
+        'fullName': widget.fullName,
+        'email': widget.email,
+      });
+
+      // Upload images to Firebase Storage and get URLs
+      String? profileImageUrl;
+      String? medicalLicenseFrontUrl;
+      String? medicalLicenseBackUrl;
+      String? cnicFrontUrl;
+      String? cnicBackUrl;
+      String? degreeImageUrl;
+      
+      // Upload profile image if available
+      if (widget.profileImage != null) {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('doctors')
+            .child(userId)
+            .child('profile_image.jpg');
+        await ref.putFile(File(widget.profileImage!.path));
+        profileImageUrl = await ref.getDownloadURL();
+      }
+      
+      // Upload medical license images if available
+      if (widget.medicalLicenseFront != null) {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('doctors')
+            .child(userId)
+            .child('medical_license_front.jpg');
+        await ref.putFile(File(widget.medicalLicenseFront!.path));
+        medicalLicenseFrontUrl = await ref.getDownloadURL();
+      }
+      
+      if (widget.medicalLicenseBack != null) {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('doctors')
+            .child(userId)
+            .child('medical_license_back.jpg');
+        await ref.putFile(File(widget.medicalLicenseBack!.path));
+        medicalLicenseBackUrl = await ref.getDownloadURL();
+      }
+      
+      // Upload CNIC images if available
+      if (widget.cnicFront != null) {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('doctors')
+            .child(userId)
+            .child('cnic_front.jpg');
+        await ref.putFile(File(widget.cnicFront!.path));
+        cnicFrontUrl = await ref.getDownloadURL();
+      }
+      
+      if (widget.cnicBack != null) {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('doctors')
+            .child(userId)
+            .child('cnic_back.jpg');
+        await ref.putFile(File(widget.cnicBack!.path));
+        cnicBackUrl = await ref.getDownloadURL();
+      }
+      
+      // Upload degree image if available
+      if (_degreeImage != null) {
+        final ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('doctors')
+            .child(userId)
+            .child('degree_image.jpg');
+        await ref.putFile(File(_degreeImage!.path));
+        degreeImageUrl = await ref.getDownloadURL();
+      }
+
+      // Create a complete doctor profile document
+      await firestore.collection('doctors').doc(userId).set({
+        // Basic information
+        'id': userId,
+        'fullName': widget.fullName,
+        'email': widget.email,
+        'phoneNumber': userData['phoneNumber'] ?? '',
+        'address': widget.address,
+        'city': widget.city,
+        
+        // Professional information
+        'specialty': _selectedSpecialization,
+        'experience': _experienceController.text,
+        'qualifications': [_qualificationController.text],
+        'fee': int.tryParse(_consultationFeeController.text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0,
+        'rating': 5.0, // Default rating for new doctors
+        'bio': _bioController.text,
+        
+        // Education
+        'education': [
+          {
+            'degree': _qualificationController.text,
+            'institution': _degreeInstitutionController.text,
+            'completionDate': _degreeCompletionDateController.text,
+          }
+        ],
+        
+        // Image URLs
+        'profileImageUrl': profileImageUrl,
+        'medicalLicenseFrontUrl': medicalLicenseFrontUrl,
+        'medicalLicenseBackUrl': medicalLicenseBackUrl,
+        'cnicFrontUrl': cnicFrontUrl,
+        'cnicBackUrl': cnicBackUrl,
+        'degreeImageUrl': degreeImageUrl,
+        
+        // Profile management
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'profileComplete': true,
+        'isVerified': false, // Admin needs to verify
+        'isActive': true,
+        
+        // Default values
+        'languages': ['English', 'Urdu'],
+        'availableDays': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+      });
+
+      // Update the user document to mark profile as complete
+      await firestore.collection('users').doc(userId).update({
+        'profileComplete': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Navigate to home screen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const BottomNavigationBarScreen(profileStatus: "complete")),
+        (route) => false,
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving profile: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        // Unset loading state if needed
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -249,11 +570,7 @@ class _DoctorProfilePage2ScreenState extends State<DoctorProfilePage2Screen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(
-                      hint: "Specialization",
-                      icon: LucideIcons.stethoscope,
-                      controller: _specializationController,
-                    ),
+                    _buildSpecializationDropdown(),
                     _buildTextField(
                       hint: "Years of Experience",
                       icon: LucideIcons.calendar,
@@ -266,21 +583,11 @@ class _DoctorProfilePage2ScreenState extends State<DoctorProfilePage2Screen> {
                       controller: _qualificationController,
                     ),
                     _buildTextField(
-                      hint: "Hospital/Clinic Name",
-                      icon: LucideIcons.building,
-                      controller: _hospitalController,
-                    ),
-                    _buildTextField(
-                      hint: "Consultation Fee",
-                      icon: LucideIcons.dollarSign,
+                      hint: "Consultation Fee (Rs)",
+                      icon: LucideIcons.banknote,
                       controller: _consultationFeeController,
                       isNumberField: true,
                       isCurrencyField: true,
-                    ),
-                    _buildTextField(
-                      hint: "Availability (e.g., Mon-Fri, 9AM-5PM)",
-                      icon: LucideIcons.clock,
-                      controller: _availabilityController,
                     ),
                   ],
                 ),
@@ -514,15 +821,7 @@ class _DoctorProfilePage2ScreenState extends State<DoctorProfilePage2Screen> {
                   child: ElevatedButton(
                     onPressed: () {
                       if (_validateFields()) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BottomNavigationBarScreen(
-                              key: BottomNavigationBarScreen.navigatorKey,
-                              profileStatus: "complete",
-                            ),
-                          ),
-                        );
+                        _submitProfile();
                       }
                     },
                     style: ElevatedButton.styleFrom(

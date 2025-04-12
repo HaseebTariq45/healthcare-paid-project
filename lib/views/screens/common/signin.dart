@@ -10,6 +10,8 @@ import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart'
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignIN extends StatefulWidget {
   const SignIN({super.key});
@@ -168,93 +170,29 @@ class _SignINState extends State<SignIN> {
   
   // Navigate based on user role after successful login
   Future<void> _navigateAfterLogin() async {
-    final userRole = await _authService.getUserRole();
-    final isProfileComplete = await _authService.isProfileComplete();
-    
-    switch (userRole) {
-      case UserRole.patient:
-        if (!isProfileComplete) {
-          // Navigate to patient profile completion
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CompleteProfilePatient1Screen(),
-            ),
-            (route) => false,
-          );
-        } else {
-          // Navigate to patient dashboard
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarPatientScreen(
-                key: BottomNavigationBarPatientScreen.navigatorKey,
-                profileStatus: "complete"
-              ),
-            ),
-            (route) => false,
-          );
-        }
-        break;
-        
-      case UserRole.doctor:
-        if (!isProfileComplete) {
-          // Navigate to doctor profile completion
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DoctorProfilePage1Screen(),
-            ),
-            (route) => false,
-          );
-        } else {
-          // Navigate to doctor dashboard
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarScreen(
-                key: BottomNavigationBarScreen.navigatorKey,
-                profileStatus: "complete"
-              ),
-            ),
-            (route) => false,
-          );
-        }
-        break;
-        
-      case UserRole.ladyHealthWorker:
-        if (!isProfileComplete) {
-          // Navigate to LHW profile completion
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CompleteProfilePatient1Screen(),
-            ),
-            (route) => false,
-          );
-        } else {
-          // Navigate to LHW dashboard
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarScreen(
-                key: BottomNavigationBarScreen.navigatorKey,
-                profileStatus: "complete"
-              ),
-            ),
-            (route) => false,
-          );
-        }
-        break;
-        
-      default:
-        // Unknown user role - should not happen
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unknown user type. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+    // Use the simplified direct navigation method
+    try {
+      final isProfileComplete = await _authService.isProfileComplete();
+      
+      // Get the appropriate screen widget based on role
+      final navigationScreen = await _authService.getNavigationScreenForUser(
+        isProfileComplete: isProfileComplete
+      );
+      
+      // Navigate to the screen returned by our helper
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => navigationScreen),
+        (route) => false,
+      );
+    } catch (e) {
+      print('***** ERROR NAVIGATING AFTER LOGIN: $e *****');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error determining user type. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

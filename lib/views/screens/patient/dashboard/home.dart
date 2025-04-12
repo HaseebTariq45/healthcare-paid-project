@@ -10,6 +10,8 @@ import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Disease category model
 class DiseaseCategory {
@@ -51,6 +53,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   late TabController _tabController;
   final List<String> _categories = ["All", "Upcoming", "Completed", "Cancelled"];
   int _selectedCategoryIndex = 0;
+  
+  // User data
+  String userName = "User";
+  String? profileImageUrl;
+  bool isLoading = true;
+  List<Map<String, dynamic>> upcomingAppointments = [];
+  Map<String, dynamic> userData = {};
 
   // Updated disease categories data with 12 specialties
   final List<DiseaseCategory> _diseaseCategories = [
@@ -422,6 +431,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     // Initialize quick access doctors with a selection from different specialties
     _initializeQuickAccessDoctors();
     
+    // Fetch user data from Firestore
+    _fetchUserData();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (profileStatus.toLowerCase() != "complete" && !suppressProfilePrompt) {
         // Directly navigate to profile completion screen instead of showing popup
@@ -432,6 +444,207 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         );
       }
     });
+  }
+  
+  // Fetch user data from Firestore
+  Future<void> _fetchUserData() async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId == null) {
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+      
+      print('Fetching data for user ID: $userId');
+      
+      // First try to get data from patients collection for medical details
+      final patientDoc = await firestore.collection('patients').doc(userId).get();
+      
+      // Then get basic data from users collection (fallback)
+      final userDoc = await firestore.collection('users').doc(userId).get();
+      
+      Map<String, dynamic> mergedData = {};
+      
+      // Check if either document exists
+      if (!patientDoc.exists && !userDoc.exists) {
+        print('No user data found in either collection');
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+      
+      // Merge data, prioritizing patients collection for medical info
+      if (userDoc.exists) {
+        mergedData.addAll(userDoc.data() ?? {});
+        print('User data found: ${userDoc.data()?.keys.toList()}');
+      }
+      
+      if (patientDoc.exists) {
+        mergedData.addAll(patientDoc.data() ?? {});
+        print('Patient data found: ${patientDoc.data()?.keys.toList()}');
+      }
+      
+      // Get appointments based on selected category
+      List<Map<String, dynamic>> appointments = [];
+      try {
+        // Define status filters based on category
+        List<String> statusFilters;
+        switch (_selectedCategoryIndex) {
+          case 0: // All
+            statusFilters = ['pending', 'confirmed', 'completed', 'cancelled', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
+            break;
+          case 1: // Upcoming
+            statusFilters = ['pending', 'confirmed', 'Pending', 'Confirmed'];
+            break;
+          case 2: // Completed
+            statusFilters = ['completed', 'Completed'];
+            break;
+          case 3: // Cancelled
+            statusFilters = ['cancelled', 'Cancelled'];
+            break;
+          default:
+            statusFilters = ['pending', 'confirmed', 'completed', 'cancelled', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
+        }
+
+        print('Fetching appointments with status filters: $statusFilters');
+        
+        // First try without the status filter to see if we have any appointments at all
+        final allAppointmentsSnapshot = await firestore
+            .collection('appointments')
+            .where('patientId', isEqualTo: userId)
+            .get();
+            
+        print('Total appointments found for patient: ${allAppointmentsSnapshot.docs.length}');
+        
+        if (allAppointmentsSnapshot.docs.isNotEmpty) {
+          // Print all appointments and their status for debugging
+          for (var doc in allAppointmentsSnapshot.docs) {
+            print('Appointment ${doc.id} status: ${doc.data()['status']}');
+          }
+        }
+
+        final appointmentsSnapshot = await firestore
+            .collection('appointments')
+            .where('patientId', isEqualTo: userId)
+            .where('status', whereIn: statusFilters)
+            .get();
+        
+        print('Found ${appointmentsSnapshot.docs.length} appointments matching status filter');
+        
+        for (var appointmentDoc in appointmentsSnapshot.docs) {
+          try {
+            final appointmentData = appointmentDoc.data();
+            print('Processing appointment: ${appointmentDoc.id}');
+            print('Appointment data: $appointmentData');
+            
+            // Fetch doctor details
+            if (appointmentData['doctorId'] != null) {
+              final doctorDoc = await firestore
+                  .collection('doctors')
+                  .doc(appointmentData['doctorId'])
+                  .get();
+              
+              if (doctorDoc.exists) {
+                final doctorData = doctorDoc.data() as Map<String, dynamic>;
+                print('Found doctor data: ${doctorData['fullName'] ?? doctorData['name']}');
+                
+                // Format the appointment date
+                DateTime appointmentDate;
+                if (appointmentData['appointmentDate'] != null) {
+                  appointmentDate = (appointmentData['appointmentDate'] as Timestamp).toDate();
+                } else if (appointmentData['date'] != null && appointmentData['date'] is Timestamp) {
+                  appointmentDate = (appointmentData['date'] as Timestamp).toDate();
+                } else {
+                  appointmentDate = DateTime.now();
+                }
+                
+                String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
+                String formattedTime = "${appointmentDate.hour}:${appointmentDate.minute.toString().padLeft(2, '0')}";
+                
+                appointments.add({
+                  'id': appointmentDoc.id,
+                  'date': formattedDate,
+                  'time': formattedTime,
+                  'status': appointmentData['status'] ?? 'pending',
+                  'doctorName': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
+                  'specialty': doctorData['specialty'] ?? 'General',
+                  'hospitalName': appointmentData['hospitalName'] ?? doctorData['hospitalName'] ?? 'Unknown Hospital',
+                  'reason': appointmentData['reason'] ?? 'Consultation',
+                  'doctorImage': doctorData['profileImageUrl'] ?? 'assets/images/User.png',
+                  'fee': appointmentData['fee'] ?? '0',
+                  'paymentStatus': appointmentData['paymentStatus'] ?? 'pending',
+                  'paymentMethod': appointmentData['paymentMethod'] ?? 'Not specified',
+                  'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
+                });
+                print('Successfully added appointment to list');
+              } else {
+                print('Doctor document not found for ID: ${appointmentData['doctorId']}');
+              }
+            }
+          } catch (e) {
+            print('Error processing appointment: $e');
+          }
+        }
+      } catch (e) {
+        print('Error fetching appointments: $e');
+      }
+      
+      // Calculate profile completion percentage if not available
+      int completionPercentage = 0;
+      if (mergedData['completionPercentage'] == null) {
+        int fieldsCompleted = 0;
+        int totalFields = 10; // Adjust based on your required fields
+        
+        // Check basic fields
+        if (mergedData['fullName'] != null && mergedData['fullName'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['email'] != null && mergedData['email'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['phoneNumber'] != null && mergedData['phoneNumber'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['address'] != null && mergedData['address'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['city'] != null && mergedData['city'].toString().isNotEmpty) fieldsCompleted++;
+        
+        // Check medical fields
+        if (mergedData['age'] != null && mergedData['age'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['bloodGroup'] != null && mergedData['bloodGroup'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['height'] != null && mergedData['height'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['weight'] != null && mergedData['weight'].toString().isNotEmpty) fieldsCompleted++;
+        if (mergedData['profileImageUrl'] != null && mergedData['profileImageUrl'].toString().isNotEmpty) fieldsCompleted++;
+        
+        completionPercentage = ((fieldsCompleted / totalFields) * 100).toInt();
+      } else {
+        completionPercentage = (mergedData['completionPercentage'] is int) 
+            ? mergedData['completionPercentage'] 
+            : (mergedData['completionPercentage'] is double)
+                ? mergedData['completionPercentage'].toInt()
+                : int.tryParse(mergedData['completionPercentage'].toString()) ?? 0;
+      }
+      
+      setState(() {
+        userData = mergedData;
+        userName = mergedData['fullName'] ?? mergedData['name'] ?? "User";
+        profileImageUrl = mergedData['profileImageUrl'];
+        profileStatus = mergedData['profileComplete'] == true ? "complete" : "incomplete";
+        profileCompletionPercentage = completionPercentage;
+        upcomingAppointments = appointments;
+        isLoading = false;
+      });
+      
+      print('User data loaded: $userName, Profile Status: $profileStatus, Completion: $profileCompletionPercentage%');
+    } catch (e) {
+      print('Error fetching user data: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   void _initializeQuickAccessDoctors() {
@@ -453,21 +666,27 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              
-              _buildBanner(),
-              _buildDiseaseCategories(),
-              _buildAppointmentsSection(),
-              _buildQuickAccessDoctors(),
-              SizedBox(height: 20),
-            ],
-          ),
-        ),
+        child: isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  color: const Color(0xFF3366CC),
+                ),
+              )
+            : SingleChildScrollView(
+                physics: BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    
+                    _buildBanner(),
+                    _buildDiseaseCategories(),
+                    _buildAppointmentsSection(),
+                    _buildQuickAccessDoctors(),
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -515,7 +734,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                   ),
                   Text(
-                    "Amna!",
+                    userName,
                     style: GoogleFonts.poppins(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -720,7 +939,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Next Appointment",
+                        "Profile Picture",
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -728,39 +947,53 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         ),
                       ),
                       SizedBox(height: 2),
-                      Text(
-                        "Dr. Rizwan • 10 Jan • 12:00 PM",
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                          height: 1.3,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundImage: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                              ? NetworkImage(profileImageUrl!) as ImageProvider
+                              : AssetImage("assets/images/User.png"),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            profileImageUrl != null && profileImageUrl!.isNotEmpty
+                              ? "Profile picture set"
+                              : "No profile picture",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: profileImageUrl != null && profileImageUrl!.isNotEmpty
+                                ? Colors.green.shade700
+                                : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                SizedBox(width: 5),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF3366CC).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Color(0xFF3366CC).withOpacity(0.2),
-                      width: 1,
+                if (upcomingAppointments.isNotEmpty)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF3366CC).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Color(0xFF3366CC).withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      "${upcomingAppointments.length} Upcoming",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF3366CC),
+                      ),
                     ),
                   ),
-                  child: Text(
-                    "Upcoming",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF3366CC),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -798,7 +1031,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Find Your Specialist",
+                  userData.containsKey('bloodGroup') ? 
+                    "Your Blood Group: ${userData['bloodGroup']}" :
+                    "Complete Your Profile",
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -807,7 +1042,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 ),
                 SizedBox(height: 6),
                 Text(
-                  "Book appointments with top doctors in Pakistan",
+                  profileStatus == "complete" ?
+                    "Your profile is complete. Book appointments with top doctors." :
+                    "Complete your profile to get personalized recommendations",
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     color: Colors.white.withOpacity(0.9),
@@ -818,7 +1055,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => AppointmentBookingFlow()),
+                      MaterialPageRoute(builder: (context) => profileStatus == "complete" ? 
+                        AppointmentBookingFlow() : 
+                        CompleteProfilePatient1Screen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -830,7 +1069,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                   ),
                   child: Text(
-                    "Book Now",
+                    profileStatus == "complete" ? "Book Now" : "Complete Profile",
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -849,7 +1088,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              LucideIcons.stethoscope,
+              profileStatus == "complete" ? LucideIcons.stethoscope : LucideIcons.userPlus,
               color: Colors.white,
               size: 40,
             ),
@@ -1043,13 +1282,39 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             ),
           ),
           SizedBox(height: 15),
-          for (int i = 0; i < 2; i++) _buildAppointmentCard(),
+          if (upcomingAppointments.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    Icon(
+                      LucideIcons.calendar,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      "No appointments found",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            for (var appointment in upcomingAppointments)
+              _buildAppointmentCard(appointment),
         ],
       ),
     );
   }
 
-  Widget _buildAppointmentCard() {
+  Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
     return Container(
       margin: EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
@@ -1094,7 +1359,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   ),
                   child: CircleAvatar(
                     radius: 25,
-                    backgroundImage: AssetImage("assets/images/User.png"),
+                    backgroundImage: appointment['doctorImage'].startsWith('assets/')
+                        ? AssetImage(appointment['doctorImage'])
+                        : NetworkImage(appointment['doctorImage']) as ImageProvider,
                   ),
                 ),
                 SizedBox(width: 15),
@@ -1103,7 +1370,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Dr. Rizwan Ahmed",
+                        appointment['doctorName'],
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1113,7 +1380,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ),
                       SizedBox(height: 2),
                       Text(
-                        "Cardiologist",
+                        appointment['specialty'],
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -1134,7 +1401,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                   ),
                   child: Text(
-                    "Upcoming",
+                    appointment['status'],
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1154,13 +1421,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     _buildAppointmentDetail(
                       LucideIcons.calendar,
                       "Date",
-                      "Jan 10, 2025",
+                      appointment['date'],
                     ),
                     SizedBox(width: 15),
                     _buildAppointmentDetail(
                       LucideIcons.clock,
                       "Time",
-                      "12:00 pm - 1:00 pm",
+                      appointment['time'],
                     ),
                   ],
                 ),

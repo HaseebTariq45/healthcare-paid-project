@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfileEditorScreen extends StatefulWidget {
   const ProfileEditorScreen({super.key});
@@ -12,45 +15,119 @@ class ProfileEditorScreen extends StatefulWidget {
 }
 
 class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
-  // User profile data structure optimized for Firestore
+  // User profile data structure optimized for doctor profile
   final Map<String, dynamic> profileData = {
-    "uid": "user123", // Will be set from Firebase Auth
-    "firstName": "Asmara",
-    "lastName": "Singh",
-    "email": "dr.asmara@gmail.com",
-    "contact": "+91 9876543210",
-    "specialty": "General Practitioner",
-    "address": "123 Medical Plaza, New Delhi",
-    "about": "Experienced general practitioner with over 10 years of practice.",
-    "imageUrl": "", // Will be used for Firebase Storage URL
-    "localImagePath": "assets/images/User.png", // Temporary for local development
+    "uid": "",
+    "fullName": "",
+    "firstName": "",
+    "lastName": "",
+    "email": "",
+    "contact": "",
+    "specialty": "",
+    "address": "",
+    "city": "",
+    "about": "",
+    "bio": "",
+    "experience": "",
+    "qualification": "",
+    "consultationFee": 0,
+    "degreeInstitution": "",
+    "degreeCompletionDate": "",
+    "imageUrl": "",
+    "localImagePath": "assets/images/User.png",
+    "medicalLicenseFrontUrl": "",
+    "medicalLicenseBackUrl": "",
+    "cnicFrontUrl": "",
+    "cnicBackUrl": "",
+    "degreeImageUrl": "",
     "createdAt": DateTime.now().millisecondsSinceEpoch,
     "updatedAt": DateTime.now().millisecondsSinceEpoch,
   };
 
   // Controllers for form fields
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
+  late TextEditingController _fullNameController;
   late TextEditingController _emailController;
   late TextEditingController _contactController;
-  late TextEditingController _specialtyController;
+  late TextEditingController _specialtyController; // Will be replaced with dropdown
   late TextEditingController _addressController;
-  late TextEditingController _aboutController;
+  late TextEditingController _bioController;
+  late TextEditingController _experienceController;
+  late TextEditingController _qualificationController;
+  late TextEditingController _consultationFeeController;
+  late TextEditingController _degreeInstitutionController;
+  late TextEditingController _degreeCompletionDateController;
+  
+  // Dropdowns
+  String? _selectedCity;
+  String? _selectedSpecialization;
+  
+  // Lists for dropdowns
+  final List<String> _pakistaniCities = [
+    "Abbottabad", "Adilpur", "Ahmadpur East", "Alipur", "Arifwala", "Attock",
+    "Badin", "Bahawalnagar", "Bahawalpur", "Bannu", "Battagram", "Bhakkar", "Bhalwal", "Bhera", "Bhimbar", "Bhit Shah", "Bhopalwala", "Burewala",
+    "Chaman", "Charsadda", "Chichawatni", "Chiniot", "Chishtian", "Chitral", "Chunian",
+    "Dadu", "Daharki", "Daska", "Dera Ghazi Khan", "Dera Ismail Khan", "Dinga", "Dipalpur", "Duki",
+    "Faisalabad", "Fateh Jang", "Fazilpur", "Fort Abbas",
+    "Gambat", "Ghotki", "Gilgit", "Gojra", "Gwadar",
+    "Hafizabad", "Hala", "Hangu", "Haripur", "Haroonabad", "Hasilpur", "Haveli Lakha", "Hazro", "Hub", "Hyderabad",
+    "Islamabad", 
+    "Jacobabad", "Jahanian", "Jalalpur Jattan", "Jampur", "Jamshoro", "Jatoi", "Jauharabad", "Jhelum",
+    "Kabirwala", "Kahror Pakka", "Kalat", "Kamalia", "Kamoke", "Kandhkot", "Karachi", "Karak", "Kasur", "Khairpur", "Khanewal", "Khanpur", "Kharian", "Khushab", "Kohat", "Kot Addu", "Kotri", "Kumbar", "Kunri",
+    "Lahore", "Laki Marwat", "Larkana", "Layyah", "Liaquatpur", "Lodhran", "Loralai",
+    "Mailsi", "Malakwal", "Mandi Bahauddin", "Mansehra", "Mardan", "Mastung", "Matiari", "Mian Channu", "Mianwali", "Mingora", "Mirpur", "Mirpur Khas", "Multan", "Muridke", "Muzaffarabad", "Muzaffargarh",
+    "Narowal", "Nawabshah", "Nowshera",
+    "Okara",
+    "Pakpattan", "Pasrur", "Pattoki", "Peshawar", "Pir Mahal",
+    "Quetta",
+    "Rahimyar Khan", "Rajanpur", "Rani Pur", "Rawalpindi", "Rohri", "Risalpur",
+    "Sadiqabad", "Sahiwal", "Saidu Sharif", "Sakrand", "Samundri", "Sanghar", "Sargodha", "Sheikhupura", "Shikarpur", "Sialkot", "Sibi", "Sukkur", "Swabi", "Swat",
+    "Talagang", "Tandlianwala", "Tando Adam", "Tando Allahyar", "Tando Muhammad Khan", "Tank", "Taunsa", "Taxila", "Toba Tek Singh", "Turbat",
+    "Vehari",
+    "Wah Cantonment", "Wazirabad"
+  ];
+  
+  // List of specialties from DoctorProfilePage2Screen
+  final List<Map<String, dynamic>> _specialties = [
+    {"name": "Cardiology", "nameUrdu": "امراض قلب", "icon": LucideIcons.heartPulse, "color": Color(0xFFF44336)},
+    {"name": "Neurology", "nameUrdu": "امراض اعصاب", "icon": LucideIcons.brain, "color": Color(0xFF2196F3)},
+    {"name": "Dermatology", "nameUrdu": "جلدی امراض", "icon": Icons.face_retouching_natural, "color": Color(0xFFFF9800)},
+    {"name": "Pediatrics", "nameUrdu": "اطفال", "icon": Icons.child_care, "color": Color(0xFF4CAF50)},
+    {"name": "Orthopedics", "nameUrdu": "ہڈیوں کے امراض", "icon": LucideIcons.bone, "color": Color(0xFF9C27B0)},
+    {"name": "ENT", "nameUrdu": "کان ناک گلے کے امراض", "icon": LucideIcons.ear, "color": Color(0xFF00BCD4)},
+    {"name": "Gynecology", "nameUrdu": "نسائی امراض", "icon": Icons.pregnant_woman, "color": Color(0xFFE91E63)},
+    {"name": "Ophthalmology", "nameUrdu": "آنکھوں کے امراض", "icon": LucideIcons.eye, "color": Color(0xFF3F51B5)},
+    {"name": "Dentistry", "nameUrdu": "دانتوں کے امراض", "icon": Icons.healing, "color": Color(0xFF607D8B)},
+    {"name": "Psychiatry", "nameUrdu": "نفسیاتی امراض", "icon": LucideIcons.brain, "color": Color(0xFF795548)},
+    {"name": "Pulmonology", "nameUrdu": "پھیپھڑوں کے امراض", "icon": Icons.air, "color": Color(0xFF009688)},
+    {"name": "Gastrology", "nameUrdu": "معدے کے امراض", "icon": Icons.local_dining, "color": Color(0xFFFF5722)},
+  ];
   
   // Validation errors
   final Map<String, bool> fieldErrors = {
-    "firstName": false,
-    "lastName": false,
+    "fullName": false,
     "email": false,
     "contact": false,
     "specialty": false,
     "address": false,
-    "about": false,
+    "city": false,
+    "bio": false,
+    "experience": false,
+    "qualification": false,
+    "consultationFee": false,
+    "degreeInstitution": false,
+    "degreeCompletionDate": false,
   };
 
   File? _selectedImage;
+  File? _selectedMedicalLicenseFront;
+  File? _selectedMedicalLicenseBack;
+  File? _selectedCNICFront;
+  File? _selectedCNICBack;
+  File? _selectedDegreeImage;
+  
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _isDoctor = false;
 
   @override
   void initState() {
@@ -60,13 +137,25 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
 
   // Initialize controllers with current data
   void _initializeControllers() {
-    _firstNameController = TextEditingController(text: profileData["firstName"]);
-    _lastNameController = TextEditingController(text: profileData["lastName"]);
+    _fullNameController = TextEditingController(text: profileData["fullName"]);
     _emailController = TextEditingController(text: profileData["email"]);
     _contactController = TextEditingController(text: profileData["contact"]);
     _specialtyController = TextEditingController(text: profileData["specialty"]);
     _addressController = TextEditingController(text: profileData["address"]);
-    _aboutController = TextEditingController(text: profileData["about"]);
+    _bioController = TextEditingController(text: profileData["bio"]);
+    _experienceController = TextEditingController(text: profileData["experience"]);
+    _qualificationController = TextEditingController(text: profileData["qualification"]);
+    _consultationFeeController = TextEditingController(
+      text: profileData["consultationFee"] > 0 
+        ? "Rs ${profileData["consultationFee"]}" 
+        : ""
+    );
+    _degreeInstitutionController = TextEditingController(text: profileData["degreeInstitution"]);
+    _degreeCompletionDateController = TextEditingController(text: profileData["degreeCompletionDate"]);
+    
+    // Initialize dropdowns
+    _selectedCity = profileData["city"].isNotEmpty ? profileData["city"] : null;
+    _selectedSpecialization = profileData["specialty"].isNotEmpty ? profileData["specialty"] : null;
   }
   
   // Simulate loading profile from Firebase
@@ -76,20 +165,98 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     });
     
     try {
-      // In future, this will fetch data from Firestore
-      // await Future.delayed(Duration(seconds: 1)); // Simulate network delay
-      // final userDoc = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get();
-      // if (userDoc.exists) {
-      //   setState(() {
-      //     profileData = userDoc.data()!;
-      //   });
-      // }
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not authenticated");
+      }
+      
+      // Get user document from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (!userDoc.exists) {
+        throw Exception("User profile not found");
+      }
+      
+      final userData = userDoc.data()!;
+      profileData["uid"] = user.uid;
+      profileData["email"] = userData["email"] ?? user.email ?? "";
+      profileData["contact"] = userData["phoneNumber"] ?? "";
+      profileData["fullName"] = userData["fullName"] ?? "";
+      
+      // Split fullName into firstName and lastName if needed
+      if (profileData["fullName"].isNotEmpty && 
+          (userData["firstName"] == null || userData["lastName"] == null)) {
+        List<String> nameParts = profileData["fullName"].split(" ");
+        if (nameParts.length > 1) {
+          profileData["firstName"] = nameParts[0];
+          profileData["lastName"] = nameParts.sublist(1).join(" ");
+        } else {
+          profileData["firstName"] = profileData["fullName"];
+          profileData["lastName"] = "";
+        }
+      } else {
+        profileData["firstName"] = userData["firstName"] ?? "";
+        profileData["lastName"] = userData["lastName"] ?? "";
+      }
+      
+      // Check if user is a doctor
+      final doctorDoc = await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(user.uid)
+          .get();
+      
+      if (doctorDoc.exists) {
+        _isDoctor = true;
+        final doctorData = doctorDoc.data()!;
+        
+        // Update profile data with doctor details
+        profileData["email"] = doctorData["email"] ?? userData["email"] ?? user.email ?? "";
+        profileData["specialty"] = doctorData["specialty"] ?? "";
+        profileData["bio"] = doctorData["bio"] ?? "";
+        profileData["experience"] = doctorData["experience"]?.toString() ?? "";
+        profileData["qualification"] = doctorData["qualifications"]?.isNotEmpty == true 
+            ? doctorData["qualifications"][0] 
+            : "";
+        profileData["consultationFee"] = doctorData["fee"] ?? 0;
+        
+        // Extract education information if available
+        if (doctorData["education"] != null && doctorData["education"].isNotEmpty) {
+          final education = doctorData["education"][0];
+          profileData["degreeInstitution"] = education["institution"] ?? "";
+          profileData["degreeCompletionDate"] = education["completionDate"] ?? "";
+        }
+        
+        // Image URLs
+        profileData["imageUrl"] = doctorData["profileImageUrl"] ?? "";
+        profileData["medicalLicenseFrontUrl"] = doctorData["medicalLicenseFrontUrl"] ?? "";
+        profileData["medicalLicenseBackUrl"] = doctorData["medicalLicenseBackUrl"] ?? "";
+        profileData["cnicFrontUrl"] = doctorData["cnicFrontUrl"] ?? "";
+        profileData["cnicBackUrl"] = doctorData["cnicBackUrl"] ?? "";
+        profileData["degreeImageUrl"] = doctorData["degreeImageUrl"] ?? "";
+        
+        // Address information
+        profileData["address"] = doctorData["address"] ?? "";
+        profileData["city"] = doctorData["city"] ?? "";
+      } else {
+        // Regular user information
+        profileData["address"] = userData["address"] ?? "";
+        profileData["imageUrl"] = userData["profileImageUrl"] ?? "";
+      }
       
       // Initialize controllers after data is loaded
       _initializeControllers();
     } catch (e) {
       // Handle error
       print('Error loading profile: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading profile: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -100,13 +267,17 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
   @override
   void dispose() {
     // Dispose controllers
-    _firstNameController.dispose();
-    _lastNameController.dispose();
+    _fullNameController.dispose();
     _emailController.dispose();
     _contactController.dispose();
     _specialtyController.dispose();
     _addressController.dispose();
-    _aboutController.dispose();
+    _bioController.dispose();
+    _experienceController.dispose();
+    _qualificationController.dispose();
+    _consultationFeeController.dispose();
+    _degreeInstitutionController.dispose();
+    _degreeCompletionDateController.dispose();
     super.dispose();
   }
 
@@ -261,18 +432,10 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                     SizedBox(height: 16),
                     
                     _buildInputField(
-                      label: "First Name",
-                      controller: _firstNameController,
+                      label: "Full Name",
+                      controller: _fullNameController,
                       icon: LucideIcons.user,
-                      errorKey: "firstName",
-                    ),
-                    SizedBox(height: 16),
-                    
-                    _buildInputField(
-                      label: "Last Name",
-                      controller: _lastNameController,
-                      icon: LucideIcons.userCog,
-                      errorKey: "lastName",
+                      errorKey: "fullName",
                     ),
                     SizedBox(height: 16),
                     
@@ -293,16 +456,84 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                       errorKey: "contact",
                       keyboardType: TextInputType.phone,
                     ),
+                    
+                    if (_isDoctor) ...[
+                      SizedBox(height: 24),
+                      
+                      Text(
+                        "Professional Information",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildSpecializationDropdown(),
                     SizedBox(height: 16),
                     
                     _buildInputField(
-                      label: "Specialty",
-                      controller: _specialtyController,
-                      icon: LucideIcons.stethoscope,
-                      errorKey: "specialty",
-                    ),
-                    
+                        label: "Years of Experience",
+                        controller: _experienceController,
+                        icon: LucideIcons.calendar,
+                        errorKey: "experience",
+                        keyboardType: TextInputType.number,
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildInputField(
+                        label: "Highest Qualification",
+                        controller: _qualificationController,
+                        icon: LucideIcons.graduationCap,
+                        errorKey: "qualification",
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildInputField(
+                        label: "Consultation Fee",
+                        controller: _consultationFeeController,
+                        icon: LucideIcons.banknote,
+                        errorKey: "consultationFee",
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          if (value.isNotEmpty) {
+                            // Format as currency
+                            String cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (cleanValue.isNotEmpty) {
+                              _consultationFeeController.text = 'Rs $cleanValue';
+                              _consultationFeeController.selection = TextSelection.fromPosition(
+                                TextPosition(offset: _consultationFeeController.text.length),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildInputField(
+                        label: "Degree Institution",
+                        controller: _degreeInstitutionController,
+                        icon: LucideIcons.building2,
+                        errorKey: "degreeInstitution",
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildInputField(
+                        label: "Degree Completion Date",
+                        controller: _degreeCompletionDateController,
+                        icon: LucideIcons.calendar,
+                        errorKey: "degreeCompletionDate",
+                        readOnly: true,
+                        onTap: () => _selectDate(context),
+                      ),
+                      SizedBox(height: 16),
+                      
+                      if (_isDoctor) ...[
+                        _buildDocumentUploadSection(),
                     SizedBox(height: 24),
+                      ],
+                    ],
                     
                     Text(
                       "Additional Information",
@@ -322,11 +553,14 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                     ),
                     SizedBox(height: 16),
                     
+                    _buildCityDropdown(),
+                    SizedBox(height: 16),
+                    
                     _buildInputField(
-                      label: "About Me",
-                      controller: _aboutController,
+                      label: _isDoctor ? "Professional Bio" : "About Me",
+                      controller: _bioController,
                       icon: LucideIcons.info,
-                      errorKey: "about",
+                      errorKey: "bio",
                       maxLines: 4,
                     ),
                     
@@ -355,6 +589,517 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     }
   }
 
+  // Build document upload section for doctor profile
+  Widget _buildDocumentUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Documents",
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF333333),
+          ),
+        ),
+        SizedBox(height: 16),
+        
+        _buildDocumentUploadItem(
+          title: "Medical License (Front)",
+          subtitle: "Upload the front side of your medical license",
+          icon: LucideIcons.fileImage,
+          file: _selectedMedicalLicenseFront,
+          url: profileData["medicalLicenseFrontUrl"],
+          onTap: () => _pickDocument('license_front'),
+        ),
+        
+        _buildDocumentUploadItem(
+          title: "Medical License (Back)",
+          subtitle: "Upload the back side of your medical license",
+          icon: LucideIcons.fileImage,
+          file: _selectedMedicalLicenseBack,
+          url: profileData["medicalLicenseBackUrl"],
+          onTap: () => _pickDocument('license_back'),
+        ),
+        
+        _buildDocumentUploadItem(
+          title: "CNIC (Front)",
+          subtitle: "Upload the front side of your CNIC",
+          icon: LucideIcons.idCard,
+          file: _selectedCNICFront,
+          url: profileData["cnicFrontUrl"],
+          onTap: () => _pickDocument('cnic_front'),
+        ),
+        
+        _buildDocumentUploadItem(
+          title: "CNIC (Back)",
+          subtitle: "Upload the back side of your CNIC",
+          icon: LucideIcons.idCard,
+          file: _selectedCNICBack,
+          url: profileData["cnicBackUrl"],
+          onTap: () => _pickDocument('cnic_back'),
+        ),
+        
+        _buildDocumentUploadItem(
+          title: "Degree Certificate",
+          subtitle: "Upload your degree certificate",
+          icon: LucideIcons.fileImage,
+          file: _selectedDegreeImage,
+          url: profileData["degreeImageUrl"],
+          onTap: () => _pickDocument('degree'),
+        ),
+      ],
+    );
+  }
+  
+  // Build document upload item
+  Widget _buildDocumentUploadItem({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+    File? file,
+    String? url,
+  }) {
+    final bool hasFile = file != null || (url != null && url.isNotEmpty);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Color.fromRGBO(64, 124, 226, 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: Color.fromRGBO(64, 124, 226, 1),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (hasFile)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    LucideIcons.check,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  // Pick document image
+  Future<void> _pickDocument(String type) async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    
+    if (image != null) {
+      setState(() {
+        switch (type) {
+          case 'license_front':
+            _selectedMedicalLicenseFront = File(image.path);
+            break;
+          case 'license_back':
+            _selectedMedicalLicenseBack = File(image.path);
+            break;
+          case 'cnic_front':
+            _selectedCNICFront = File(image.path);
+            break;
+          case 'cnic_back':
+            _selectedCNICBack = File(image.path);
+            break;
+          case 'degree':
+            _selectedDegreeImage = File(image.path);
+            break;
+        }
+      });
+    }
+  }
+  
+  // Date picker
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (BuildContext context, Widget? child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Color.fromRGBO(64, 124, 226, 1),
+            ),
+            dialogBackgroundColor: Colors.white,
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null) {
+      setState(() {
+        _degreeCompletionDateController.text = "${picked.day}/${picked.month}/${picked.year}";
+      });
+    }
+  }
+  
+  // Build the city dropdown
+  Widget _buildCityDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromRGBO(64, 124, 226, 0.1),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: fieldErrors["city"]! ? Colors.red : Colors.grey.shade200,
+          width: fieldErrors["city"]! ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 12),
+            child: Text(
+              "City",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF666666),
+              ),
+            ),
+          ),
+          Theme(
+            data: Theme.of(context).copyWith(
+              popupMenuTheme: PopupMenuThemeData(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              canvasColor: Colors.white,
+              dividerColor: Colors.transparent,
+              shadowColor: Color.fromRGBO(64, 124, 226, 0.2),
+            ),
+            child: ButtonTheme(
+              alignedDropdown: true,
+              child: DropdownButtonFormField<String>(
+                value: _selectedCity,
+                isExpanded: true,
+                icon: Icon(
+                  LucideIcons.chevronDown,
+                  color: Color.fromRGBO(64, 124, 226, 1),
+                  size: 18,
+                ),
+                dropdownColor: Colors.white,
+                menuMaxHeight: 350,
+                itemHeight: 50,
+                elevation: 8,
+                decoration: InputDecoration(
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Icon(
+                      LucideIcons.building2,
+                      color: Color.fromRGBO(64, 124, 226, 1),
+                      size: 20,
+                    ),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                ),
+                hint: Text(
+                  "Select City",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedCity = newValue;
+                    if (fieldErrors["city"]!) {
+                      fieldErrors["city"] = false;
+                    }
+                  });
+                },
+                items: _pakistaniCities.map<DropdownMenuItem<String>>((String city) {
+                  bool isFirstWithLetter = _pakistaniCities.indexOf(city) == 0 || 
+                      _pakistaniCities[_pakistaniCities.indexOf(city) - 1][0] != city[0];
+                  
+                  return DropdownMenuItem<String>(
+                    value: city,
+                    child: Row(
+                      children: [
+                        if (isFirstWithLetter)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: Color.fromRGBO(64, 124, 226, 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              city[0],
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Color.fromRGBO(64, 124, 226, 1),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        
+                        // Checkbox indicator
+                        Container(
+                          width: 16,
+                          height: 16,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: _selectedCity == city
+                                ? Color.fromRGBO(64, 124, 226, 1)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: _selectedCity == city
+                                  ? Color.fromRGBO(64, 124, 226, 1)
+                                  : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: _selectedCity == city
+                              ? const Center(
+                                  child: Icon(
+                                    Icons.check,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        
+                        Text(
+                          city,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: _selectedCity == city
+                                ? Color.fromRGBO(64, 124, 226, 1)
+                                : Colors.black87,
+                            fontWeight: _selectedCity == city
+                                ? FontWeight.w500
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          if (fieldErrors["city"]!)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 12, bottom: 6),
+              child: Text(
+                "Please select a city",
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  // Build the specialization dropdown
+  Widget _buildSpecializationDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromRGBO(64, 124, 226, 0.1),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: fieldErrors["specialty"]! ? Colors.red : Colors.grey.shade200,
+          width: fieldErrors["specialty"]! ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, top: 12),
+            child: Text(
+              "Specialization",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF666666),
+              ),
+            ),
+          ),
+          DropdownButtonFormField<String>(
+            value: _selectedSpecialization,
+            isExpanded: true,
+            icon: Icon(
+              LucideIcons.chevronDown,
+              color: Color.fromRGBO(64, 124, 226, 1),
+              size: 18,
+            ),
+            decoration: InputDecoration(
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Icon(
+                  LucideIcons.stethoscope,
+                  color: Color.fromRGBO(64, 124, 226, 1),
+                  size: 20,
+                ),
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            ),
+            hint: Text(
+              "Select Specialization",
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedSpecialization = newValue;
+                if (fieldErrors["specialty"]!) {
+                  fieldErrors["specialty"] = false;
+                }
+              });
+            },
+            items: _specialties.map<DropdownMenuItem<String>>((Map<String, dynamic> specialty) {
+              return DropdownMenuItem<String>(
+                value: specialty["name"],
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: (specialty["color"] as Color).withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        specialty["icon"] as IconData,
+                        color: specialty["color"] as Color,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      specialty["name"],
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      "(${specialty["nameUrdu"]})",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          if (fieldErrors["specialty"]!)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 12, bottom: 6),
+              child: Text(
+                "Please select a specialization",
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -363,6 +1108,8 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     bool readOnly = false,
+    Function(String)? onChanged,
+    Function()? onTap,
   }) {
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 500),
@@ -416,7 +1163,8 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                   keyboardType: keyboardType,
                   maxLines: maxLines,
                   readOnly: readOnly,
-                  onChanged: (value) {
+                  onTap: onTap,
+                  onChanged: onChanged ?? (value) {
                     // Clear error state
                     if (fieldErrors[errorKey]!) {
                       setState(() {
@@ -516,7 +1264,7 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
                 }
               },
             ),
-            if (_selectedImage != null || profileData["imageUrl"] != null && profileData["imageUrl"].isNotEmpty) ...[
+            if (_selectedImage != null || (profileData["imageUrl"] != null && profileData["imageUrl"].isNotEmpty)) ...[
               SizedBox(height: 16),
               _buildImageSourceOption(
                 label: "Remove photo",
@@ -581,6 +1329,10 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     return emailRegex.hasMatch(email);
   }
   
+  bool _isValidPhone(String phone) {
+    return RegExp(r'^\+?[\d\s-]{10,}$').hasMatch(phone);
+  }
+  
   Future<void> _saveProfile() async {
     // Reset all error states
     for (var key in fieldErrors.keys) {
@@ -589,14 +1341,13 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     
     // Check for empty fields
     bool hasError = false;
-    if (_firstNameController.text.isEmpty) {
-      fieldErrors["firstName"] = true;
+    
+    // Basic validation
+    if (_fullNameController.text.isEmpty) {
+      fieldErrors["fullName"] = true;
       hasError = true;
     }
-    if (_lastNameController.text.isEmpty) {
-      fieldErrors["lastName"] = true;
-      hasError = true;
-    }
+    
     if (_emailController.text.isEmpty) {
       fieldErrors["email"] = true;
       hasError = true;
@@ -604,21 +1355,61 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
       fieldErrors["email"] = true;
       hasError = true;
     }
+    
     if (_contactController.text.isEmpty) {
       fieldErrors["contact"] = true;
       hasError = true;
-    }
-    if (_specialtyController.text.isEmpty) {
-      fieldErrors["specialty"] = true;
+    } else if (!_isValidPhone(_contactController.text)) {
+      fieldErrors["contact"] = true;
       hasError = true;
     }
+    
     if (_addressController.text.isEmpty) {
       fieldErrors["address"] = true;
       hasError = true;
     }
-    if (_aboutController.text.isEmpty) {
-      fieldErrors["about"] = true;
+    
+    if (_selectedCity == null) {
+      fieldErrors["city"] = true;
       hasError = true;
+    }
+    
+    if (_bioController.text.isEmpty) {
+      fieldErrors["bio"] = true;
+      hasError = true;
+    }
+    
+    // Doctor-specific validation
+    if (_isDoctor) {
+      if (_selectedSpecialization == null) {
+        fieldErrors["specialty"] = true;
+        hasError = true;
+      }
+      
+      if (_experienceController.text.isEmpty) {
+        fieldErrors["experience"] = true;
+        hasError = true;
+      }
+      
+      if (_qualificationController.text.isEmpty) {
+        fieldErrors["qualification"] = true;
+        hasError = true;
+      }
+      
+      if (_consultationFeeController.text.isEmpty) {
+        fieldErrors["consultationFee"] = true;
+        hasError = true;
+      }
+      
+      if (_degreeInstitutionController.text.isEmpty) {
+        fieldErrors["degreeInstitution"] = true;
+        hasError = true;
+      }
+      
+      if (_degreeCompletionDateController.text.isEmpty) {
+        fieldErrors["degreeCompletionDate"] = true;
+        hasError = true;
+      }
     }
     
     // If there are errors, update UI and return
@@ -633,38 +1424,144 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     });
     
     try {
-      // Upload profile image if selected
-      String? imageUrl;
-      if (_selectedImage != null) {
-        imageUrl = await _uploadProfileImage(_selectedImage!);
+      // Get current user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not authenticated");
       }
       
-      // Update profile data with current values
-      final updatedProfile = {
-        ...profileData,
-        "firstName": _firstNameController.text,
-        "lastName": _lastNameController.text,
-        "email": _emailController.text,
-        "contact": _contactController.text,
-        "specialty": _specialtyController.text,
-        "address": _addressController.text,
-        "about": _aboutController.text,
-        "updatedAt": DateTime.now().millisecondsSinceEpoch,
+      final firestore = FirebaseFirestore.instance;
+      final userId = user.uid;
+      
+      // Upload profile images if selected
+      Map<String, String> imageUrls = {};
+      
+      try {
+        // Make sure Firebase Storage is available
+        final storage = FirebaseStorage.instance;
+        
+      if (_selectedImage != null) {
+          try {
+            final profileImageRef = storage.ref().child('profileImages/${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+            await profileImageRef.putFile(_selectedImage!);
+            imageUrls['profileImageUrl'] = await profileImageRef.getDownloadURL();
+          } catch (e) {
+            print('Error uploading profile image: $e');
+            // Continue with the profile update even if image upload fails
+          }
+        }
+        
+        // Upload doctor documents if selected
+        if (_isDoctor) {
+          if (_selectedMedicalLicenseFront != null) {
+            try {
+              final ref = storage.ref().child('doctorDocuments/${userId}/medicalLicenseFront_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await ref.putFile(_selectedMedicalLicenseFront!);
+              imageUrls['medicalLicenseFrontUrl'] = await ref.getDownloadURL();
+            } catch (e) {
+              print('Error uploading medical license front: $e');
+            }
+          }
+          
+          if (_selectedMedicalLicenseBack != null) {
+            try {
+              final ref = storage.ref().child('doctorDocuments/${userId}/medicalLicenseBack_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await ref.putFile(_selectedMedicalLicenseBack!);
+              imageUrls['medicalLicenseBackUrl'] = await ref.getDownloadURL();
+            } catch (e) {
+              print('Error uploading medical license back: $e');
+            }
+          }
+          
+          if (_selectedCNICFront != null) {
+            try {
+              final ref = storage.ref().child('doctorDocuments/${userId}/cnicFront_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await ref.putFile(_selectedCNICFront!);
+              imageUrls['cnicFrontUrl'] = await ref.getDownloadURL();
+            } catch (e) {
+              print('Error uploading CNIC front: $e');
+            }
+          }
+          
+          if (_selectedCNICBack != null) {
+            try {
+              final ref = storage.ref().child('doctorDocuments/${userId}/cnicBack_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await ref.putFile(_selectedCNICBack!);
+              imageUrls['cnicBackUrl'] = await ref.getDownloadURL();
+            } catch (e) {
+              print('Error uploading CNIC back: $e');
+            }
+          }
+          
+          if (_selectedDegreeImage != null) {
+            try {
+              final ref = storage.ref().child('doctorDocuments/${userId}/degree_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await ref.putFile(_selectedDegreeImage!);
+              imageUrls['degreeImageUrl'] = await ref.getDownloadURL();
+            } catch (e) {
+              print('Error uploading degree image: $e');
+            }
+          }
+        }
+      } catch (e) {
+        print('Firebase Storage error: $e');
+        // Continue with profile update even if all image uploads fail
+      }
+      
+      // Update user data
+      Map<String, dynamic> userData = {
+        'fullName': _fullNameController.text,
+        'email': _emailController.text,
+        'phoneNumber': _contactController.text,
+        'address': _addressController.text,
+        'city': _selectedCity,
+        'updatedAt': FieldValue.serverTimestamp(),
       };
       
-      if (imageUrl != null) {
-        updatedProfile["imageUrl"] = imageUrl;
+      // Add image URL if available
+      if (imageUrls.containsKey('profileImageUrl')) {
+        userData['profileImageUrl'] = imageUrls['profileImageUrl'];
       }
       
-      // Save to Firestore (will be implemented with Firebase)
-      await _saveUserToFirestore(updatedProfile);
+      // Update user document
+      await firestore.collection('users').doc(userId).update(userData);
       
-      // Update local state
-      setState(() {
-        profileData.clear();
-        profileData.addAll(updatedProfile);
-        _isLoading = false;
-      });
+      // Update doctor data if applicable
+      if (_isDoctor) {
+        // Parse fee value
+        int fee = 0;
+        if (_consultationFeeController.text.isNotEmpty) {
+          final feeString = _consultationFeeController.text.replaceAll(RegExp(r'[^0-9]'), '');
+          fee = int.tryParse(feeString) ?? 0;
+        }
+        
+        Map<String, dynamic> doctorData = {
+          'fullName': _fullNameController.text,
+          'specialty': _selectedSpecialization,
+          'experience': _experienceController.text,
+          'qualifications': [_qualificationController.text],
+          'fee': fee,
+          'bio': _bioController.text,
+          'address': _addressController.text,
+          'city': _selectedCity,
+          'education': [
+            {
+              'degree': _qualificationController.text,
+              'institution': _degreeInstitutionController.text,
+              'completionDate': _degreeCompletionDateController.text,
+            }
+          ],
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        
+        // Add image URLs if available
+        imageUrls.forEach((key, value) {
+          doctorData[key] = value;
+        });
+        
+        // Update doctor document
+        await firestore.collection('doctors').doc(userId).update(doctorData);
+      }
       
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -685,9 +1582,6 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
     } catch (e) {
       // Handle error
       print('Error saving profile: $e');
-      setState(() {
-        _isLoading = false;
-      });
       
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -701,56 +1595,11 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
           margin: EdgeInsets.all(10),
         ),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-  }
-  
-  // Upload profile image to Firebase Storage (placeholder for now)
-  Future<String?> _uploadProfileImage(File imageFile) async {
-    // Simulate upload delay
-    await Future.delayed(Duration(milliseconds: 500));
-    
-    // This will be replaced with actual Firebase Storage code:
-    /*
-    final storageRef = FirebaseStorage.instance.ref();
-    final profileImageRef = storageRef.child('profile_images/${profileData["uid"]}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-    
-    // Upload the file
-    final uploadTask = profileImageRef.putFile(
-      imageFile,
-      SettableMetadata(
-        contentType: 'image/jpeg',
-        customMetadata: {
-          'userId': profileData["uid"],
-          'uploadedAt': DateTime.now().toString(),
-        },
-      ),
-    );
-    
-    // Get download URL
-    final TaskSnapshot taskSnapshot = await uploadTask;
-    final downloadUrl = await taskSnapshot.ref.getDownloadURL();
-    return downloadUrl;
-    */
-    
-    // For now, return dummy URL
-    return "https://firebasestorage.example.com/profile_image_${DateTime.now().millisecondsSinceEpoch}.jpg";
-  }
-  
-  // Save user data to Firestore (placeholder for now)
-  Future<void> _saveUserToFirestore(Map<String, dynamic> userData) async {
-    // Simulate network delay
-    await Future.delayed(Duration(milliseconds: 500));
-    
-    // This will be replaced with actual Firestore code:
-    /*
-    await FirebaseFirestore.instance
-      .collection('users')
-      .doc(userData["uid"])
-      .set(userData, SetOptions(merge: true));
-    */
-    
-    // For now, just print the data that would be saved
-    print('User data that would be saved to Firestore: $userData');
   }
 
   // Add save button widget
@@ -771,14 +1620,22 @@ class _ProfileEditorScreenState extends State<ProfileEditorScreen> {
         ),
         child: _isLoading 
           ? CircularProgressIndicator(color: Colors.white)
-          : Text(
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
               "Save Changes",
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
+                ),
+                SizedBox(width: 8),
+                Icon(LucideIcons.check, size: 20),
+              ],
             ),
       ),
     );
   }
 }
+

@@ -15,7 +15,6 @@ class DoctorProfilePage1Screen extends StatefulWidget {
 class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   
   // Remove individual address fields and add selectedCity
@@ -98,7 +97,6 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
     /*
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
-        _phoneController.text.isEmpty ||
         _addressController.text.isEmpty ||
         _selectedCity == null ||
         _profileImage == null ||
@@ -119,16 +117,6 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid email address'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
-    }
-
-    if (!_isValidPhone(_phoneController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid phone number'),
           backgroundColor: Colors.red,
         ),
       );
@@ -772,12 +760,6 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    _buildTextField(
-                      hint: "Phone Number",
-                      icon: LucideIcons.phone,
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                    ),
                   ],
                 ),
               ),
@@ -981,7 +963,17 @@ class _DoctorProfilePage1ScreenState extends State<DoctorProfilePage1Screen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DoctorProfilePage2Screen(),
+                            builder: (context) => DoctorProfilePage2Screen(
+                              fullName: _nameController.text,
+                              email: _emailController.text,
+                              address: _addressController.text,
+                              city: _selectedCity ?? "",
+                              profileImage: _profileImage,
+                              medicalLicenseFront: _medicalLicenseFront,
+                              medicalLicenseBack: _medicalLicenseBack,
+                              cnicFront: _cnicFront,
+                              cnicBack: _cnicBack,
+                            ),
                           ),
                         );
                       }

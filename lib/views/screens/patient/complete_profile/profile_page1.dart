@@ -8,6 +8,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:io';
 import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class CompleteProfilePatient1Screen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
@@ -26,18 +29,20 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cnicController = TextEditingController();
   
   // Selected city from dropdown
   String? _selectedCity;
   
+  // Store auth phone number
+  String? _authPhoneNumber;
+  
   // Profile completion percentage
   double _completionPercentage = 0.0;
   
   // Total number of fields in profile page 1
-  final int _totalFieldsPage1 = 6; // name, email, phone, cnic, address, city
+  final int _totalFieldsPage1 = 5; // name, email, cnic, address, city
   
   // List of Pakistani cities in alphabetical order
   final List<String> _pakistaniCities = [
@@ -68,11 +73,13 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
   void initState() {
     super.initState();
     
+    // Get phone number from Firebase Auth
+    _getAuthPhoneNumber();
+    
     // Initialize with existing data if available
     if (widget.profileData != null) {
       _nameController.text = widget.profileData!['name'] ?? '';
       _emailController.text = widget.profileData!['email'] ?? '';
-      _phoneController.text = widget.profileData!['phoneNumber'] ?? '';
       _addressController.text = widget.profileData!['address'] ?? '';
       _cnicController.text = widget.profileData!['cnic'] ?? '';
       _selectedCity = widget.profileData!['city'];
@@ -81,6 +88,9 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       if (widget.profileData!['profileImagePath'] != null) {
         _image = File(widget.profileData!['profileImagePath']);
       }
+    } else {
+      // Try to fetch user data from Firestore
+      _fetchUserDataFromFirestore();
     }
     
     // Calculate initial completion percentage
@@ -89,7 +99,6 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     // Add listeners to all text controllers
     _nameController.addListener(_updateCompletionPercentage);
     _emailController.addListener(_updateCompletionPercentage);
-    _phoneController.addListener(_updateCompletionPercentage);
     _addressController.addListener(_updateCompletionPercentage);
     _cnicController.addListener(_updateCompletionPercentage);
   }
@@ -99,13 +108,11 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     // Remove listeners from all text controllers
     _nameController.removeListener(_updateCompletionPercentage);
     _emailController.removeListener(_updateCompletionPercentage);
-    _phoneController.removeListener(_updateCompletionPercentage);
     _addressController.removeListener(_updateCompletionPercentage);
     _cnicController.removeListener(_updateCompletionPercentage);
     
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _addressController.dispose();
     _cnicController.dispose();
     super.dispose();
@@ -122,7 +129,6 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     // Check each field
     if (_nameController.text.isNotEmpty) filledFields++;
     if (_emailController.text.isNotEmpty) filledFields++;
-    if (_phoneController.text.isNotEmpty) filledFields++;
     if (_addressController.text.isNotEmpty) filledFields++;
     if (_cnicController.text.isNotEmpty) filledFields++;
     if (_selectedCity != null) filledFields++;
@@ -788,12 +794,6 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                       icon: LucideIcons.mail,
                       controller: _emailController,
                     ),
-                    _buildTextField(
-                      hint: "Phone Number",
-                      icon: LucideIcons.phone,
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                    ),
                     _buildCnicField(),
                   ],
                 ),
@@ -986,19 +986,76 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
   }
   
   // Method to proceed to the next screen
-  void _proceedToNextScreen() {
+  void _proceedToNextScreen() async {
     // Prepare data to pass to the next screen
     Map<String, dynamic> profileData = {
       'name': _nameController.text,
       'email': _emailController.text,
-      'phoneNumber': _phoneController.text,
       'cnic': _cnicController.text,
       'address': _addressController.text,
       'city': _selectedCity,
       'profileImagePath': _image?.path,
       'completionPercentage': _completionPercentage,
       'hasProfileImage': _image != null,
+      'phoneNumber': _authPhoneNumber,
     };
+    
+    try {
+      // Save first page data to Firestore
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId != null) {
+        // Get phone number from auth if not already available
+        if (_authPhoneNumber == null) {
+          _authPhoneNumber = auth.currentUser?.phoneNumber;
+        }
+        
+        // Update the user record first
+        await firestore.collection('users').doc(userId).update({
+          'fullName': _nameController.text,
+          'email': _emailController.text,
+          'phoneNumber': _authPhoneNumber,
+        });
+        
+        // Create/update patient profile in patients collection
+        await firestore.collection('patients').doc(userId).set({
+          'id': userId,
+          'fullName': _nameController.text,
+          'email': _emailController.text,
+          'phoneNumber': _authPhoneNumber,
+          'cnic': _cnicController.text,
+          'address': _addressController.text,
+          'city': _selectedCity,
+          'profileComplete': false, // Will be set to true after page 2
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        
+        // Upload profile image if available
+        if (_image != null) {
+          final ref = firebase_storage.FirebaseStorage.instance
+              .ref()
+              .child('patients')
+              .child(userId)
+              .child('profile_image.jpg');
+          await ref.putFile(_image!);
+          String downloadUrl = await ref.getDownloadURL();
+          
+          // Update profile with image URL
+          await firestore.collection('patients').doc(userId).update({
+            'profileImageUrl': downloadUrl,
+          });
+          
+          // Add the URL to the profile data for next page
+          profileData['profileImageUrl'] = downloadUrl;
+        }
+      }
+    } catch (e) {
+      print('Error saving profile data: $e');
+      // Consider showing an error message to the user
+    }
     
     Navigator.push(
       context,
@@ -1008,6 +1065,55 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
         ),
       ),
     );
+  }
+
+  // New method to fetch user data from Firestore
+  Future<void> _fetchUserDataFromFirestore() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId != null) {
+        // Get phone number from auth
+        _authPhoneNumber = auth.currentUser?.phoneNumber;
+        
+        // Check if user profile exists in patients collection
+        final patientDoc = await firestore.collection('patients').doc(userId).get();
+        
+        if (patientDoc.exists) {
+          final userData = patientDoc.data() as Map<String, dynamic>;
+          
+          setState(() {
+            _nameController.text = userData['fullName'] ?? '';
+            _emailController.text = userData['email'] ?? '';
+            _addressController.text = userData['address'] ?? '';
+            _cnicController.text = userData['cnic'] ?? '';
+            _selectedCity = userData['city'];
+            
+            // Use phone from Firestore if available, otherwise keep auth phone
+            if (userData['phoneNumber'] != null && userData['phoneNumber'].isNotEmpty) {
+              _authPhoneNumber = userData['phoneNumber'];
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    }
+  }
+
+  // Add a method to get phone number from FirebaseAuth
+  Future<void> _getAuthPhoneNumber() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        _authPhoneNumber = user.phoneNumber;
+        print("Retrieved phone number from auth: $_authPhoneNumber");
+      }
+    } catch (e) {
+      print("Error getting auth phone number: $e");
+    }
   }
 }
 

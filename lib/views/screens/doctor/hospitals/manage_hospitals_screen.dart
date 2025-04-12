@@ -130,7 +130,10 @@ class _ManageHospitalsScreenState extends State<ManageHospitalsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Delay loading to allow UI to render first
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
   
   @override
@@ -142,28 +145,38 @@ class _ManageHospitalsScreenState extends State<ManageHospitalsScreen> {
   }
   
   Future<void> _loadData() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
     
     try {
-      // Load doctor's hospitals
-      final myHospitals = await _service.getDoctorHospitals();
+      // Load data in parallel to speed up the process
+      final hospitalsData = await Future.wait([
+        _service.getDoctorHospitals(),
+        _service.getAllHospitals(),
+      ]);
       
-      // Load all hospitals
-      final allHospitals = await _service.getAllHospitals();
+      if (!mounted) return;
       
-      // Set state with loaded data
+      // Update state once with all data to prevent multiple rebuilds
       setState(() {
-        _myHospitals = myHospitals;
-        _allHospitals = allHospitals;
-        _filteredHospitals = List.from(allHospitals);
+        _myHospitals = hospitalsData[0];
+        _allHospitals = hospitalsData[1];
+        
+        // Filter out hospitals already assigned to the doctor
+        _filteredHospitals = _filterHospitals(
+          allHospitals: hospitalsData[1], 
+          assignedHospitals: hospitalsData[0],
+          searchQuery: _searchQuery
+        );
+        
         _isLoading = false;
       });
-      
-      // Filter out hospitals already assigned to doctor
-      _filterAssignedHospitals();
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isLoading = false;
       });
@@ -171,39 +184,43 @@ class _ManageHospitalsScreenState extends State<ManageHospitalsScreen> {
     }
   }
   
-  void _filterAssignedHospitals() {
+  // Pure function to filter hospitals - doesn't trigger setState
+  List<Map<String, dynamic>> _filterHospitals({
+    required List<Map<String, dynamic>> allHospitals,
+    required List<Map<String, dynamic>> assignedHospitals,
+    required String searchQuery,
+  }) {
     // Create a set of hospital IDs that the doctor is already assigned to
     final Set<String> assignedHospitalIds = 
-        _myHospitals.map((h) => h['hospitalId'] as String).toSet();
+        assignedHospitals.map((h) => h['hospitalId'] as String).toSet();
     
-    // Filter all hospitals to exclude those already assigned
-    setState(() {
-      _filteredHospitals = _allHospitals
-          .where((h) => !assignedHospitalIds.contains(h['id']))
-          .toList();
-    });
+    // Always filter out already assigned hospitals
+    final filtered = allHospitals
+        .where((h) => !assignedHospitalIds.contains(h['id']))
+        .toList();
+    
+    // If search query is empty, return all unassigned hospitals
+    if (searchQuery.isEmpty) {
+      return filtered;
+    }
+    
+    // Otherwise, filter by search query too
+    final lowercaseQuery = searchQuery.toLowerCase();
+    return filtered
+        .where((h) => 
+            h['name'].toString().toLowerCase().contains(lowercaseQuery) ||
+            h['city'].toString().toLowerCase().contains(lowercaseQuery))
+        .toList();
   }
   
   void _filterHospitalsBySearch(String query) {
-    if (query.isEmpty) {
-      _filterAssignedHospitals();
-      return;
-    }
-    
-    final lowercaseQuery = query.toLowerCase();
-    
-    // Create a set of already assigned hospital IDs
-    final Set<String> assignedHospitalIds = 
-        _myHospitals.map((h) => h['hospitalId'] as String).toSet();
-    
-    // Filter by search query AND exclude already assigned hospitals
     setState(() {
-      _filteredHospitals = _allHospitals
-          .where((h) => 
-              !assignedHospitalIds.contains(h['id']) &&
-              (h['name'].toString().toLowerCase().contains(lowercaseQuery) ||
-               h['city'].toString().toLowerCase().contains(lowercaseQuery)))
-          .toList();
+      _searchQuery = query;
+      _filteredHospitals = _filterHospitals(
+        allHospitals: _allHospitals,
+        assignedHospitals: _myHospitals,
+        searchQuery: query
+      );
     });
   }
   
@@ -638,6 +655,7 @@ class _ManageHospitalsScreenState extends State<ManageHospitalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           'Manage Hospitals',
@@ -659,254 +677,288 @@ class _ManageHospitalsScreenState extends State<ManageHospitalsScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Search bar
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                          _isSearching = value.isNotEmpty;
-                        });
-                        _filterHospitalsBySearch(value);
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search hospitals...',
-                        prefixIcon: Icon(Icons.search),
-                        suffixIcon: _isSearching
-                            ? IconButton(
-                                icon: Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                    _isSearching = false;
-                                  });
-                                  _filterAssignedHospitals();
-                                },
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Color(0xFF3366CC)),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                        filled: true,
-                        fillColor: Colors.grey.shade50,
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: _isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Color(0xFF3366CC),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      "Loading hospitals...",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                  ),
-                  
-                  // My hospitals section
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Text(
-                      'My Hospitals',
+                  ],
+                ),
+              )
+            : _buildContent(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddHospitalDialog,
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        // Search bar
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                  _isSearching = value.isNotEmpty;
+                });
+                _filterHospitalsBySearch(value);
+              },
+              decoration: InputDecoration(
+                hintText: 'Search hospitals...',
+                prefixIcon: Icon(Icons.search),
+                suffixIcon: _isSearching
+                    ? IconButton(
+                        icon: Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                            _isSearching = false;
+                          });
+                          _filterHospitalsBySearch('');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Color(0xFF3366CC)),
+                ),
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+          ),
+        ),
+        
+        // My hospitals section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              'My Hospitals',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ),
+        
+        if (_myHospitals.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade100),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.blue.shade700,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'You haven\'t added any hospitals yet. Add a hospital below to get started.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final hospital = _myHospitals[index];
+                return _buildHospitalCard(
+                  hospital: hospital,
+                  isAssigned: true,
+                );
+              },
+              childCount: _myHospitals.length,
+            ),
+          ),
+        
+        // Available hospitals section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Available Hospitals',
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
                     ),
+                    SizedBox(width: 8),
+                    Text(
+                      '(${_filteredHospitals.length})',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  onPressed: _showAddHospitalDialog,
+                  icon: Icon(Icons.add, size: 18),
+                  label: Text("New"),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Color(0xFF3366CC),
+                    backgroundColor: Color(0xFFEDF7FF),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   ),
-                  
-                  if (_myHospitals.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.shade100),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Colors.blue.shade700,
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'You haven\'t added any hospitals yet. Add a hospital below to get started.',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.blue.shade800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      flex: 1,
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: _myHospitals.length,
-                        itemBuilder: (context, index) {
-                          final hospital = _myHospitals[index];
-                          return _buildHospitalCard(
-                            hospital: hospital,
-                            isAssigned: true,
-                          );
-                        },
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        if (_filteredHospitals.isEmpty && _isSearching)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'No hospitals found matching "$_searchQuery"',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                  
-                  // Available hospitals section
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'Available Hospitals',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              '(${_filteredHospitals.length})',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
+                    SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _showAddHospitalDialog,
+                      icon: Icon(Icons.add),
+                      label: Text("Add New Hospital"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF3366CC),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        TextButton.icon(
-                          onPressed: _showAddHospitalDialog,
-                          icon: Icon(Icons.add, size: 18),
-                          label: Text("New"),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Color(0xFF3366CC),
-                            backgroundColor: Color(0xFFEDF7FF),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  if (_filteredHospitals.isEmpty && _isSearching)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 48,
-                              color: Colors.grey.shade400,
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'No hospitals found matching "$_searchQuery"',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _showAddHospitalDialog,
-                              icon: Icon(Icons.add),
-                              label: Text("Add New Hospital"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF3366CC),
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (_filteredHospitals.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.check_circle_outline,
-                              size: 48,
-                              color: Colors.green.shade400,
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              'You\'ve added all available hospitals',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _showAddHospitalDialog,
-                              icon: Icon(Icons.add),
-                              label: Text("Add New Hospital"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF3366CC),
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      flex: 2,
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: _filteredHospitals.length,
-                        itemBuilder: (context, index) {
-                          final hospital = _filteredHospitals[index];
-                          return _buildHospitalCard(
-                            hospital: hospital,
-                            isAssigned: false,
-                            onAdd: () => _addHospitalToDoctor(hospital),
-                          );
-                        },
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
+          )
+        else if (_filteredHospitals.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 48,
+                      color: Colors.green.shade400,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'You\'ve added all available hospitals',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _showAddHospitalDialog,
+                      icon: Icon(Icons.add),
+                      label: Text("Add New Hospital"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF3366CC),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final hospital = _filteredHospitals[index];
+                return _buildHospitalCard(
+                  hospital: hospital,
+                  isAssigned: false,
+                  onAdd: () => _addHospitalToDoctor(hospital),
+                );
+              },
+              childCount: _filteredHospitals.length,
+            ),
+          ),
+      ],
     );
   }
 
@@ -923,93 +975,95 @@ class _ManageHospitalsScreenState extends State<ManageHospitalsScreen> {
         ? hospital['hospitalName'].toString().split(', ')[1]
         : hospital['address'] ?? '';
     
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          onTap: isAssigned ? null : onAdd,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: isAssigned ? Colors.blue.shade50 : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.business,
-                    color: isAssigned ? Colors.blue.shade700 : Colors.grey.shade700,
-                    size: 28,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name.split(', ')[0],
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        address,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (!isAssigned)
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isAssigned ? null : onAdd,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade500,
-                      borderRadius: BorderRadius.circular(20),
+                      color: isAssigned ? Colors.blue.shade50 : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Icon(
+                      Icons.business,
+                      color: isAssigned ? Colors.blue.shade700 : Colors.grey.shade700,
+                      size: 28,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                        SizedBox(width: 4),
                         Text(
-                          'Add',
+                          name.split(', ')[0],
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          address,
                           style: GoogleFonts.poppins(
                             fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
+                            color: Colors.grey.shade600,
                           ),
                         ),
                       ],
                     ),
                   ),
-              ],
+                  if (!isAssigned)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade500,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Add',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

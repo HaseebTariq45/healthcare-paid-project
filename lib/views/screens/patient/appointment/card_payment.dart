@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/successfull_appoinment.dart';
+import 'package:healthcare/views/screens/menu/appointment_history.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CardPaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? appointmentDetails;
@@ -186,63 +189,184 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
     });
 
     // Simulate API call
-    Future.delayed(Duration(seconds: 2), () {
-      setState(() {
-        _isLoading = false;
-      });
+    Future.delayed(Duration(seconds: 2), () async {
+      // Get the current user ID
+      final user = FirebaseAuth.instance.currentUser;
+      final String? userId = user?.uid;
       
-      // Show success dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 10),
-              Text("Payment Successful"),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Your payment has been processed successfully."),
-              SizedBox(height: 10),
-              Text("Amount: ${widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}"),
-              SizedBox(height: 10),
-              Text("Would you like to save this card for future use?"),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PatientAppointmentDetailsScreen(),
-                  ),
-                );
-              },
-              child: Text("No, thanks"),
+      if (userId != null) {
+        try {
+          // Get the fee amount directly as it's already a number
+          int amountValue = widget.appointmentDetails?['fee'] ?? 0;
+          
+          // 1. Save the appointment to Firestore
+          final appointmentRef = await FirebaseFirestore.instance.collection('appointments').add({
+            'patientId': userId,
+            'doctorId': widget.appointmentDetails?['doctorId'],
+            'doctorName': widget.appointmentDetails?['doctorName'],
+            'date': widget.appointmentDetails?['date'],
+            'time': widget.appointmentDetails?['time'],
+            'location': widget.appointmentDetails?['location'],
+            'fee': amountValue,
+            'displayFee': widget.appointmentDetails?['displayFee'],
+            'status': 'confirmed',
+            'paymentStatus': 'completed',
+            'paymentMethod': 'Card',
+            'cardType': _getCardType(_cardNumberController.text),
+            'paymentDate': FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'notes': widget.appointmentDetails?['notes'],
+            'isPanelConsultation': widget.appointmentDetails?['isPanelConsultation'] ?? false,
+          });
+          
+          // 2. Save the transaction to Firestore
+          await FirebaseFirestore.instance.collection('transactions').add({
+            'userId': userId,
+            'patientId': userId,
+            'doctorId': widget.appointmentDetails?['doctorId'],
+            'appointmentId': appointmentRef.id,
+            'title': 'Appointment Payment',
+            'description': 'Consultation with ${widget.appointmentDetails?['doctorName']}',
+            'amount': amountValue,
+            'date': Timestamp.now(),
+            'type': 'payment',
+            'status': 'completed',
+            'paymentMethod': 'Card',
+            'doctorName': widget.appointmentDetails?['doctorName'],
+            'hospitalName': widget.appointmentDetails?['location'],
+            'cardType': _getCardType(_cardNumberController.text),
+            'createdAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          });
+          
+          print('Appointment and transaction saved successfully');
+          
+          setState(() {
+            _isLoading = false;
+          });
+          
+          // Show success dialog
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green),
+                  SizedBox(width: 10),
+                  Text("Payment Successful"),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Your payment has been processed successfully."),
+                  SizedBox(height: 10),
+                  Text("Amount: ${widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}"),
+                  SizedBox(height: 10),
+                  Text("Would you like to save this card for future use?"),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Navigate to appointment history screen
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AppointmentHistoryScreen(),
+                      ),
+                      (route) => route.isFirst, // Keep only the first route
+                    );
+                  },
+                  child: Text("No, thanks"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // TODO: Save card to user's payment methods
+                    Navigator.pop(context);
+                    // Navigate to appointment history screen
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AppointmentHistoryScreen(),
+                      ),
+                      (route) => route.isFirst, // Keep only the first route
+                    );
+                  },
+                  child: Text("Save Card"),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                // TODO: Save card to user's payment methods
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PatientAppointmentDetailsScreen(),
-                  ),
-                );
-              },
-              child: Text("Save Card"),
+          );
+        } catch (e) {
+          print('Error saving appointment and transaction: $e');
+          setState(() {
+            _isLoading = false;
+          });
+          
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text("Payment failed: ${e.toString()}"),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
             ),
-          ],
-        ),
-      );
+          );
+        }
+      } else {
+        // User not signed in
+        setState(() {
+          _isLoading = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 10),
+                Text("You must be signed in to book an appointment"),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     });
+  }
+
+  // Helper method to determine card type based on number
+  String _getCardType(String cardNumber) {
+    String cleanNumber = cardNumber.replaceAll(RegExp(r'\s+\b|\b\s'), '');
+    if (cleanNumber.isEmpty) return "Unknown";
+    
+    // Visa
+    if (cleanNumber.startsWith('4')) {
+      return "Visa";
+    }
+    // Mastercard
+    else if (cleanNumber.startsWith('5')) {
+      return "Mastercard";
+    }
+    // Amex
+    else if (cleanNumber.startsWith('3')) {
+      return "Amex";
+    }
+    // Discover
+    else if (cleanNumber.startsWith('6')) {
+      return "Discover";
+    }
+    
+    return "Unknown";
   }
 
   void _showError(String message) {

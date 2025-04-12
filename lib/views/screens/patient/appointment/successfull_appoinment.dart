@@ -3,10 +3,113 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/reschedule_appointment.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class PatientAppointmentDetailsScreen extends StatelessWidget {
+class PatientAppointmentDetailsScreen extends StatefulWidget {
+  final Map<String, dynamic>? appointmentDetails;
+  
+  const PatientAppointmentDetailsScreen({
+    Key? key,
+    this.appointmentDetails,
+  }) : super(key: key);
+
+  @override
+  _PatientAppointmentDetailsScreenState createState() => _PatientAppointmentDetailsScreenState();
+}
+
+class _PatientAppointmentDetailsScreenState extends State<PatientAppointmentDetailsScreen> {
+  Map<String, dynamic> appointmentData = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppointmentData();
+  }
+
+  Future<void> _loadAppointmentData() async {
+    if (widget.appointmentDetails != null) {
+      setState(() {
+        appointmentData = widget.appointmentDetails!;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Fetch the most recent appointment for this user
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final appointmentsSnapshot = await FirebaseFirestore.instance
+            .collection('appointments')
+            .where('patientId', isEqualTo: user.uid)
+            .orderBy('createdAt', descending: true)
+            .limit(1)
+            .get();
+
+        if (appointmentsSnapshot.docs.isNotEmpty) {
+          final data = appointmentsSnapshot.docs.first.data();
+          setState(() {
+            appointmentData = data;
+            _isLoading = false;
+          });
+        } else {
+          // Use default data if no appointment is found
+          setState(() {
+            appointmentData = {
+              'doctorName': 'Dr. Rizwan',
+              'specialty': 'Cardiologist',
+              'rating': '4.7',
+              'fee': 'Rs 1500',
+              'location': 'CMH Rawalpindi',
+              'date': '10/01/2025',
+              'time': '2.00 PM',
+            };
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading appointment data: $e');
+      setState(() {
+        // Use default data if there's an error
+        appointmentData = {
+          'doctorName': 'Dr. Rizwan',
+          'specialty': 'Cardiologist',
+          'rating': '4.7',
+          'fee': 'Rs 1500',
+          'location': 'CMH Rawalpindi',
+          'date': '10/01/2025',
+          'time': '2.00 PM',
+        };
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBarOnboarding(isBackButtonVisible: true, text: "Appointment Details"),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Extract the doctor name and other details
+    final doctorName = appointmentData['doctorName'] ?? appointmentData['doctor'] ?? 'Dr. Rizwan';
+    final specialty = appointmentData['specialty'] ?? 'Specialist';
+    final rating = appointmentData['rating'] ?? '4.7';
+    final fee = appointmentData['fee'] ?? 'Rs 1500';
+    final location = appointmentData['location'] ?? 'Hospital';
+    final date = appointmentData['date'] ?? '01/01/2025';
+    final time = appointmentData['time'] ?? '12:00 PM';
+    
     return Scaffold(
       appBar: AppBarOnboarding(isBackButtonVisible: true, text: "Appointment Details"),
       backgroundColor: Colors.white,
@@ -28,20 +131,20 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Dr. Rizwan",
+                      Text(doctorName,
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
-                      Text("Cardiologist", 
+                      Text(specialty, 
                           style: TextStyle(color: Colors.grey),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                       SizedBox(height: 5),
                       Row(
                         children: [
-                          _infoChip(LucideIcons.star, "4.7"),
+                          _infoChip(LucideIcons.star, rating),
                           SizedBox(width: 5),
-                          _infoChip(LucideIcons.dollarSign, "Rs 1500"),
+                          _infoChip(LucideIcons.dollarSign, fee.toString()),
                         ],
                       ),
                       SizedBox(height: 5),
@@ -50,7 +153,7 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
                           Icon(LucideIcons.mapPin, size: 14, color: Colors.grey),
                           SizedBox(width: 5),
                           Expanded(
-                            child: Text("CMH Rawalpindi", 
+                            child: Text(location, 
                                 style: TextStyle(color: Colors.grey),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
@@ -90,9 +193,9 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
             _sectionTitle("Date and Time"),
             Row(
               children: [
-                _infoButton(LucideIcons.calendar, "10/01/2025"),
+                _infoButton(LucideIcons.calendar, date),
                 SizedBox(width: 10),
-                _infoButton(LucideIcons.clock, "2.00 PM"),
+                _infoButton(LucideIcons.clock, time),
               ],
             ),
             SizedBox(height: 20),
@@ -100,7 +203,7 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
             // Additional Notes
             _sectionTitle("Additional Notes"),
             Text(
-              "Lorem ipsum dolor sit amet, consectetur adipi elit, sed do eiusmod tempor incididunt ut laore et dolore magna aliqua. Ut enim ad minim veniam... ",
+              appointmentData['notes'] ?? "No additional notes for this appointment.",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Colors.black54,
@@ -120,7 +223,7 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
             SizedBox(height: 30),
 
             // Join Meeting Button
-            _buildSubmitButton("Join Meeting", () {print("Appointment booked!");}),
+            _buildSubmitButton("Join Meeting", () {print("Joining meeting...");}),
 
             SizedBox(height: 10),
 
@@ -194,7 +297,7 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: onPressed, // Dynamically set action
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Color.fromRGBO(64, 124, 226, 1),
           shape: RoundedRectangleBorder(
@@ -202,7 +305,7 @@ class PatientAppointmentDetailsScreen extends StatelessWidget {
           ),
         ),
         child: Text(
-          buttonText, // Dynamically set text
+          buttonText,
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.bold,

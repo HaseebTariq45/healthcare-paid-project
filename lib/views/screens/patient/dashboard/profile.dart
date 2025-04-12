@@ -10,6 +10,8 @@ import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.
 import 'package:healthcare/views/screens/patient/dashboard/patient_profile_details.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PatientMenuScreen extends StatefulWidget {
   final String name;
@@ -32,12 +34,73 @@ class PatientMenuScreen extends StatefulWidget {
 class _PatientMenuScreenState extends State<PatientMenuScreen> {
   late List<MenuItem> menuItems;
   late int profileCompletionPercentage;
+  bool isLoading = true;
+  String userName = "User";
+  String? profileImageUrl;
+  String userRole = "Patient";
+  Map<String, dynamic> userData = {};
   
   @override
   void initState() {
     super.initState();
     _initializeMenuItems();
     profileCompletionPercentage = widget.profileCompletionPercentage;
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId == null) {
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+      
+      // Get data from both collections
+      final patientDoc = await firestore.collection('patients').doc(userId).get();
+      final userDoc = await firestore.collection('users').doc(userId).get();
+      
+      Map<String, dynamic> mergedData = {};
+      
+      if (patientDoc.exists) {
+        mergedData.addAll(patientDoc.data() ?? {});
+      }
+      if (userDoc.exists) {
+        mergedData.addAll(userDoc.data() ?? {});
+      }
+      
+      // Get medical records count
+      final medicalRecordsSnapshot = await firestore
+          .collection('medicalRecords')
+          .where('patientId', isEqualTo: userId)
+          .get();
+          
+      // Get appointments count
+      final appointmentsSnapshot = await firestore
+          .collection('appointments')
+          .where('patientId', isEqualTo: userId)
+          .get();
+      
+      setState(() {
+        userData = mergedData;
+        userName = mergedData['fullName'] ?? mergedData['name'] ?? "User";
+        profileImageUrl = mergedData['profileImageUrl'];
+        userRole = mergedData['role'] ?? "Patient";
+        profileCompletionPercentage = (mergedData['completionPercentage'] ?? 0).toInt();
+        isLoading = false;
+      });
+      
+    } catch (e) {
+      print('Error fetching user data: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
   
   void _initializeMenuItems() {
@@ -56,7 +119,13 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: isLoading 
+          ? Center(
+              child: CircularProgressIndicator(
+                color: const Color(0xFF3366CC),
+              ),
+            )
+          : SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.all(16),
             child: Column(
@@ -208,7 +277,9 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                   ),
                   child: CircleAvatar(
                     radius: 40,
-                    backgroundImage: const AssetImage("assets/images/User.png"),
+                    backgroundImage: profileImageUrl != null
+                        ? NetworkImage(profileImageUrl!)
+                        : const AssetImage("assets/images/User.png") as ImageProvider,
                   ),
                 ),
               ),
@@ -218,7 +289,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.name,
+                      userName,
                       style: GoogleFonts.poppins(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -233,7 +304,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                       ),
                     ),
                     Text(
-                      widget.role,
+                      userRole,
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
@@ -247,19 +318,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => PatientDetailProfileScreen(
-                              name: widget.name,
-                              age: "28", // This would come from actual user data
-                              bloodGroup: "B+", // This would come from actual user data
-                              phoneNumber: "+92 300 1234567", // This would come from actual user data
-                              // Sample data - in a real app, these would be passed from state
-                              allergies: const ["Peanuts", "Penicillin", "Dust Mites"],
-                              diseases: const ["Asthma", "Migraine", "High Blood Pressure"],
-                              height: 165,
-                              weight: 65,
-                              // Document files would be passed from the user's profile data
-                              // In a real app, these would be loaded from a storage service
-                            ),
+                            builder: (context) => const PatientDetailProfileScreen(),
                           ),
                         );
                       },
@@ -507,12 +566,62 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                     const SizedBox(width: 15),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(context);
-                          Navigator.pushReplacement(
-                            context, 
-                            MaterialPageRoute(builder: (context) => SignUpOptions()),
+                          
+                          // Show loading indicator
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (BuildContext context) {
+                              return Dialog(
+                                backgroundColor: Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      CircularProgressIndicator(
+                                        color: Color(0xFF3366CC),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text('Logging out...'),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           );
+                          
+                          // Sign out from Firebase
+                          try {
+                            await FirebaseAuth.instance.signOut();
+                            
+                            // Close loading dialog
+                            if (context.mounted) Navigator.pop(context);
+                            
+                            // Navigate to Onboarding3 screen and clear navigation stack
+                            if (context.mounted) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (context) => const Onboarding3()),
+                                (route) => false, // Remove all previous routes
+                              );
+                            }
+                          } catch (e) {
+                            // Close loading dialog
+                            if (context.mounted) Navigator.pop(context);
+                            
+                            // Show error message
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('An error occurred: ${e.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5252),

@@ -66,6 +66,8 @@ class _SignUpState extends State<SignUp> {
       _errorMessage = null;
     });
     
+    print('***** SIGNUP PROCESS FOR USER TYPE: $type *****');
+    
     try {
       // Check if this phone number already exists in our database
       final userCheck = await _authService.getUserByPhoneNumber(formattedPhoneNumber);
@@ -142,6 +144,7 @@ class _SignUpState extends State<SignUp> {
       });
       
       if (result['success']) {
+        print('***** OTP SENT SUCCESSFULLY FOR USER TYPE: $type *****');
         // Navigate to OTP verification screen with verification ID
         Navigator.push(
           context,

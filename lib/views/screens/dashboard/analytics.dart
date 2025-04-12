@@ -8,6 +8,9 @@ import 'package:healthcare/views/screens/analytics/reports.dart';
 import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -17,6 +20,179 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  // Firebase instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Dashboard data
+  bool _isLoading = true;
+  int _totalPatients = 0;
+  int _totalAppointments = 0;
+  double _totalEarnings = 0.0;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+  
+  // Load all dashboard data from Firebase
+  Future<void> _loadDashboardData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Get current user ID
+      final String? doctorId = _auth.currentUser?.uid;
+      
+      if (doctorId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      // Load data in parallel for efficiency
+      await Future.wait([
+        _loadTotalPatients(doctorId),
+        _loadTotalAppointments(doctorId),
+        _loadTotalEarnings(doctorId),
+      ]);
+      
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  // Load total unique patients seen by this doctor
+  Future<void> _loadTotalPatients(String doctorId) async {
+    try {
+      // Get all appointments for this doctor
+      final appointmentsSnapshot = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .get();
+      
+      // Extract unique patient IDs
+      final Set<String> uniquePatientIds = {};
+      
+      for (var doc in appointmentsSnapshot.docs) {
+        final data = doc.data();
+        if (data.containsKey('patientId') && data['patientId'] != null) {
+          uniquePatientIds.add(data['patientId'] as String);
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _totalPatients = uniquePatientIds.length;
+        });
+      }
+    } catch (e) {
+      print('Error loading total patients: $e');
+    }
+  }
+  
+  // Load total appointments for this doctor
+  Future<void> _loadTotalAppointments(String doctorId) async {
+    try {
+      // Get count of all appointments
+      final appointmentsSnapshot = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .count()
+          .get();
+      
+      if (mounted) {
+        setState(() {
+          _totalAppointments = appointmentsSnapshot.count ?? 0;
+        });
+      }
+    } catch (e) {
+      print('Error loading total appointments: $e');
+      
+      // Fallback method if count() is not available
+      try {
+        final appointmentsSnapshot = await _firestore
+            .collection('appointments')
+            .where('doctorId', isEqualTo: doctorId)
+            .get();
+        
+        if (mounted) {
+          setState(() {
+            _totalAppointments = appointmentsSnapshot.docs.length;
+          });
+        }
+      } catch (fallbackError) {
+        print('Error in fallback appointments count: $fallbackError');
+      }
+    }
+  }
+  
+  // Load total earnings for this doctor
+  Future<void> _loadTotalEarnings(String doctorId) async {
+    try {
+      // First try transactions collection
+      final transactionsSnapshot = await _firestore
+          .collection('transactions')
+          .where('userId', isEqualTo: doctorId)
+          .where('type', isEqualTo: 'income')
+          .get();
+      
+      double total = 0.0;
+      
+      // If transactions exist, calculate from there
+      if (transactionsSnapshot.docs.isNotEmpty) {
+        for (var doc in transactionsSnapshot.docs) {
+          final data = doc.data();
+          if (data.containsKey('amount') && data['amount'] != null) {
+            total += (data['amount'] as num).toDouble();
+          }
+        }
+      } else {
+        // Otherwise, calculate from completed appointments
+        final appointmentsSnapshot = await _firestore
+            .collection('appointments')
+            .where('doctorId', isEqualTo: doctorId)
+            .where('status', isEqualTo: 'completed')
+            .get();
+        
+        for (var doc in appointmentsSnapshot.docs) {
+          final data = doc.data();
+          if (data.containsKey('fee') && data['fee'] != null) {
+            total += (data['fee'] as num).toDouble();
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _totalEarnings = total;
+        });
+      }
+    } catch (e) {
+      print('Error loading total earnings: $e');
+    }
+  }
+  
+  // Format currency for display
+  String _formatCurrency(double amount) {
+    if (amount >= 1000) {
+      return '\$${(amount / 1000).toStringAsFixed(1)}k';
+    }
+    return '\$${amount.toStringAsFixed(0)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,24 +263,34 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildSummaryItem("121", "Patients"),
-                    Container(
-                      height: 40,
-                      width: 1,
-                      color: Colors.white.withOpacity(0.3),
-                    ),
-                    _buildSummaryItem("86", "Appointments"),
-                    Container(
-                      height: 40,
-                      width: 1,
-                      color: Colors.white.withOpacity(0.3),
-                    ),
-                    _buildSummaryItem("\$4.5k", "Earnings"),
-                  ],
-                ),
+                child: _isLoading
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20.0),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildSummaryItem("${_totalPatients}", "Patients"),
+                          Container(
+                            height: 40,
+                            width: 1,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          _buildSummaryItem("${_totalAppointments}", "Appointments"),
+                          Container(
+                            height: 40,
+                            width: 1,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          _buildSummaryItem(_formatCurrency(_totalEarnings), "Earnings"),
+                        ],
+                      ),
               ),
             ),
             
@@ -121,68 +307,72 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             
             // Analytics cards
             Expanded(
-        child: Padding(
+              child: Padding(
                 padding: const EdgeInsets.all(15.0),
                 child: GridView.count(
                   crossAxisCount: 2,
                   childAspectRatio: 1.05,
                   crossAxisSpacing: 15,
                   mainAxisSpacing: 15,
-            children: [
-              _buildAnalyticsCard(
+                  children: [
+                    _buildAnalyticsCard(
                       icon: LucideIcons.trendingUp,
-                title: "Performance Analysis",
+                      title: "Performance Analysis",
                       description: "Track your growth metrics",
                       bgColor: Color(0xFFE3F2FD),
                       iconColor: Color(0xFF2196F3),
-                onPressed: () {
-                  NavigationHelper.navigateWithBottomBar(context, PerformanceAnalysis());
-                },
-              ),
-              _buildAnalyticsCard(
+                      onPressed: () {
+                        NavigationHelper.navigateWithBottomBar(context, PerformanceAnalysis());
+                      },
+                    ),
+                    _buildAnalyticsCard(
                       icon: LucideIcons.activity,
-                title: "Financial Analytics",
+                      title: "Financial Analytics",
                       description: "Revenue & expense reports",
                       bgColor: Color(0xFFE1F5FE),
                       iconColor: Color(0xFF03A9F4),
-                onPressed: () {
-                  NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
-                },
-              ),
-              _buildAnalyticsCard(
+                      onPressed: () {
+                        NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
+                      },
+                    ),
+                    _buildAnalyticsCard(
                       icon: LucideIcons.calendar,
-                title: "Manage Availability",
+                      title: "Manage Availability",
                       description: "Set your schedule & locations",
                       bgColor: Color(0xFFE8EAF6),
                       iconColor: Color(0xFF3F51B5),
-                onPressed: () {
-                  NavigationHelper.navigateWithBottomBar(context, DoctorAvailabilityScreen());
-                },
-              ),
-              _buildAnalyticsCard(
+                      onPressed: () {
+                        NavigationHelper.navigateToCachedScreen(
+                          context, 
+                          "DoctorAvailabilityScreen", 
+                          () => DoctorAvailabilityScreen()
+                        );
+                      },
+                    ),
+                    _buildAnalyticsCard(
                       icon: LucideIcons.users,
-                title: "Patients",
+                      title: "Patients",
                       description: "Manage patient data",
                       bgColor: Color(0xFFE8F5E9),
                       iconColor: Color(0xFF4CAF50),
-                onPressed: () {
-                  NavigationHelper.navigateWithBottomBar(context, PatientsScreen());
-                },
-              ),
-              _buildAnalyticsCard(
+                      onPressed: () {
+                        NavigationHelper.navigateWithBottomBar(context, PatientsScreen());
+                      },
+                    ),
+                    _buildAnalyticsCard(
                       icon: LucideIcons.clipboardList,
-                title: "Reports",
+                      title: "Reports",
                       description: "View all reports",
                       bgColor: Color(0xFFFFF3E0),
                       iconColor: Color(0xFFFF9800),
-                onPressed: () {
-                  NavigationHelper.navigateWithBottomBar(context, ReportsScreen());
-                },
+                      onPressed: () {
+                        NavigationHelper.navigateWithBottomBar(context, ReportsScreen());
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
           ],
         ),
       ),
@@ -250,9 +440,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ),
             Spacer(),
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
+            Text(
+              title,
+              style: GoogleFonts.poppins(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,

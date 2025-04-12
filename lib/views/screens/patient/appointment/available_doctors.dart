@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/appointment/appointment_booking_flow.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DoctorsScreen extends StatefulWidget {
   final String? specialty;
@@ -21,6 +23,12 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   late List<Map<String, dynamic>> filteredDoctors;
+  bool _isLoading = true;
+  String? _errorMessage;
+  
+  // Firestore and Auth instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   
   // Filtering options
   int _selectedCategoryIndex = 0;
@@ -37,10 +45,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     
-    // Apply initial filters
-    filteredDoctors = widget.doctors.isNotEmpty ? 
-      List.from(widget.doctors) : 
-      _getDefaultDoctors();
+    // Initialize filters
+    filteredDoctors = [];
       
     if (widget.specialty != null && !_categories.contains(widget.specialty)) {
       // Add the specialty to the categories list if it's not already there
@@ -55,7 +61,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       }
     }
     
-    _applyFilters();
+    // Fetch doctors from Firestore
+    _fetchDoctors();
   }
 
   @override
@@ -72,50 +79,191 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     });
   }
 
-  List<Map<String, dynamic>> _getDefaultDoctors() {
-    // Default list of doctors if none provided
-    return [
-    {
-      "name": "Dr. Rizwan Ahmed",
-      "specialty": "Cardiology",
-      "rating": "4.7",
-      "experience": "8 years",
-      "fee": "Rs 1500",
-      "location": "CMH Rawalpindi",
-        "image": "assets/images/User.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Fatima Khan",
-      "specialty": "Dentist",
-      "rating": "4.9",
-      "experience": "12 years",
-      "fee": "Rs 2000",
-      "location": "PAF Hospital Unit-2",
-        "image": "assets/images/User.png",
-      "available": true
-    },
-    {
-      "name": "Dr. Asmara Malik",
-      "specialty": "Orthopedics",
-      "rating": "4.8",
-      "experience": "10 years",
-      "fee": "Rs 1800",
-      "location": "KRL Hospital G9, Islamabad",
-        "image": "assets/images/User.png",
-      "available": false
-    },
-    {
-      "name": "Dr. Tariq Mehmood",
-      "specialty": "Cardiology",
-      "rating": "4.6",
-      "experience": "15 years",
-      "fee": "Rs 2500",
-      "location": "Maaroof International Hospital",
-        "image": "assets/images/User.png",
-      "available": true
+  // Fetch doctors from Firestore
+  Future<void> _fetchDoctors() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final List<Map<String, dynamic>> doctorsList = [];
+      
+      // Query doctors collection
+      Query doctorsQuery = _firestore.collection('doctors');
+      
+      // Apply specialty filter if specified
+      if (widget.specialty != null && widget.specialty != 'All') {
+        doctorsQuery = doctorsQuery.where('specialty', isEqualTo: widget.specialty);
+      }
+      
+      final QuerySnapshot doctorsSnapshot = await doctorsQuery.get();
+      
+      // Process each doctor document
+      for (var doc in doctorsSnapshot.docs) {
+        final doctorData = doc.data() as Map<String, dynamic>;
+        final doctorId = doc.id;
+        
+        // Get doctor's hospitals and availability
+        final hospitalsQuery = await _firestore
+            .collection('doctor_hospitals')
+            .where('doctorId', isEqualTo: doctorId)
+            .get();
+        
+        final List<Map<String, dynamic>> hospitalsList = [];
+        
+        // For each hospital, get today's availability
+        for (var hospitalDoc in hospitalsQuery.docs) {
+          final hospitalData = hospitalDoc.data();
+          final hospitalId = hospitalData['hospitalId'];
+          final hospitalName = hospitalData['hospitalName'] ?? 'Unknown Hospital';
+          
+          // Get today's date in YYYY-MM-DD format
+          final today = DateTime.now();
+          final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+          
+          // Query availability for this hospital and date
+          final availabilityQuery = await _firestore
+              .collection('doctor_availability')
+              .where('doctorId', isEqualTo: doctorId)
+              .where('hospitalId', isEqualTo: hospitalId)
+              .where('date', isEqualTo: dateStr)
+              .limit(1)
+              .get();
+          
+          List<String> timeSlots = [];
+          if (availabilityQuery.docs.isNotEmpty) {
+            final availabilityData = availabilityQuery.docs.first.data();
+            timeSlots = List<String>.from(availabilityData['timeSlots'] ?? []);
+          }
+          
+          hospitalsList.add({
+            'hospitalId': hospitalId,
+            'hospitalName': hospitalName,
+            'availableToday': timeSlots.isNotEmpty,
+            'timeSlots': timeSlots,
+          });
+        }
+        
+        // Determine overall availability
+        final bool isAvailableToday = hospitalsList.any((hospital) => hospital['availableToday'] == true);
+        
+        // Create doctor map with all relevant information
+        doctorsList.add({
+          'id': doctorId,
+          'name': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
+          'specialty': doctorData['specialty'] ?? 'General Practitioner',
+          'rating': doctorData['rating']?.toString() ?? "4.5",
+          'experience': doctorData['experience']?.toString() ?? "5 years",
+          'fee': 'Rs ${doctorData['fee']?.toString() ?? "1500"}',
+          'location': hospitalsList.isNotEmpty ? hospitalsList.first['hospitalName'] : 'Multiple Hospitals',
+          'image': doctorData['profileImageUrl'] ?? "assets/images/User.png",
+          'available': isAvailableToday,
+          'hospitals': hospitalsList,
+        });
+      }
+      
+      if (mounted) {
+        setState(() {
+          // If no doctors from Firestore, use default ones
+          if (doctorsList.isEmpty && widget.doctors.isEmpty) {
+            filteredDoctors = _getDefaultDoctors();
+          } else if (doctorsList.isEmpty) {
+            filteredDoctors = List.from(widget.doctors);
+          } else {
+            filteredDoctors = doctorsList;
+          }
+          _isLoading = false;
+          _applyFilters();
+        });
+      }
+    } catch (e) {
+      // Handle errors
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error loading doctors: $e';
+          _isLoading = false;
+          
+          // Fall back to default doctors
+          if (widget.doctors.isNotEmpty) {
+            filteredDoctors = List.from(widget.doctors);
+          } else {
+            filteredDoctors = _getDefaultDoctors();
+          }
+          _applyFilters();
+        });
+      }
+      debugPrint('Error fetching doctors: $e');
     }
-  ];
+  }
+
+  // Apply all active filters to the doctors list
+  void _applyFilters() {
+    // Start with all doctors
+    List<Map<String, dynamic>> result = List.from(filteredDoctors);
+    
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      result = result.where((doctor) {
+        return doctor['name'].toString().toLowerCase().contains(_searchQuery) ||
+               doctor['specialty'].toString().toLowerCase().contains(_searchQuery) ||
+               doctor['location'].toString().toLowerCase().contains(_searchQuery);
+      }).toList();
+    }
+    
+    // Apply category filter
+    if (_selectedCategoryIndex > 0) { // 0 is "All"
+      final selectedCategory = _categories[_selectedCategoryIndex];
+      result = result.where((doctor) {
+        return doctor['specialty'].toString() == selectedCategory;
+      }).toList();
+    }
+    
+    // Apply rating filter
+    if (selectedRating != null) {
+      final minRating = double.parse(selectedRating!);
+      result = result.where((doctor) {
+        return double.parse(doctor['rating'].toString()) >= minRating;
+      }).toList();
+    }
+    
+    // Apply location filter
+    if (selectedLocation != null) {
+      result = result.where((doctor) {
+        // Check hospitals list for location match
+        if (doctor.containsKey('hospitals')) {
+          return doctor['hospitals'].any((hospital) => 
+            hospital['hospitalName'].toString().contains(selectedLocation!));
+        }
+        return doctor['location'].toString().contains(selectedLocation!);
+      }).toList();
+    }
+    
+    // Apply availability filter
+    if (showOnlineOnly) {
+      result = result.where((doctor) => doctor['available'] == true).toList();
+    }
+    
+    // Apply sorting
+    if (sortByPriceLowToHigh) {
+      result.sort((a, b) {
+        // Extract fee as numeric value (remove "Rs " and parse)
+        final aFee = double.parse(a['fee'].toString().replaceAll('Rs ', ''));
+        final bFee = double.parse(b['fee'].toString().replaceAll('Rs ', ''));
+        return aFee.compareTo(bFee);
+      });
+    } else {
+      // Sort by rating (highest first)
+      result.sort((a, b) {
+        final aRating = double.parse(a['rating'].toString());
+        final bRating = double.parse(b['rating'].toString());
+        return bRating.compareTo(aRating);
+      });
+    }
+    
+    setState(() {
+      filteredDoctors = result;
+    });
   }
 
   @override
@@ -129,7 +277,111 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             _buildHeader(),
             _buildSearchBar(),
                   _buildCategoryTabs(),
-                  Expanded(
+            // Show loading indicator, error message, or doctor list
+            _isLoading 
+            ? Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        color: const Color(0xFF3366CC),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        "Loading doctors...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : _errorMessage != null
+              ? Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red.shade400,
+                          size: 48,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "Oops! Something went wrong",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _fetchDoctors,
+                          icon: Icon(Icons.refresh),
+                          label: Text("Try Again"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3366CC),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : filteredDoctors.isEmpty
+                ? Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            LucideIcons.userX,
+                            color: Colors.grey.shade400,
+                            size: 48,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            "No doctors found",
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            "Try changing your filters or search criteria",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Expanded(
                     child: _buildDoctorsList(),
             ),
           ],
@@ -292,38 +544,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   Widget _buildDoctorsList() {
-    // Show a message when no doctors match the search criteria
-    if (filteredDoctors.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              LucideIcons.searchX,
-              size: 60,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "No doctors found",
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Try adjusting your filters",
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
@@ -483,7 +703,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                             ),
                           ],
                         ),
-                      
                       const SizedBox(height: 8),
                         Row(
                           children: [
@@ -501,7 +720,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                               color: Colors.green.shade700,
                             ),
                           ),
-                          
                           const SizedBox(width: 16),
                             Icon(
                               LucideIcons.mapPin,
@@ -708,85 +926,54 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     );
   }
 
-  void _applyFilters() {
-    setState(() {
-      // Start with all doctors
-      filteredDoctors = widget.doctors.isNotEmpty ? 
-        List.from(widget.doctors) : 
-        _getDefaultDoctors();
-      
-      // Filter by selected tab/category if a specific one is selected
-      if (_selectedCategoryIndex != 0) {
-        String selectedCategory = _categories[_selectedCategoryIndex];
-        filteredDoctors = filteredDoctors.where((doctor) {
-          return doctor["specialty"] == selectedCategory;
-        }).toList();
+  List<Map<String, dynamic>> _getDefaultDoctors() {
+    // Default list of doctors if none provided
+    return [
+      {
+        "id": "default1",
+        "name": "Dr. Rizwan Ahmed",
+        "specialty": "Cardiology",
+        "rating": "4.7",
+        "experience": "8 years",
+        "fee": "Rs 1500",
+        "location": "CMH Rawalpindi",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "id": "default2",
+        "name": "Dr. Fatima Khan",
+        "specialty": "Dentist",
+        "rating": "4.9",
+        "experience": "12 years",
+        "fee": "Rs 2000",
+        "location": "PAF Hospital Unit-2",
+        "image": "assets/images/User.png",
+        "available": true
+      },
+      {
+        "id": "default3",
+        "name": "Dr. Asmara Malik",
+        "specialty": "Orthopedics",
+        "rating": "4.8",
+        "experience": "10 years",
+        "fee": "Rs 1800",
+        "location": "KRL Hospital G9, Islamabad",
+        "image": "assets/images/User.png",
+        "available": false
+      },
+      {
+        "id": "default4",
+        "name": "Dr. Tariq Mehmood",
+        "specialty": "Cardiology",
+        "rating": "4.6",
+        "experience": "15 years",
+        "fee": "Rs 2500",
+        "location": "Maaroof International Hospital",
+        "image": "assets/images/User.png",
+        "available": true
       }
-      // Or filter by specialty parameter if it was passed directly
-      else if (widget.specialty != null) {
-        filteredDoctors = filteredDoctors.where((doctor) {
-          return doctor["specialty"] == widget.specialty;
-        }).toList();
-      }
-      
-      // Then filter by search query if needed
-      if (_searchQuery.isNotEmpty) {
-        filteredDoctors = filteredDoctors.where((doctor) {
-          return doctor["name"].toLowerCase().contains(_searchQuery) ||
-                 doctor["specialty"].toLowerCase().contains(_searchQuery) ||
-                 (doctor["location"] != null && doctor["location"].toLowerCase().contains(_searchQuery));
-      }).toList();
-    }
-    
-    // Apply other filters if set
-    if (selectedRating == "4+") {
-        filteredDoctors = filteredDoctors.where((doctor) {
-          // Handle both string and numeric rating
-          var rating = doctor["rating"];
-          double ratingValue;
-          
-          if (rating is String) {
-            ratingValue = double.tryParse(rating) ?? 0.0;
-          } else if (rating is num) {
-            ratingValue = rating.toDouble();
-          } else {
-            ratingValue = 0.0;
-          }
-          
-          return ratingValue >= 4.0;
-      }).toList();
-    }
-    
-    if (selectedLocation != null) {
-        filteredDoctors = filteredDoctors.where((doctor) {
-          return doctor["location"] != null && doctor["location"].contains(selectedLocation!);
-      }).toList();
-    }
-    
-    if (showOnlineOnly) {
-        filteredDoctors = filteredDoctors.where((doctor) {
-          return doctor["available"] == true;
-      }).toList();
-    }
-    
-    if (sortByPriceLowToHigh) {
-        try {
-          filteredDoctors.sort((a, b) {
-            if (!a.containsKey("fee") || !b.containsKey("fee")) {
-              return 0;
-            }
-            String feeA = a["fee"].toString();
-            String feeB = b["fee"].toString();
-            
-            int priceA = int.parse(feeA.replaceAll(RegExp(r'[^0-9]'), ''));
-            int priceB = int.parse(feeB.replaceAll(RegExp(r'[^0-9]'), ''));
-        return priceA.compareTo(priceB);
-      });
-        } catch (e) {
-          print("Error sorting by price: $e");
-        }
-    }
-    });
+    ];
   }
 }
 

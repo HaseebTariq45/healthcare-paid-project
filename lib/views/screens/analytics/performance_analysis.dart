@@ -1,367 +1,124 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:healthcare/views/components/onboarding.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
+import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-class PerformanceAnalysis extends StatefulWidget {
+class PerformanceAnalysis extends StatelessWidget {
   const PerformanceAnalysis({super.key});
-
-  @override
-  State<PerformanceAnalysis> createState() => _PerformanceAnalysisState();
-}
-
-class _PerformanceAnalysisState extends State<PerformanceAnalysis> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    )..forward();
-  }
-  
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarOnboarding(
-        isBackButtonVisible: true,
-        text: "Performance Analysis",
-      ),
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          "Performance Analysis",
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader("Appointment Statistics"),
-            const SizedBox(height: 16),
-            _buildGraphCard(
-              "Appointment Trends",
-              "assets/images/appointments_graph.png",
-              0.0
-            ),
-            const SizedBox(height: 20),
-            _buildGraphCard(
-              "Cancelled Appointments Analysis", 
-              "assets/images/cancelled_appointments.png",
-              0.2
-            ),
-            const SizedBox(height: 24),
-            _buildSectionHeader("Performance Metrics"),
-            const SizedBox(height: 16),
-            _buildPerformanceMetricsRow(),
-            const SizedBox(height: 20),
-            _buildCompletionRatesCard(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(-0.5, 0),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _controller,
-        curve: Interval(0.0, 0.6, curve: Curves.easeOut),
-      )),
-      child: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGraphCard(String title, String assetPath, double animationDelay) {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.5),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _controller,
-        curve: Interval(0.1 + animationDelay, 0.7 + animationDelay, curve: Curves.easeOut),
-      )),
-      child: FadeTransition(
-        opacity: Tween<double>(
-          begin: 0.0,
-          end: 1.0,
-        ).animate(CurvedAnimation(
-          parent: _controller,
-          curve: Interval(0.1 + animationDelay, 0.7 + animationDelay, curve: Curves.easeOut),
-        )),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  assetPath,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPerformanceMetricsRow() {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.5),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _controller,
-        curve: Interval(0.3, 0.9, curve: Curves.easeOut),
-      )),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildRatingsCard(context),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildMetricCard(
-              "Response Time",
-              "12 min",
-              Colors.orange.shade700,
-              Colors.orange.shade100,
-              Icons.timer_outlined,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRatingsCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade600, Colors.blue.shade800],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.star_rounded, color: Colors.white, size: 24),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  "Ratings",
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Text(
-                "4.7",
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(width: 8),
-              Flexible(
-                child: _buildStarRating(4.7),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStarRating(double rating) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        return Icon(
-          index < rating ? Icons.star : Icons.star_border,
-          color: Colors.white,
-          size: 14,
-        );
-      }),
-    );
-  }
-
-  Widget _buildMetricCard(
-    String title,
-    String value,
-    Color color,
-    Color backgroundColor,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: backgroundColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompletionRatesCard() {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.5),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _controller,
-        curve: Interval(0.4, 0.95, curve: Curves.easeOut),
-      )),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+            // Performance summary card
+            _buildSummaryCard(),
+            
+            SizedBox(height: 24),
+            
+            // Quick Actions
             Text(
-              "Appointment Completion Rate",
+              "Manage Your Schedule",
               style: GoogleFonts.poppins(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 16),
+            
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildProgressIndicator(
-                  "Completed",
-                  0.82,
-                  Colors.green.shade500,
-                  "82%",
+                Expanded(
+                  child: _buildActionCard(
+                    title: "Manage Hospitals",
+                    subtitle: "Add or remove your hospitals",
+                    icon: LucideIcons.building2,
+                    backgroundColor: Color(0xFFE8EAF6),
+                    iconColor: Color(0xFF3F51B5),
+                    onTap: () {
+                      // Use cached navigation for better performance
+                      NavigationHelper.navigateToCachedScreen(
+                        context, 
+                        "ManageHospitalsScreen", 
+                        () => ManageHospitalsScreen()
+                      );
+                    },
+                  ),
                 ),
-                _buildProgressIndicator(
-                  "Cancelled",
-                  0.12,
-                  Colors.red.shade500,
-                  "12%",
+                SizedBox(width: 16),
+                Expanded(
+                  child: _buildActionCard(
+                    title: "Set Availability",
+                    subtitle: "Update your schedule",
+                    icon: LucideIcons.calendar,
+                    backgroundColor: Color(0xFFE0F2F1),
+                    iconColor: Color(0xFF009688),
+                    onTap: () {
+                      // Use cached navigation for better performance
+                      NavigationHelper.navigateToCachedScreen(
+                        context, 
+                        "DoctorAvailabilityScreen", 
+                        () => DoctorAvailabilityScreen()
+                      );
+                    },
+                  ),
+              ),
+            ],
+          ),
+            
+            SizedBox(height: 24),
+            
+            // Performance metrics section
+              Text(
+              "Performance Metrics",
+                style: GoogleFonts.poppins(
+                fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
-                _buildProgressIndicator(
-                  "No-show",
-                  0.06,
-                  Colors.orange.shade500,
-                  "6%",
-                ),
+              ),
+            SizedBox(height: 16),
+            
+            // Metrics cards
+            GridView.count(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.3,
+              children: [
+                _buildMetricCard("Appointments", "32", "This Month", Colors.blue.shade100, Colors.blue.shade700),
+                _buildMetricCard("Revenue", "₹34,500", "This Month", Colors.green.shade100, Colors.green.shade700),
+                _buildMetricCard("Rating", "4.8/5", "From 45 Reviews", Colors.amber.shade100, Colors.amber.shade700),
+                _buildMetricCard("Patients", "28", "New This Month", Colors.purple.shade100, Colors.purple.shade700),
               ],
             ),
           ],
@@ -370,54 +127,167 @@ class _PerformanceAnalysisState extends State<PerformanceAnalysis> with SingleTi
     );
   }
 
-  Widget _buildProgressIndicator(
-    String label,
-    double value,
-    Color color,
-    String percentage,
-  ) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 80,
-          width: 80,
-          child: Stack(
-            children: [
-              Center(
-                child: SizedBox(
-                  height: 80,
-                  width: 80,
-                  child: CircularProgressIndicator(
-                    value: value,
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                ),
-              ),
-              Center(
-                child: Text(
-                  percentage,
+  Widget _buildSummaryCard() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF3949AB),
+            Color(0xFF5C6BC0),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF3949AB).withOpacity(0.3),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Performance Summary",
                   style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+                    color: Colors.white,
               ),
+          ),
+          SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSummaryItem("98%", "On-time Rate"),
+              _buildSummaryItem("4.8", "Avg. Rating"),
+              _buildSummaryItem("95%", "Retention"),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(String value, String label) {
+    return Column(
+            children: [
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 4),
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
+            fontSize: 12,
+            color: Colors.white.withOpacity(0.9),
+            ),
           ),
+        ],
+    );
+  }
+  
+  Widget _buildActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(16),
         ),
-      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 24,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String value, String subtitle, Color backgroundColor, Color textColor) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            value,
+                  style: GoogleFonts.poppins(
+              fontSize: 22,
+                    fontWeight: FontWeight.bold,
+              color: textColor,
+              ),
+          ),
+          SizedBox(height: 4),
+        Text(
+            subtitle,
+          style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: textColor.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,9 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
-class AppointmentDetailsScreen extends StatelessWidget {
-  const AppointmentDetailsScreen({super.key});
+class AppointmentDetailsScreen extends StatefulWidget {
+  final String? appointmentId;
+  
+  const AppointmentDetailsScreen({
+    super.key,
+    this.appointmentId,
+  });
+
+  @override
+  State<AppointmentDetailsScreen> createState() => _AppointmentDetailsScreenState();
+}
+
+class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
+  bool _isLoading = true;
+  Map<String, dynamic> _appointmentData = {};
+  String _patientName = "Patient";
+  String _appointmentDate = "Upcoming";
+  String _appointmentTime = "";
+  String _patientInfo = "No additional information available.";
+  String _additionalNotes = "No notes available.";
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.appointmentId != null) {
+      _fetchAppointmentData();
+    } else {
+      // No appointment ID provided, show mock data
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchAppointmentData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      
+      // Fetch appointment data
+      final appointmentDoc = await firestore
+          .collection('appointments')
+          .doc(widget.appointmentId)
+          .get();
+      
+      if (!appointmentDoc.exists || appointmentDoc.data() == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      final data = appointmentDoc.data()!;
+      _appointmentData = data;
+      
+      // Format date and time
+      if (data.containsKey('date') && data['date'] is Timestamp) {
+        final DateTime appointmentDate = (data['date'] as Timestamp).toDate();
+        _appointmentDate = DateFormat('MM/dd/yyyy').format(appointmentDate);
+        _appointmentTime = DateFormat('h:mm a').format(appointmentDate);
+      }
+      
+      // Get patient information
+      if (data.containsKey('patientId')) {
+        final patientDoc = await firestore
+            .collection('users')
+            .doc(data['patientId'])
+            .get();
+        
+        if (patientDoc.exists && patientDoc.data() != null) {
+          final patientData = patientDoc.data()!;
+          _patientName = patientData['fullName'] ?? "Patient";
+          
+          // Build patient info from available fields
+          List<String> patientInfos = [];
+          
+          if (patientData.containsKey('phoneNumber')) {
+            patientInfos.add("Phone: ${patientData['phoneNumber']}");
+          }
+          
+          if (patientData.containsKey('email')) {
+            patientInfos.add("Email: ${patientData['email']}");
+          }
+          
+          if (patientData.containsKey('address')) {
+            patientInfos.add("Address: ${patientData['address']}");
+          }
+          
+          if (patientInfos.isNotEmpty) {
+            _patientInfo = patientInfos.join("\n");
+          }
+        }
+      }
+      
+      // Get notes if available
+      if (data.containsKey('notes') && data['notes'] != null && data['notes'].toString().isNotEmpty) {
+        _additionalNotes = data['notes'];
+      }
+      
+    } catch (e) {
+      print('Error fetching appointment data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +141,13 @@ class AppointmentDetailsScreen extends StatelessWidget {
       //   elevation: 0,
       // ),
       backgroundColor: Colors.white,
-      body: Padding(
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Color.fromRGBO(64, 124, 226, 1),
+              ),
+            )
+          : Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -53,7 +169,7 @@ class AppointmentDetailsScreen extends StatelessWidget {
                   children: [
                     Center(
                       child: Text(
-                        "Appointment with Hania",
+                        "Appointment with $_patientName",
                         style: GoogleFonts.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -65,9 +181,9 @@ class AppointmentDetailsScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildInfoButton(Icons.calendar_today, "1/01/2025"),
+                        _buildInfoButton(Icons.calendar_today, _appointmentDate),
                         const SizedBox(width: 12),
-                        _buildInfoButton(Icons.access_time, "2.00 PM"),
+                        _buildInfoButton(Icons.access_time, _appointmentTime),
                       ],
                     ),
                     const SizedBox(height: 30),
@@ -81,7 +197,7 @@ class AppointmentDetailsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "Lorem ipsum dolor sit amet, consectetur adipi elit, sed do eiusmod tempor incididunt ut laore et dolore magna aliqua. Ut enim ad minim veniam... ",
+                      _patientInfo,
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: Colors.black54,
@@ -107,7 +223,7 @@ class AppointmentDetailsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "Lorem ipsum dolor sit amet, consectetur adipi elit, sed do eiusmod tempor incididunt ut laore et dolore magna aliqua. Ut enim ad minim veniam...",
+                      _additionalNotes,
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         color: Colors.black54,
@@ -129,15 +245,43 @@ class AppointmentDetailsScreen extends StatelessWidget {
                         _buildActionButton(
                           "Copy Invite",
                           Color.fromRGBO(64, 124, 226, 1),
+                          () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Invitation link copied!'),
+                                backgroundColor: Color.fromRGBO(64, 124, 226, 1),
+                              ),
+                            );
+                          },
                         ),
-                        _buildActionButton("Reschedule", Colors.red),
+                        _buildActionButton(
+                          "Reschedule", 
+                          Colors.red,
+                          () {
+                            // Reschedule appointment
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Reschedule functionality not implemented yet'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Join session
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Video call session not implemented yet'),
+                              backgroundColor: Color.fromRGBO(64, 124, 226, 1),
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color.fromRGBO(64, 124, 226, 1),
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -184,12 +328,12 @@ class AppointmentDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(String label, Color color) {
+  Widget _buildActionButton(String label, Color color, VoidCallback onPressed) {
     return SizedBox(
       width: 140,
       height: 40,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

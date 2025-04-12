@@ -10,6 +10,7 @@ import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.
 import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String text;
@@ -195,26 +196,33 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
 
   Future<Map<String, dynamic>> _registerNewUser(String uid) async {
     if (widget.userType == null || widget.fullName == null) {
+      print('***** REGISTER NEW USER - MISSING USER INFO *****');
       return {
         'success': false,
         'message': 'Missing user information'
       };
     }
     
+    print('***** REGISTER NEW USER - TYPE FROM WIDGET: ${widget.userType} *****');
+    
     // Convert string user type to enum
     UserRole role;
     switch (widget.userType) {
       case 'Patient':
         role = UserRole.patient;
+        print('***** REGISTER NEW USER - MAPPED TO PATIENT ROLE *****');
         break;
       case 'Doctor':
         role = UserRole.doctor;
+        print('***** REGISTER NEW USER - MAPPED TO DOCTOR ROLE *****');
         break;
       case 'Lady Health Worker':
         role = UserRole.ladyHealthWorker;
+        print('***** REGISTER NEW USER - MAPPED TO LHW ROLE *****');
         break;
       default:
         role = UserRole.patient;
+        print('***** REGISTER NEW USER - DEFAULTED TO PATIENT ROLE *****');
     }
     
     // Register user in Firestore
@@ -227,94 +235,31 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   }
 
   Future<void> _navigateBasedOnUserRole() async {
-    final userRole = await _authService.getUserRole();
+    // Use the simplified direct navigation method
     final isProfileComplete = await _authService.isProfileComplete();
     
-    setState(() {
-      _isLoading = false;
-    });
-    
-    switch (userRole) {
-      case UserRole.patient:
-        if (!isProfileComplete) {
-          // Navigate to patient profile completion
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CompleteProfilePatient1Screen(),
-            ),
-            (route) => false,
-          );
-        } else {
-          // Navigate to patient dashboard
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarPatientScreen(
-                key: BottomNavigationBarPatientScreen.navigatorKey,
-                profileStatus: "complete"
-              ),
-            ),
-            (route) => false,
-          );
-        }
-        break;
-        
-      case UserRole.doctor:
-        if (!isProfileComplete) {
-          // Navigate to doctor profile completion
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DoctorProfilePage1Screen(),
-            ),
-            (route) => false,
-          );
-        } else {
-          // Navigate to doctor dashboard
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarScreen(
-                key: BottomNavigationBarScreen.navigatorKey,
-                profileStatus: "complete"
-              ),
-            ),
-            (route) => false,
-          );
-        }
-        break;
-        
-      case UserRole.ladyHealthWorker:
-        if (!isProfileComplete) {
-          // Navigate to LHW profile completion
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CompleteProfilePatient1Screen(),
-            ),
-            (route) => false,
-          );
-        } else {
-          // Navigate to LHW dashboard
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarScreen(
-                key: BottomNavigationBarScreen.navigatorKey,
-                profileStatus: "complete"
-              ),
-            ),
-            (route) => false,
-          );
-        }
-        break;
-        
-      default:
-        // Unknown user role - should not happen if registration was successful
-        setState(() {
-          _errorMessage = 'Unknown user type. Please try again.';
-        });
+    try {
+      // Get the appropriate screen widget based on role
+      final navigationScreen = await _authService.getNavigationScreenForUser(
+        isProfileComplete: isProfileComplete
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Navigate to the screen returned by our helper
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => navigationScreen),
+        (route) => false,
+      );
+    } catch (e) {
+      print('Error navigating based on user role: $e');
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Error determining user type. Please try again.';
+      });
     }
   }
 

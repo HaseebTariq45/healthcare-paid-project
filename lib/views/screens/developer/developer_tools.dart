@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/services/seed_data_service.dart';
+import 'package:healthcare/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DeveloperToolsScreen extends StatefulWidget {
   const DeveloperToolsScreen({super.key});
@@ -11,9 +14,102 @@ class DeveloperToolsScreen extends StatefulWidget {
 
 class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
   final SeedDataService _seedService = SeedDataService();
+  final AuthService _authService = AuthService();
+  final TextEditingController _phoneController = TextEditingController();
+  String _userInfo = 'No user info yet';
+  String? _currentRole;
+  String? _userId;
   bool _isLoading = false;
   String? _message;
   bool _isError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserInfo();
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadCurrentUserInfo() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final userData = await _authService.getUserData();
+        final userRole = await _authService.getUserRole();
+        setState(() {
+          _userId = currentUser.uid;
+          _userInfo = 'Current User: ${userData?['fullName'] ?? 'Unknown'}\n'
+              'Phone: ${userData?['phoneNumber'] ?? 'Unknown'}\n'
+              'Role: ${userData?['role'] ?? 'Unknown'}\n'
+              'Role from enum: $userRole';
+          _currentRole = userData?['role'];
+        });
+      } else {
+        setState(() {
+          _userInfo = 'No user currently logged in';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _userInfo = 'Error loading user info: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _changeRole(String newRole) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_userId != null) {
+        // Update the role in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_userId)
+            .update({
+          'role': newRole,
+        });
+
+        // Clear role cache
+        await _authService.clearRoleCache();
+
+        // Reload user info
+        await _loadCurrentUserInfo();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Role changed to $newRole successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error changing role: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,6 +277,62 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
                     ],
                   ),
                 ),
+
+                SizedBox(height: 24),
+                
+                // User Information Card
+                Card(
+                  elevation: 3,
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current User Information',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          _userInfo,
+                          style: GoogleFonts.poppins(fontSize: 14),
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildRoleButton('patient'),
+                            _buildRoleButton('doctor'),
+                            _buildRoleButton('ladyhealthworker'),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            await _authService.clearRoleCache();
+                            await _loadCurrentUserInfo();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Role cache cleared!'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text('Clear Role Cache'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            minimumSize: Size(double.infinity, 50),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -291,6 +443,25 @@ class _DeveloperToolsScreenState extends State<DeveloperToolsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoleButton(String role) {
+    final bool isCurrentRole = _currentRole == role;
+    return ElevatedButton(
+      onPressed: isCurrentRole ? null : () => _changeRole(role),
+      child: Text(
+        role.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isCurrentRole ? Colors.grey : Color(0xFF3366CC),
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.green,
+        disabledForegroundColor: Colors.white,
       ),
     );
   }
