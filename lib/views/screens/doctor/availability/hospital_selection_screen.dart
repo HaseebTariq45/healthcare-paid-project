@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/utils/navigation_helper.dart';
 
 class HospitalSelectionScreen extends StatefulWidget {
   final List<String> selectedHospitals;
@@ -71,6 +72,23 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
 
   String _getFullHospitalName(Map<String, dynamic> hospital) {
     return "${hospital['name']}, ${hospital['location']}";
+  }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.poppins(),
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        margin: EdgeInsets.all(10),
+      ),
+    );
   }
 
   @override
@@ -352,18 +370,224 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
     );
   }
 
-  void _saveSelection() {
+  Future<void> _saveAvailability() async {
+    if (_selectedHospitalId == null || _selectedHospital == null) {
+      _showErrorMessage("Please select a hospital");
+      return;
+    }
+    
+    List<String> selectedTimes = [];
+    _selectedTimeSlots.forEach((time, isSelected) {
+      if (isSelected) selectedTimes.add(time);
+    });
+    
+    if (selectedTimes.isEmpty) {
+      _showErrorMessage("Please select at least one time slot");
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
     });
     
-    // Simulate network delay
-    Future.delayed(Duration(milliseconds: 800), () {
+    try {
+      final result = await _availabilityService.saveDoctorAvailability(
+        hospitalId: _selectedHospitalId!,
+        hospitalName: _selectedHospital!,
+        date: _selectedDay,
+        timeSlots: selectedTimes,
+      );
+      
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });
       
-      Navigator.pop(context, _selectedHospitals);
+      if (result['success']) {
+        final dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
+        if (!_doctorSchedule.containsKey(_selectedHospital)) {
+          _doctorSchedule[_selectedHospital!] = {};
+        }
+        _doctorSchedule[_selectedHospital!]![dateStr] = selectedTimes;
+        
+        // First show the success dialog
+        bool? shouldNavigate = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF4CAF50).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle,
+                      color: Color(0xFF4CAF50),
+                      size: 40,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Availability Updated',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Your availability has been successfully updated.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(true);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF2B8FEB),
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Done',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              contentPadding: EdgeInsets.all(24),
+            );
+          },
+        );
+
+        // Then navigate back if dialog was confirmed
+        if (shouldNavigate == true && mounted) {
+          Navigator.of(context).pop();
+        }
+      } else {
+        _showErrorMessage(result['message']);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorMessage("Failed to save availability. Please try again.");
+    }
+  }
+
+  void _saveSelection() async {
+    setState(() {
+      _isLoading = true;
     });
+    
+    // Simulate network delay for a more realistic experience
+    await Future.delayed(Duration(milliseconds: 800));
+    
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = false;
+    });
+    
+    // Show success dialog
+    bool? shouldReturn = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Color(0xFF4CAF50).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF4CAF50),
+                  size: 40,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Hospitals Updated',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Your hospital selection has been saved successfully.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(true);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF2B8FEB),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Done',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          contentPadding: EdgeInsets.all(24),
+        );
+      },
+    );
+    
+    // Return to previous screen if confirmed
+    if (shouldReturn == true && mounted) {
+      Navigator.pop(context, _selectedHospitals);
+    }
   }
 } 

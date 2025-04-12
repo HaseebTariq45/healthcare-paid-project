@@ -986,6 +986,12 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
         timeSlots: selectedTimes,
       );
       
+      if (!mounted) return;
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
       if (result['success']) {
         // Update local cache
         final dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
@@ -996,29 +1002,91 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
         
         _doctorSchedule[_selectedHospital!]![dateStr] = selectedTimes;
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Availability saved successfully',
-              style: GoogleFonts.poppins(),
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            margin: EdgeInsets.all(10),
-          ),
+        // Show success dialog
+        bool? shouldReturn = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF4CAF50).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle,
+                      color: Color(0xFF4CAF50),
+                      size: 40,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Availability Updated',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Your availability has been successfully updated.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(true);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF2B8FEB),
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Done',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              contentPadding: EdgeInsets.all(24),
+            );
+          },
         );
+        
+        // Navigate back to Analytics screen if dialog was confirmed
+        if (shouldReturn == true && mounted) {
+          Navigator.of(context).pop();
+        }
       } else {
         _showErrorMessage(result['message']);
       }
     } catch (e) {
-      _showErrorMessage("Failed to save availability. Please try again.");
-    } finally {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
+      _showErrorMessage("Failed to save availability. Please try again.");
     }
   }
 
