@@ -102,16 +102,50 @@ class FinanceRepository {
     }
 
     try {
-      List<FinancialTransaction> transactions = [];
-
-      // Get transactions from appointments collection
+      // Use a map with appointmentId as key to prevent duplicates
+      Map<String, FinancialTransaction> uniqueTransactions = {};
+      
+      // First, collect transactions from the transactions collection
+      final transactionsSnapshot = await _firestore
+          .collection('transactions')
+          .where('userId', isEqualTo: currentUserId)
+          .orderBy('date', descending: true)
+          .get();
+      
+      // Add transactions from transactions collection first
+      for (var doc in transactionsSnapshot.docs) {
+        final data = doc.data();
+        final transaction = FinancialTransaction.fromFirestore(doc);
+        
+        // If transaction has an appointmentId, use it as key
+        if (data['appointmentId'] != null) {
+          String key = 'appointment_${data['appointmentId']}';
+          uniqueTransactions[key] = transaction;
+        } else {
+          // Otherwise use the transaction ID as key
+          uniqueTransactions[doc.id] = transaction;
+        }
+      }
+      
+      // Now get transactions from appointments collection to fill in any gaps
       final appointmentsSnapshot = await _firestore
           .collection('appointments')
           .where('patientId', isEqualTo: currentUserId)
           .get();
 
       for (var doc in appointmentsSnapshot.docs) {
+        // Skip if this appointment already has a transaction
+        String appointmentKey = 'appointment_${doc.id}';
+        if (uniqueTransactions.containsKey(appointmentKey)) {
+          continue;
+        }
+        
         final appointmentData = doc.data();
+        
+        // Check if appointment has hasFinancialTransaction flag to avoid duplicates
+        if (appointmentData['hasFinancialTransaction'] == true) {
+          continue;
+        }
         
         // Include appointments with any payment information
         if (appointmentData['paymentStatus'] != null || 
@@ -177,24 +211,12 @@ class FinanceRepository {
             paymentMethod: appointmentData['paymentMethod'],
           );
           
-          transactions.add(transaction);
+          uniqueTransactions[appointmentKey] = transaction;
         }
       }
       
-      // Also check transactions collection for direct transactions
-      final transactionsSnapshot = await _firestore
-          .collection('transactions')
-          .where('patientId', isEqualTo: currentUserId)
-          .orderBy('date', descending: true)
-          .get();
-      
-      // Add any additional transactions found
-      for (var doc in transactionsSnapshot.docs) {
-        if (!transactions.any((t) => t.id == doc.id)) {
-          final transaction = FinancialTransaction.fromFirestore(doc);
-          transactions.add(transaction);
-        }
-      }
+      // Convert map values to list
+      List<FinancialTransaction> transactions = uniqueTransactions.values.toList();
       
       // Sort transactions by date (most recent first)
       transactions.sort((a, b) => b.date.compareTo(a.date));

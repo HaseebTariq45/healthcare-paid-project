@@ -52,15 +52,19 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
               'date': widget.appointmentDetails?['date'],
               'time': widget.appointmentDetails?['time'],
               'location': widget.appointmentDetails?['location'],
+              'hospitalName': widget.appointmentDetails?['hospitalName'] ?? 'Unknown Hospital',
+              'hospitalId': widget.appointmentDetails?['hospitalId'],
               'fee': amountValue,
               'displayFee': widget.appointmentDetails?['displayFee'],
               'status': 'confirmed',
               'paymentStatus': 'completed',
               'paymentMethod': 'EasyPaisa',
               'paymentDate': FieldValue.serverTimestamp(),
+              'bookingDate': FieldValue.serverTimestamp(),
               'createdAt': FieldValue.serverTimestamp(),
               'notes': widget.appointmentDetails?['notes'],
               'isPanelConsultation': widget.appointmentDetails?['isPanelConsultation'] ?? false,
+              'hasFinancialTransaction': true,
             });
             
             // 2. Save the transaction to Firestore
@@ -77,7 +81,7 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
               'status': 'completed',
               'paymentMethod': 'EasyPaisa',
               'doctorName': widget.appointmentDetails?['doctorName'],
-              'hospitalName': widget.appointmentDetails?['location'],
+              'hospitalName': widget.appointmentDetails?['hospitalName'],
               'createdAt': Timestamp.now(),
               'updatedAt': Timestamp.now(),
             });

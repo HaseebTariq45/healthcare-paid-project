@@ -111,7 +111,32 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
       final transactions = await repository.getUserTransactions();
       final summary = await repository.getFinancialSummary();
       
+      // Log transaction details to help debug
       print('Final transaction count: ${transactions.length}');
+      Map<String, int> transactionCountByType = {};
+      for (var tx in transactions) {
+        var type = tx.type.toString();
+        transactionCountByType[type] = (transactionCountByType[type] ?? 0) + 1;
+      }
+      print('Transaction counts by type: $transactionCountByType');
+      
+      // Check for possible duplicates
+      Map<String, List<FinancialTransaction>> appointmentTransactions = {};
+      for (var tx in transactions) {
+        if (tx.appointmentId != null) {
+          if (!appointmentTransactions.containsKey(tx.appointmentId)) {
+            appointmentTransactions[tx.appointmentId!] = [];
+          }
+          appointmentTransactions[tx.appointmentId]!.add(tx);
+        }
+      }
+      
+      // Log any potential duplicate transactions
+      appointmentTransactions.forEach((appointmentId, txs) {
+        if (txs.length > 1) {
+          print('Warning: Multiple transactions for appointment $appointmentId: ${txs.length}');
+        }
+      });
       
       setState(() {
         _transactions = transactions;

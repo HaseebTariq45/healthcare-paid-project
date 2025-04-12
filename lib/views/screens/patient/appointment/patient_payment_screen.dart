@@ -172,7 +172,7 @@ class _PatientPaymentScreenState extends State<PatientPaymentScreen> {
           _buildSummaryRow(
             LucideIcons.mapPin,
             "Location",
-            widget.appointmentDetails['location'] ?? 'Not selected',
+            widget.appointmentDetails['hospitalName'] ?? widget.appointmentDetails['location'] ?? 'Not selected',
           ),
           SizedBox(height: 12),
           _buildSummaryRow(

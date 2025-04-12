@@ -209,16 +209,21 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
             'date': widget.appointmentDetails?['date'],
             'time': widget.appointmentDetails?['time'],
             'location': widget.appointmentDetails?['location'],
+            'hospitalName': widget.appointmentDetails?['hospitalName'] ?? 'Unknown Hospital',
+            'hospitalId': widget.appointmentDetails?['hospitalId'],
             'fee': amountValue,
             'displayFee': widget.appointmentDetails?['displayFee'],
             'status': 'confirmed',
             'paymentStatus': 'completed',
-            'paymentMethod': 'Card',
+            'paymentMethod': 'Credit Card',
             'cardType': _getCardType(_cardNumberController.text),
             'paymentDate': FieldValue.serverTimestamp(),
+            'bookingDate': FieldValue.serverTimestamp(),
             'createdAt': FieldValue.serverTimestamp(),
-            'notes': widget.appointmentDetails?['notes'],
+            'notes': widget.appointmentDetails?['notes'] ?? '',
             'isPanelConsultation': widget.appointmentDetails?['isPanelConsultation'] ?? false,
+            // Store transaction reference to prevent duplicate entries
+            'hasFinancialTransaction': true,
           });
           
           // 2. Save the transaction to Firestore
@@ -235,7 +240,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
             'status': 'completed',
             'paymentMethod': 'Card',
             'doctorName': widget.appointmentDetails?['doctorName'],
-            'hospitalName': widget.appointmentDetails?['location'],
+            'hospitalName': widget.appointmentDetails?['hospitalName'],
             'cardType': _getCardType(_cardNumberController.text),
             'createdAt': Timestamp.now(),
             'updatedAt': Timestamp.now(),

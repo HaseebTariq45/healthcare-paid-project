@@ -44,16 +44,38 @@ class FinancialRepository {
         query = query.where('type', isEqualTo: type.value);
       }
       
+      // Add logic to deduplicate transactions based on appointmentId
       return query
         .orderBy('date', descending: descending)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-            .map((doc) => FinancialTransaction.fromFirestore(doc))
-            .toList();
+          // Use a map to deduplicate by appointmentId
+          final Map<String, FinancialTransaction> uniqueTransactions = {};
+          
+          for (var doc in snapshot.docs) {
+            final transaction = FinancialTransaction.fromFirestore(doc);
+            final data = doc.data() as Map<String, dynamic>;
+            
+            // If this is a payment transaction with an appointmentId
+            if (data.containsKey('appointmentId') && data['appointmentId'] != null) {
+              final appointmentId = data['appointmentId'].toString();
+              
+              // Only add if we haven't seen this appointmentId before
+              if (!uniqueTransactions.containsKey('appointment_$appointmentId')) {
+                uniqueTransactions['appointment_$appointmentId'] = transaction;
+              }
+            } else {
+              // For transactions without appointmentId, use their own ID as key
+              uniqueTransactions[transaction.id] = transaction;
+            }
+          }
+          
+          // Return the deduplicated list
+          return uniqueTransactions.values.toList();
         });
     } catch (e) {
+      print('Error getting transactions: $e');
       // Return empty stream in case of error
       return Stream.value([]);
     }
@@ -223,6 +245,31 @@ class FinancialRepository {
         });
     } catch (e) {
       return Stream.value([]);
+    }
+  }
+
+  /// Get transactions of a specific type for the current user
+  Stream<List<FinancialTransaction>> getTransactionsByType(TransactionType type, {int limit = 50}) {
+    return getTransactions(type: type, limit: limit);
+  }
+
+  /// Check if an appointment has already been processed for financial transactions
+  Future<bool> hasExistingTransactionForAppointment(String appointmentId) async {
+    if (appointmentId.isEmpty) return false;
+    
+    try {
+      final userId = _getCurrentUserId();
+      
+      final querySnapshot = await _transactionsCollection
+          .where('userId', isEqualTo: userId)
+          .where('appointmentId', isEqualTo: appointmentId)
+          .limit(1)
+          .get();
+          
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking for existing transaction: $e');
+      return false;
     }
   }
 } 

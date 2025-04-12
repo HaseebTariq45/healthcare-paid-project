@@ -63,19 +63,38 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
     _appointmentData = details;
     
     // Set appointment date and time
-    _appointmentDate = details['date'] ?? "Upcoming";
-    _appointmentTime = details['time'] ?? "";
+    if (details['date'] != null && details['time'] != null) {
+      // Use the date and time directly from the appointment
+      _appointmentDate = details['date'];
+      _appointmentTime = details['time'];
+    } else if (details.containsKey('appointmentDate') && details['appointmentDate'] is Timestamp) {
+      // Fallback to appointmentDate if date/time not available
+      final DateTime appointmentDate = (details['appointmentDate'] as Timestamp).toDate();
+      _appointmentDate = DateFormat('MMM dd, yyyy').format(appointmentDate);
+      _appointmentTime = DateFormat('h:mm a').format(appointmentDate);
+    } else {
+      // Default values if no date/time information available
+      _appointmentDate = "Not specified";
+      _appointmentTime = "Not specified";
+    }
     
     // Set doctor info
     _doctorName = details['doctorName'] ?? "Unknown Doctor";
-    _doctorSpecialty = details['specialty'] ?? "General";
+    _doctorSpecialty = details['specialty'] ?? details['doctorSpecialty'] ?? "General";
     _doctorImage = details['doctorImage'] ?? 'assets/images/User.png';
     
-    // Set hospital name
+    // Set hospital name - use direct value without fallback
     _hospitalName = details['hospitalName'] ?? "Unknown Hospital";
     
     // Set payment details
-    _fee = details['fee']?.toString() ?? "0";
+    if (details.containsKey('fee') && details['fee'] is num) {
+      _fee = "Rs. ${details['fee']}";
+    } else if (details.containsKey('displayFee')) {
+      _fee = details['displayFee'];
+    } else {
+      _fee = details['fee']?.toString() ?? "0";
+    }
+    
     _paymentStatus = details['paymentStatus'] ?? "Pending";
     _paymentMethod = details['paymentMethod'] ?? "Not specified";
     
@@ -139,41 +158,71 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
         'id': appointmentDoc.id,
       };
       
-      // Format date and time
-      if (data.containsKey('date') && data['date'] is Timestamp) {
-        final DateTime appointmentDate = (data['date'] as Timestamp).toDate();
-        appointmentDetails['date'] = DateFormat('MM/dd/yyyy').format(appointmentDate);
-        appointmentDetails['time'] = DateFormat('h:mm a').format(appointmentDate);
+      // Copy all fields from the document
+      appointmentDetails.addAll(data);
+      
+      // Format date and time if not already handled
+      if (data.containsKey('appointmentDate')) {
+        appointmentDetails['appointmentDate'] = data['appointmentDate'];
+      } else if (data.containsKey('date') && data['date'] is Timestamp) {
+        appointmentDetails['date'] = data['date'];
+      } else if (data.containsKey('date') && data['date'] is String) {
+        appointmentDetails['date'] = data['date'];
       } else {
         appointmentDetails['date'] = "Unknown";
+      }
+      
+      if (data.containsKey('time') && data['time'] is String) {
+        appointmentDetails['time'] = data['time'];
+      } else {
         appointmentDetails['time'] = "Unknown";
       }
       
-      // Copy basic fields
-      if (data.containsKey('status')) appointmentDetails['status'] = data['status'];
-      if (data.containsKey('hospitalName')) appointmentDetails['hospitalName'] = data['hospitalName'];
-      if (data.containsKey('fee')) appointmentDetails['fee'] = data['fee'];
-      if (data.containsKey('paymentStatus')) appointmentDetails['paymentStatus'] = data['paymentStatus'];
-      if (data.containsKey('paymentMethod')) appointmentDetails['paymentMethod'] = data['paymentMethod'];
-      if (data.containsKey('reason')) appointmentDetails['reason'] = data['reason'];
-      if (data.containsKey('notes')) appointmentDetails['notes'] = data['notes'];
-      if (data.containsKey('cancellationReason')) appointmentDetails['cancellationReason'] = data['cancellationReason'];
+      // Ensure hospital name is set
+      if (!data.containsKey('hospitalName') || data['hospitalName'] == null || data['hospitalName'].toString().isEmpty) {
+        if (data.containsKey('location') && data['location'] != null) {
+          appointmentDetails['hospitalName'] = data['location'];
+        } else {
+          appointmentDetails['hospitalName'] = "Unknown Hospital";
+        }
+      }
+      
+      // Ensure doctor specialty is set
+      if (!data.containsKey('specialty') && data.containsKey('doctorSpecialty')) {
+        appointmentDetails['specialty'] = data['doctorSpecialty'];
+      }
+      
+      // If isPanelConsultation exists, set type accordingly
       if (data.containsKey('isPanelConsultation')) {
         appointmentDetails['type'] = data['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation';
       }
       
-      // Get doctor information
-      if (data.containsKey('doctorId')) {
-        final doctorDoc = await firestore
-            .collection('doctors')
-            .doc(data['doctorId'])
-            .get();
+      // Get doctor information if doctorId is available but name/specialty is missing
+      if (data.containsKey('doctorId') && 
+          (!data.containsKey('doctorName') || data['doctorName'] == null || 
+           !data.containsKey('specialty') || data['specialty'] == null)) {
         
-        if (doctorDoc.exists && doctorDoc.data() != null) {
-          final doctorData = doctorDoc.data() as Map<String, dynamic>;
-          appointmentDetails['doctorName'] = doctorData['fullName'] ?? doctorData['name'] ?? "Unknown Doctor";
-          appointmentDetails['specialty'] = doctorData['specialty'] ?? "General";
-          appointmentDetails['doctorImage'] = doctorData['profileImageUrl'] ?? 'assets/images/User.png';
+        try {
+          final doctorDoc = await firestore
+              .collection('doctors')
+              .doc(data['doctorId'])
+              .get();
+          
+          if (doctorDoc.exists && doctorDoc.data() != null) {
+            final doctorData = doctorDoc.data() as Map<String, dynamic>;
+            
+            if (!data.containsKey('doctorName') || data['doctorName'] == null) {
+              appointmentDetails['doctorName'] = doctorData['fullName'] ?? doctorData['name'] ?? "Unknown Doctor";
+            }
+            
+            if (!data.containsKey('specialty') && !data.containsKey('doctorSpecialty')) {
+              appointmentDetails['specialty'] = doctorData['specialty'] ?? "General";
+            }
+            
+            appointmentDetails['doctorImage'] = doctorData['profileImageUrl'] ?? 'assets/images/User.png';
+          }
+        } catch (e) {
+          print('Error fetching doctor information: $e');
         }
       }
       

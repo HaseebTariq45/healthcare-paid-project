@@ -570,16 +570,22 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 }
                 
                 String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
-                String formattedTime = "${appointmentDate.hour}:${appointmentDate.minute.toString().padLeft(2, '0')}";
+                String formattedTime = "${appointmentDate.hour.toString().padLeft(2, '0')}:${appointmentDate.minute.toString().padLeft(2, '0')}";
+                
+                // Convert to 12-hour format for display
+                String period = appointmentDate.hour >= 12 ? "PM" : "AM";
+                int displayHour = appointmentDate.hour > 12 ? appointmentDate.hour - 12 : appointmentDate.hour;
+                displayHour = displayHour == 0 ? 12 : displayHour; // Handle midnight (0:00) as 12 AM
+                String formattedTimeDisplay = "$displayHour:${appointmentDate.minute.toString().padLeft(2, '0')} $period";
                 
                 appointments.add({
                   'id': appointmentDoc.id,
-                  'date': formattedDate,
-                  'time': formattedTime,
+                  'date': appointmentData['date'] ?? formattedDate,
+                  'time': appointmentData['time'] ?? formattedTimeDisplay,
                   'status': appointmentData['status'] ?? 'pending',
                   'doctorName': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
                   'specialty': doctorData['specialty'] ?? 'General',
-                  'hospitalName': appointmentData['hospitalName'] ?? doctorData['hospitalName'] ?? 'Unknown Hospital',
+                  'hospitalName': appointmentData['hospitalName'] ?? 'Unknown Hospital',
                   'reason': appointmentData['reason'] ?? 'Consultation',
                   'doctorImage': doctorData['profileImageUrl'] ?? 'assets/images/User.png',
                   'fee': appointmentData['fee']?.toString() ?? '0',
@@ -1434,14 +1440,30 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     children: [
                       _buildAppointmentDetail(
                         LucideIcons.calendar,
-                        "Date",
+                        "Appointment Date",
                         appointment['date'],
                       ),
                       SizedBox(width: 15),
                       _buildAppointmentDetail(
                         LucideIcons.clock,
-                        "Time",
+                        "Appointment Time",
                         appointment['time'],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildAppointmentDetail(
+                        LucideIcons.building2,
+                        "Hospital",
+                        appointment['hospitalName'] ?? "Unknown Hospital",
+                      ),
+                      SizedBox(width: 15),
+                      _buildAppointmentDetail(
+                        LucideIcons.tag,
+                        "Type",
+                        appointment['type'],
                       ),
                     ],
                   ),
@@ -1451,7 +1473,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            // Join session
+                            // Navigate to appointment details
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AppointmentDetailsScreen(
+                                  appointmentDetails: appointment,
+                                ),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFF3366CC),
@@ -1463,14 +1493,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                             elevation: 3,
                             shadowColor: Color(0xFF3366CC).withOpacity(0.3),
                           ),
-                          icon: Icon(LucideIcons.video, size: 18),
+                          icon: Icon(LucideIcons.building2, size: 18),
                           label: Text(
-                            "Join Session",
+                            "View Details",
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.3,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),

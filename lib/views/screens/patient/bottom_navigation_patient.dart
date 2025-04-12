@@ -9,23 +9,27 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
   final bool suppressProfilePrompt;
   final int profileCompletionPercentage;
 
-  // Add static key to access navigator state
-  static final GlobalKey<_BottomNavigationBarPatientScreenState> navigatorKey = GlobalKey<_BottomNavigationBarPatientScreenState>();
+  // Singleton pattern for the key to prevent duplicates
+  static final GlobalKey<_BottomNavigationBarPatientScreenState> _navigatorKey = 
+      GlobalKey<_BottomNavigationBarPatientScreenState>();
+  
+  // Getter for the key that ensures we only use one instance
+  static GlobalKey<_BottomNavigationBarPatientScreenState> get navigatorKey => _navigatorKey;
 
   const BottomNavigationBarPatientScreen({
-    super.key, 
+    Key? key, 
     required this.profileStatus,
     this.suppressProfilePrompt = false,
     this.profileCompletionPercentage = 0,
-  });
+  }) : super(key: key);  // Use the passed key, not the static navigatorKey
 
   @override
   State<BottomNavigationBarPatientScreen> createState() => _BottomNavigationBarPatientScreenState();
 
   // Static method that can be called from anywhere to change the active tab
   static void navigateTo(BuildContext context, int index) {
-    if (navigatorKey.currentState != null) {
-      navigatorKey.currentState!._onItemTapped(index);
+    if (_navigatorKey.currentState != null) {
+      _navigatorKey.currentState!._onItemTapped(index);
     } else {
       // Fallback if navigatorKey isn't available
       Navigator.pushReplacement(

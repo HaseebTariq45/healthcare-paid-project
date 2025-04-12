@@ -88,15 +88,20 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
               'date': widget.appointmentDetails?['date'],
               'time': widget.appointmentDetails?['time'],
               'location': widget.appointmentDetails?['location'],
+              'hospitalName': widget.appointmentDetails?['hospitalName'] ?? 'Unknown Hospital',
+              'hospitalId': widget.appointmentDetails?['hospitalId'],
               'fee': amountValue,
               'displayFee': widget.appointmentDetails?['displayFee'],
               'status': 'confirmed',
               'paymentStatus': 'completed',
               'paymentMethod': 'JazzCash',
               'paymentDate': FieldValue.serverTimestamp(),
+              'bookingDate': FieldValue.serverTimestamp(),
               'createdAt': FieldValue.serverTimestamp(),
               'notes': widget.appointmentDetails?['notes'],
               'isPanelConsultation': widget.appointmentDetails?['isPanelConsultation'] ?? false,
+              // Store transaction reference to prevent duplicate entries
+              'hasFinancialTransaction': true,
             });
             
             // 2. Save the transaction to Firestore
@@ -113,7 +118,7 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
               'status': 'completed',
               'paymentMethod': 'JazzCash',
               'doctorName': widget.appointmentDetails?['doctorName'],
-              'hospitalName': widget.appointmentDetails?['location'],
+              'hospitalName': widget.appointmentDetails?['hospitalName'],
               'createdAt': Timestamp.now(),
               'updatedAt': Timestamp.now(),
             });

@@ -192,6 +192,33 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         timeSlots = List<String>.from(availabilityData['timeSlots'] ?? []);
       }
       
+      // Now check for already booked slots
+      final bookedSlotsQuery = await _firestore
+          .collection('appointment_slots')
+          .where('isBooked', isEqualTo: true)
+          .get();
+
+      List<String> bookedSlots = [];
+      
+      for (var doc in bookedSlotsQuery.docs) {
+        final slotId = doc.id; // Format: hospitalId_date_time
+        
+        // Check if this slot belongs to the current hospital and date
+        if (slotId.startsWith('${hospitalId}_${dateStr}_')) {
+          // Extract the time part from the slotId (everything after the last underscore)
+          final lastUnderscoreIndex = slotId.lastIndexOf('_');
+          if (lastUnderscoreIndex != -1 && lastUnderscoreIndex < slotId.length - 1) {
+            final timeSlot = slotId.substring(lastUnderscoreIndex + 1);
+            bookedSlots.add(timeSlot);
+          }
+        }
+      }
+      
+      // Remove booked slots from available slots
+      for (var bookedSlot in bookedSlots) {
+        timeSlots.remove(bookedSlot);
+      }
+      
       // Cache the result
       _dateTimeSlots['$hospitalId-$dateStr'] = timeSlots;
       
@@ -435,213 +462,269 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       ),
       body: FadeTransition(
         opacity: _fadeAnimation,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 20,
-                offset: Offset(0, -5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-            child: Stack(
-              children: [
-                Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.light(
-                      primary: Color(0xFF2B8FEB),
-                      secondary: Color(0xFF2B8FEB),
-                      surface: Colors.white,
-                    ),
-                    elevatedButtonTheme: ElevatedButtonThemeData(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF2B8FEB),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  child: Stepper(
-                    currentStep: _currentStep,
-                    onStepContinue: _proceedToNextStep,
-                    onStepCancel: _goToPreviousStep,
-                    onStepTapped: (step) {
-                      // Add animation when tapping on step
-                      setState(() {
-                        _currentStep = step;
-                      });
-                    },
-                    steps: _buildSteps(),
-                    type: StepperType.vertical,
-                    elevation: 0,
-                    margin: EdgeInsets.zero,
-                    controlsBuilder: (context, details) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 24.0),
-                        child: Row(
-                          children: [
-                            if (details.currentStep > 0)
-                              Expanded(
-                                flex: 1,
-                                child: TweenAnimationBuilder<double>(
-                                  tween: Tween<double>(begin: 0.9, end: 1.0),
-                                  duration: Duration(milliseconds: 200),
-                                  builder: (context, scale, child) {
-                                    return Transform.scale(
-                                      scale: scale,
-                                      child: OutlinedButton(
-                                        onPressed: details.onStepCancel,
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(color: Color(0xFF2B8FEB)),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          padding: EdgeInsets.symmetric(vertical: 16),
-                                        ),
-                                        child: Text(
-                                          'Back',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF2B8FEB),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            if (details.currentStep > 0)
-                              SizedBox(width: 16),
-                            Expanded(
-                              flex: 2,
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween<double>(begin: 0.9, end: 1.0),
-                                duration: Duration(milliseconds: 200),
-                                builder: (context, scale, child) {
-                                  return Transform.scale(
-                                    scale: scale,
-                                    child: ElevatedButton(
-                                      onPressed: details.onStepContinue,
-                                      child: Text(
-                                        details.currentStep == _buildSteps().length - 1
-                                            ? 'Confirm Booking'
-                                            : 'Continue',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
-                if (_errorMessage != null)
-                  AnimatedPositioned(
-                    duration: Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                    bottom: 20,
-                    left: 20,
-                    right: 20,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade100,
-                              shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                    offset: Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+                child: Stack(
+                  children: [
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: ColorScheme.light(
+                          primary: Color(0xFF2B8FEB),
+                          secondary: Color(0xFF2B8FEB),
+                          surface: Colors.white,
+                        ),
+                        elevatedButtonTheme: ElevatedButtonThemeData(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF2B8FEB),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 20,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
                             ),
                           ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
+                        ),
+                      ),
+                      child: Stepper(
+                        currentStep: _currentStep,
+                        onStepContinue: _proceedToNextStep,
+                        onStepCancel: _goToPreviousStep,
+                        onStepTapped: (step) {
+                          // Add animation when tapping on step
+                          setState(() {
+                            _currentStep = step;
+                          });
+                        },
+                        steps: _buildSteps(),
+                        type: StepperType.vertical,
+                        elevation: 0,
+                        margin: EdgeInsets.zero,
+                        controlsBuilder: (context, details) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 24.0),
+                            child: Row(
                               children: [
-                                Text(
-                                  'Error',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.red.shade900,
+                                if (details.currentStep > 0)
+                                  Expanded(
+                                    flex: 1,
+                                    child: TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(begin: 0.9, end: 1.0),
+                                      duration: Duration(milliseconds: 200),
+                                      builder: (context, scale, child) {
+                                        return Transform.scale(
+                                          scale: scale,
+                                          child: OutlinedButton(
+                                            onPressed: details.onStepCancel,
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(color: Color(0xFF2B8FEB)),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              padding: EdgeInsets.symmetric(vertical: 16),
+                                            ),
+                                            child: Text(
+                                              'Back',
+                                              style: GoogleFonts.poppins(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                                color: Color(0xFF2B8FEB),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  _errorMessage!,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    color: Colors.red.shade700,
+                                if (details.currentStep > 0)
+                                  SizedBox(width: 16),
+                                Expanded(
+                                  flex: 2,
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween<double>(begin: 0.9, end: 1.0),
+                                    duration: Duration(milliseconds: 200),
+                                    builder: (context, scale, child) {
+                                      return Transform.scale(
+                                        scale: scale,
+                                        child: ElevatedButton(
+                                          onPressed: details.onStepContinue,
+                                          child: Text(
+                                            details.currentStep == _buildSteps().length - 1
+                                                ? 'Confirm Booking'
+                                                : 'Continue',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.close,
-                              color: Colors.red.shade900,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _errorMessage = null;
-                              });
-                            },
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ),
-                  ),
-              ],
+                    if (_errorMessage != null)
+                      AnimatedPositioned(
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        bottom: 20,
+                        left: 20,
+                        right: 20,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade100,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Error',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.red.shade900,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      _errorMessage!,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.close,
+                                  color: Colors.red.shade900,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _errorMessage = null;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-          ),
+            // Full screen loading overlay when processing payment
+            if (_isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Container(
+                    padding: EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2B8FEB)),
+                            strokeWidth: 4,
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        Text(
+                          'Processing Your Booking',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Please wait while we confirm your appointment...',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -766,13 +849,32 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         return;
       }
 
+      // Get hospital information
+      String hospitalName = _selectedLocation ?? 'Unknown Hospital';
+      String hospitalId = _selectedHospitalId ?? '';
+      
+      // First try to get detailed hospital information if we only have the ID
+      if (hospitalName == 'Unknown Hospital' && hospitalId.isNotEmpty) {
+        try {
+          final hospitalDoc = await _firestore.collection('hospitals').doc(hospitalId).get();
+          if (hospitalDoc.exists) {
+            final hospitalData = hospitalDoc.data();
+            if (hospitalData != null && hospitalData['name'] != null) {
+              hospitalName = hospitalData['name'];
+            }
+          }
+        } catch (e) {
+          print('Error fetching hospital details: $e');
+        }
+      }
+
       // Collect appointment details
       Map<String, dynamic> appointmentDetails = {
         'doctorId': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['id'] : _doctorData['id'],
         'doctorName': _selectedDoctor ?? '',
         'doctorSpecialty': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['specialty'] : _doctorData['specialty'] ?? '',
-        'hospitalId': _selectedHospitalId ?? '',
-        'hospitalName': _selectedLocation ?? '',
+        'hospitalId': hospitalId,
+        'hospitalName': hospitalName,
         'date': dateStr,
         'time': _selectedTime ?? '',
         'reason': _selectedReason ?? '',
@@ -782,6 +884,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         'status': 'pending_payment',
         'slotId': slotAvailabilityId,
         'createdAt': FieldValue.serverTimestamp(),
+        'hasFinancialTransaction': false, // Will be set to true after payment
       };
 
       // Place a temporary hold on the slot
@@ -814,6 +917,49 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
             appointmentDetails['status'] = 'confirmed';
             appointmentDetails['paymentStatus'] = 'completed';
             appointmentDetails['paymentDate'] = FieldValue.serverTimestamp();
+            appointmentDetails['bookingDate'] = FieldValue.serverTimestamp();
+            appointmentDetails['hasFinancialTransaction'] = true;
+            
+            // Double check that hospitalName is set properly
+            if (appointmentDetails['hospitalName'] == null || appointmentDetails['hospitalName'].toString().isEmpty) {
+              appointmentDetails['hospitalName'] = hospitalName; // Use the validated hospital name
+            }
+            
+            // Parse and set the appointment date
+            try {
+              // Convert 12-hour format to 24-hour format for parsing
+              String timeStr = _selectedTime ?? '';
+              String dateStr = _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '';
+              
+              // Parse AM/PM time to 24-hour format
+              String time24Format = '';
+              if (timeStr.contains('AM')) {
+                time24Format = timeStr.replaceAll(' AM', '');
+                if (time24Format.startsWith('12:')) {
+                  time24Format = '00:' + time24Format.substring(3);
+                }
+              } else if (timeStr.contains('PM')) {
+                time24Format = timeStr.replaceAll(' PM', '');
+                if (!time24Format.startsWith('12:')) {
+                  int hour = int.parse(time24Format.split(':')[0]);
+                  time24Format = '${hour + 12}:${time24Format.split(':')[1]}';
+                }
+              } else {
+                time24Format = timeStr;
+              }
+              
+              // Create DateTime object
+              DateTime appointmentDateTime = DateFormat('yyyy-MM-dd HH:mm').parse('$dateStr $time24Format');
+              appointmentDetails['appointmentDate'] = Timestamp.fromDate(appointmentDateTime);
+              print('Set appointment date to: $appointmentDateTime');
+            } catch (e) {
+              print('Error parsing appointment date: $e');
+              // Fallback to just using the date
+              if (_selectedDate != null) {
+                appointmentDetails['appointmentDate'] = Timestamp.fromDate(_selectedDate!);
+              }
+            }
+            
             transaction.set(appointmentRef, appointmentDetails);
 
             // Update slot status
@@ -849,6 +995,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         } catch (e) {
           setState(() {
             _errorMessage = 'Failed to save appointment. Please contact support.';
+            _isLoading = false;
           });
           debugPrint('Error saving appointment after payment: $e');
         }
@@ -858,11 +1005,13 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         
         setState(() {
           _errorMessage = 'Payment was not completed. Please try again.';
+          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to process payment. Please try again.';
+        _isLoading = false;
       });
       debugPrint('Error in _processPayment: $e');
     } finally {
@@ -1445,63 +1594,84 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
           SizedBox(height: 24),
           
-          if (_availableTimesForSelectedDate.isEmpty) ...[
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Colors.grey[400],
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Available Slots',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
                   ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No time slots available',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Please select a different date or hospital',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          ] else ...[
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Available Slots',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                ),
+                SizedBox(height: 16),
+                if (_loadingTimeSlots) ...[
+                  // Show loading indicator when fetching time slots
+                  Center(
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2B8FEB)),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading available time slots...',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 16),
+                ] else if (_availableTimesForSelectedDate.isEmpty) ...[
+                  // Show empty state when no slots available
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.event_busy,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No time slots available',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Please select a different date or hospital',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  // Show time slots when available
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -1510,9 +1680,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                         .toList(),
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
           
           if (_selectedTime != null) ...[
             SizedBox(height: 24),
@@ -1576,6 +1746,11 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     final isSelected = time == _selectedTime;
     final isPastTime = _selectedDate?.day == DateTime.now().day &&
         _parseTime(time).isBefore(DateTime.now());
+    
+    // Check if this slot is already booked
+    final dateStr = _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '';
+    final bookedSlots = _dateTimeSlots['$_selectedHospitalId-$dateStr-booked'] ?? [];
+    final isBooked = bookedSlots.contains(time);
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.8, end: 1.0),
@@ -1584,7 +1759,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         return Transform.scale(
           scale: isSelected ? scale : 1.0,
           child: InkWell(
-            onTap: isPastTime
+            onTap: (isPastTime || isBooked)
                 ? null
                 : () {
                     setState(() {
@@ -1600,18 +1775,22 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 vertical: 12,
               ),
               decoration: BoxDecoration(
-                color: isPastTime
-                    ? Colors.grey.shade100
-                    : isSelected
-                        ? Color(0xFF2B8FEB)
-                        : Colors.white,
+                color: isBooked 
+                    ? Colors.red.shade50
+                    : isPastTime
+                        ? Colors.grey.shade100
+                        : isSelected
+                            ? Color(0xFF2B8FEB)
+                            : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isPastTime
-                      ? Colors.grey.shade300
-                      : isSelected
-                          ? Color(0xFF2B8FEB)
-                          : Colors.grey.shade200,
+                  color: isBooked
+                      ? Colors.red.shade200
+                      : isPastTime
+                          ? Colors.grey.shade300
+                          : isSelected
+                              ? Color(0xFF2B8FEB)
+                              : Colors.grey.shade200,
                 ),
                 boxShadow: isSelected
                     ? [
@@ -1623,17 +1802,28 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                       ]
                     : [],
               ),
-              child: Text(
-                time,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isPastTime
-                      ? Colors.grey.shade400
-                      : isSelected
-                          ? Colors.white
-                          : Colors.black87,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  isBooked 
+                    ? Icon(Icons.block, size: 14, color: Colors.red.shade400)
+                    : SizedBox.shrink(),
+                  if (isBooked) SizedBox(width: 4),
+                  Text(
+                    time,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isBooked
+                          ? Colors.red.shade400
+                          : isPastTime
+                              ? Colors.grey.shade400
+                              : isSelected
+                                  ? Colors.white
+                                  : Colors.black87,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -2594,4 +2784,5 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     }
   }
 } 
+
 
