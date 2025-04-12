@@ -1,6 +1,78 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import '../models/transaction_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+enum TransactionType {
+  payment,
+  refund,
+}
+
+enum TransactionStatus {
+  completed,
+  pending,
+  failed,
+}
+
+class FinancialTransaction {
+  final String id;
+  final String title;
+  final String description;
+  final double amount;
+  final DateTime date;
+  final TransactionType type;
+  final TransactionStatus status;
+  final String? appointmentId;
+  final String? doctorName;
+  final String? hospitalName;
+  final String? paymentMethod;
+
+  FinancialTransaction({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.amount,
+    required this.date,
+    required this.type,
+    required this.status,
+    this.appointmentId,
+    this.doctorName,
+    this.hospitalName,
+    this.paymentMethod,
+  });
+
+  factory FinancialTransaction.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return FinancialTransaction(
+      id: doc.id,
+      title: data['title'] ?? 'Payment',
+      description: data['description'] ?? '',
+      amount: (data['amount'] is int) ? data['amount'].toDouble() : (data['amount'] ?? 0.0),
+      date: (data['date'] as Timestamp).toDate(),
+      type: data['type'] == 'refund' ? TransactionType.refund : TransactionType.payment,
+      status: _getStatusFromString(data['status']),
+      appointmentId: data['appointmentId'],
+      doctorName: data['doctorName'],
+      hospitalName: data['hospitalName'],
+      paymentMethod: data['paymentMethod'],
+    );
+  }
+
+  static TransactionStatus _getStatusFromString(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return TransactionStatus.pending;
+      case 'failed':
+      case 'cancelled':
+      case 'rejected':
+        return TransactionStatus.failed;
+      case 'completed':
+      case 'success':
+      case 'confirmed':
+      case 'paid':
+      default:
+        return TransactionStatus.completed;
+    }
+  }
+}
 
 class FinancialSummary {
   final double totalBalance;
@@ -16,86 +88,188 @@ class FinancialSummary {
   });
 }
 
-class FinancialRepository {
-  final FirebaseFirestore _firestore;
-  final String _userId;
-  
-  // Constructor with optional Firestore instance for testing
-  FinancialRepository({
-    FirebaseFirestore? firestore,
-    required String userId,
-  }) : 
-    _firestore = firestore ?? FirebaseFirestore.instance,
-    _userId = userId;
-  
-  // Collection references
-  CollectionReference<Map<String, dynamic>> get _transactionsCollection => 
-    _firestore.collection('transactions');
-  
+class FinanceRepository {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Get current user ID
+  String? get currentUserId => _auth.currentUser?.uid;
+
+  // Get all financial transactions for the current user
+  Future<List<FinancialTransaction>> getUserTransactions() async {
+    if (currentUserId == null) {
+      return [];
+    }
+
+    try {
+      List<FinancialTransaction> transactions = [];
+
+      // Get transactions from appointments collection
+      final appointmentsSnapshot = await _firestore
+          .collection('appointments')
+          .where('patientId', isEqualTo: currentUserId)
+          .get();
+
+      for (var doc in appointmentsSnapshot.docs) {
+        final appointmentData = doc.data();
+        
+        // Include appointments with any payment information
+        if (appointmentData['paymentStatus'] != null || 
+            appointmentData['paymentMethod'] != null ||
+            appointmentData['fee'] != null) {
+          
+          // Get doctor information if available
+          String? doctorName = appointmentData['doctorName'];
+          if (appointmentData['doctorId'] != null && doctorName == null) {
+            final doctorDoc = await _firestore
+                .collection('doctors')
+                .doc(appointmentData['doctorId'])
+                .get();
+                
+            if (doctorDoc.exists) {
+              final doctorData = doctorDoc.data() as Map<String, dynamic>;
+              doctorName = doctorData['fullName'] ?? doctorData['name'];
+            }
+          }
+          
+          // Get the fee amount
+          double amount = 0.0;
+          if (appointmentData['fee'] != null && appointmentData['fee'] is num) {
+            amount = appointmentData['fee'].toDouble();
+          }
+          
+          // Determine transaction status
+          TransactionStatus status;
+          final paymentStatus = appointmentData['paymentStatus']?.toString().toLowerCase() ?? 'pending';
+          
+          switch(paymentStatus) {
+            case 'completed':
+            case 'success':
+            case 'paid':
+            case 'confirmed':
+              status = TransactionStatus.completed;
+              break;
+            case 'failed':
+            case 'cancelled':
+            case 'rejected':
+              status = TransactionStatus.failed;
+              break;
+            default:
+              status = TransactionStatus.pending;
+          }
+          
+          // Create and add transaction
+          final transaction = FinancialTransaction(
+            id: doc.id,
+            title: 'Medical Appointment',
+            description: '${appointmentData['paymentMethod'] ?? 'Payment'} - ${appointmentData['reason'] ?? 'Consultation'}',
+            amount: amount,
+            date: appointmentData['paymentDate'] != null 
+                ? (appointmentData['paymentDate'] as Timestamp).toDate()
+                : appointmentData['createdAt'] != null 
+                    ? (appointmentData['createdAt'] as Timestamp).toDate()
+                    : DateTime.now(),
+            type: TransactionType.payment,
+            status: status,
+            appointmentId: doc.id,
+            doctorName: doctorName,
+            hospitalName: appointmentData['hospitalName'] ?? appointmentData['location'],
+            paymentMethod: appointmentData['paymentMethod'],
+          );
+          
+          transactions.add(transaction);
+        }
+      }
+      
+      // Also check transactions collection for direct transactions
+      final transactionsSnapshot = await _firestore
+          .collection('transactions')
+          .where('patientId', isEqualTo: currentUserId)
+          .orderBy('date', descending: true)
+          .get();
+      
+      // Add any additional transactions found
+      for (var doc in transactionsSnapshot.docs) {
+        if (!transactions.any((t) => t.id == doc.id)) {
+          final transaction = FinancialTransaction.fromFirestore(doc);
+          transactions.add(transaction);
+        }
+      }
+      
+      // Sort transactions by date (most recent first)
+      transactions.sort((a, b) => b.date.compareTo(a.date));
+      
+      return transactions;
+    } catch (e) {
+      print('Error fetching transactions: $e');
+      return [];
+    }
+  }
+
+  // Get financial summary
+  Future<Map<String, num>> getFinancialSummary() async {
+    try {
+      final transactions = await getUserTransactions();
+      
+      double totalPaid = 0;
+      double pendingPayments = 0;
+      double refunds = 0;
+      
+      for (var tx in transactions) {
+        if (tx.type == TransactionType.payment && tx.status == TransactionStatus.completed) {
+          totalPaid += tx.amount;
+        } else if (tx.type == TransactionType.payment && tx.status == TransactionStatus.pending) {
+          pendingPayments += tx.amount;
+        } else if (tx.type == TransactionType.refund) {
+          refunds += tx.amount;
+        }
+      }
+      
+      return {
+        'totalPaid': totalPaid,
+        'pendingPayments': pendingPayments,
+        'refunds': refunds,
+      };
+    } catch (e) {
+      print('Error calculating financial summary: $e');
+      return {
+        'totalPaid': 0,
+        'pendingPayments': 0,
+        'refunds': 0,
+      };
+    }
+  }
+
   // Get a stream of all transactions for the current user
   Stream<List<FinancialTransaction>> getTransactions() {
-    return _transactionsCollection
-      .where('userId', isEqualTo: _userId)
+    return _firestore.collection('transactions')
+      .where('userId', isEqualTo: currentUserId)
       .orderBy('date', descending: true)
       .snapshots()
       .map((snapshot) {
         return snapshot.docs.map((doc) {
-          return FinancialTransaction.fromFirestore(doc, null);
+          return FinancialTransaction.fromFirestore(doc);
         }).toList();
       });
   }
   
   // Get a stream of transactions filtered by type
   Stream<List<FinancialTransaction>> getTransactionsByType(TransactionType type) {
-    return _transactionsCollection
-      .where('userId', isEqualTo: _userId)
+    return _firestore.collection('transactions')
+      .where('userId', isEqualTo: currentUserId)
       .where('type', isEqualTo: type.toString().split('.').last)
       .orderBy('date', descending: true)
       .snapshots()
       .map((snapshot) {
         return snapshot.docs.map((doc) {
-          return FinancialTransaction.fromFirestore(doc, null);
+          return FinancialTransaction.fromFirestore(doc);
         }).toList();
       });
   }
   
-  // Get a financial summary for the user
-  Future<FinancialSummary> getFinancialSummary() async {
-    // In a real implementation, this might be a separate document or a server-side function
-    // For now, we'll calculate it from the transactions
-    final transactions = await _transactionsCollection
-      .where('userId', isEqualTo: _userId)
-      .get();
-    
-    double totalPayments = 0;
-    double totalRefunds = 0;
-    int pendingCount = 0;
-    
-    for (var doc in transactions.docs) {
-      final transaction = FinancialTransaction.fromFirestore(doc, null);
-      
-      if (transaction.type == TransactionType.payment) {
-        totalPayments += transaction.amount;
-      } else if (transaction.type == TransactionType.refund) {
-        totalRefunds += transaction.amount;
-      }
-      
-      if (transaction.status == TransactionStatus.pending) {
-        pendingCount++;
-      }
-    }
-    
-    return FinancialSummary(
-      totalBalance: totalPayments - totalRefunds,
-      totalPayments: totalPayments,
-      totalRefunds: totalRefunds,
-      pendingTransactions: pendingCount,
-    );
-  }
-  
   // Mock implementation for testing without Firebase
-  static FinancialRepository getMockRepository() {
-    return FinancialRepository(userId: 'mock-user-id');
+  static FinanceRepository getMockRepository() {
+    return FinanceRepository();
   }
   
   // Mock data for local development and testing
@@ -103,7 +277,6 @@ class FinancialRepository {
     return [
       FinancialTransaction(
         id: '1',
-        userId: _userId,
         title: 'Appointment with Dr. Smith',
         description: 'Consultation fee',
         amount: 120.00,
@@ -113,7 +286,6 @@ class FinancialRepository {
       ),
       FinancialTransaction(
         id: '2',
-        userId: _userId,
         title: 'Appointment with Dr. Johnson',
         description: 'Follow-up consultation',
         amount: 80.00,
@@ -123,7 +295,6 @@ class FinancialRepository {
       ),
       FinancialTransaction(
         id: '3',
-        userId: _userId,
         title: 'Lab Test Refund',
         description: 'Refund for canceled blood test',
         amount: 45.00,
@@ -133,7 +304,6 @@ class FinancialRepository {
       ),
       FinancialTransaction(
         id: '4',
-        userId: _userId,
         title: 'Upcoming Payment',
         description: 'Scheduled appointment with Dr. Chen',
         amount: 150.00,

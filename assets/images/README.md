@@ -1,0 +1,1 @@
+# Creating payment logo files

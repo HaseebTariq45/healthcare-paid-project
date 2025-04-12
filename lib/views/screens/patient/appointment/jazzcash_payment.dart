@@ -8,6 +8,8 @@ import 'package:healthcare/views/screens/patient/appointment/completed_appointme
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:healthcare/views/screens/patient/dashboard/finance.dart';
+import 'package:healthcare/utils/patient_navigation_helper.dart';
 
 class JazzCashPaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? appointmentDetails;
@@ -134,32 +136,124 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
             
             print('Appointment and transaction saved successfully');
             
-            // Show a success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
+            // Show success dialog
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Column(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.white),
-                    SizedBox(width: 10),
-                    Text("Payment successful! Appointment confirmed."),
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFEEDED),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        LucideIcons.check, 
+                        color: Color(0xFFE00000),
+                        size: 40,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      "Payment Successful",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF222222),
+                      ),
+                    ),
                   ],
                 ),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 2),
+                content: Container(
+                  constraints: BoxConstraints(minWidth: 300),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Your payment has been processed successfully.",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Color(0xFF555555),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              LucideIcons.creditCard,
+                              size: 20,
+                              color: Color(0xFFE00000),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Amount Paid",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: Color(0xFF777777),
+                                    ),
+                                  ),
+                                  Text(
+                                    "${widget.appointmentDetails?['displayFee'] ?? 'Rs. 2,000'}",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF222222),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text("Close"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close the dialog
+                      // Navigate to Finances tab (index 2) in the bottom nav
+                      PatientNavigationHelper.navigateToHome(context);
+                      Future.delayed(Duration(milliseconds: 100), () {
+                        PatientNavigationHelper.navigateToTab(context, 2);
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFFE00000), // JazzCash red color
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      textStyle: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    child: Text("View Payment History"),
+                  ),
+                ],
               ),
-            );
-            
-            // Wait for the snackbar to be visible
-            await Future.delayed(Duration(milliseconds: 500));
-            
-            // Navigate to completed appointments screen, replacing the entire stack
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CompletedAppointmentsScreen(),
-              ),
-              (route) => false, // This will remove all previous routes
             );
           } catch (e) {
             print('Error saving appointment and transaction: $e');
