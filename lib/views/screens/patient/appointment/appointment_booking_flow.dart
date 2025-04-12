@@ -681,29 +681,37 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                     padding: EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withOpacity(0.15),
                           blurRadius: 20,
                           offset: Offset(0, 10),
                         ),
                       ],
                     ),
+                    width: MediaQuery.of(context).size.width * 0.85,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        SizedBox(
-                          width: 60,
-                          height: 60,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2B8FEB)),
-                            strokeWidth: 4,
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2754C3).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2754C3)),
+                              strokeWidth: 3,
+                            ),
                           ),
                         ),
                         SizedBox(height: 24),
                         Text(
-                          'Processing Your Booking',
+                          'Loading Appointment Details',
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -712,7 +720,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Please wait while we confirm your appointment...',
+                          'Please wait while we prepare the booking information...',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             color: Colors.grey[600],

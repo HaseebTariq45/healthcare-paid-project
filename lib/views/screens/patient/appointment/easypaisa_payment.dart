@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/components/onboarding.dart';
 import 'package:healthcare/views/screens/patient/appointment/successfull_appoinment.dart';
@@ -9,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/utils/patient_navigation_helper.dart';
+import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 
 class EasypaisaPaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? appointmentDetails;
@@ -105,122 +107,208 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
             print('Appointment and transaction saved successfully');
             
             // Show success dialog
-            showDialog(
+            await showDialog(
               context: context,
-              builder: (context) => AlertDialog(
+              barrierDismissible: false,
+              builder: (context) => Dialog(
+                insetPadding: EdgeInsets.symmetric(horizontal: 20),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                title: Column(
+                elevation: 10,
+                shadowColor: Colors.black38,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: EdgeInsets.all(10),
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 28, horizontal: 24),
                       decoration: BoxDecoration(
-                        color: Color(0xFFEAF7E9),
-                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF2754C3),
+                            Color(0xFF4B7BFB),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                       ),
-                      child: Icon(
-                        LucideIcons.check, 
-                        color: Color(0xFF00822B),
-                        size: 40,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 12,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              LucideIcons.checkCheck,
+                              color: Color(0xFF2754C3),
+                              size: 44,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            "Payment Successful!",
+                            style: GoogleFonts.poppins(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            "Your appointment has been confirmed",
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 10),
-                    Text(
-                      "Payment Successful",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF222222),
+                    Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF5F7FF),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF2754C3).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.creditCard,
+                                    size: 24,
+                                    color: Color(0xFF2754C3),
+                                  ),
+                                ),
+                                SizedBox(width: 15),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Amount Paid",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 13,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      Text(
+                                        "Rs. ${widget.appointmentDetails?['fee'] ?? '0'}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    PatientNavigationHelper.navigateToHome(context);
+                                    Future.delayed(Duration(milliseconds: 100), () {
+                                      PatientNavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF2754C3),
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    elevation: 2,
+                                    shadowColor: Color(0xFF2754C3).withOpacity(0.3),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: Icon(LucideIcons.wallet, size: 18),
+                                  label: Text(
+                                    "View Payment",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 14),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context); // Close the dialog
+                                    // Navigate directly to appointments screen
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const AppointmentsScreen(),
+                                      ),
+                                      (route) => route.isFirst, // Keep only the first route
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Color(0xFF2754C3),
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      side: BorderSide(color: Color(0xFF2754C3).withOpacity(0.5), width: 1.5),
+                                    ),
+                                  ),
+                                  icon: Icon(LucideIcons.calendarCheck, size: 18),
+                                  label: Text(
+                                    "View Booking",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                content: Container(
-                  constraints: BoxConstraints(minWidth: 300),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Your payment has been processed successfully.",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Color(0xFF555555),
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              LucideIcons.creditCard,
-                              size: 20,
-                              color: Color(0xFF00822B),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Amount Paid",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Color(0xFF777777),
-                                    ),
-                                  ),
-                                  Text(
-                                    "${widget.appointmentDetails?['displayFee'] ?? 'Rs. 2,000'}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF222222),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text("Close"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close the dialog
-                      // Navigate to Finances tab (index 2) in the bottom nav
-                      PatientNavigationHelper.navigateToHome(context);
-                      Future.delayed(Duration(milliseconds: 100), () {
-                        PatientNavigationHelper.navigateToTab(context, 2);
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF00822B), // Easypaisa dark green (better contrast)
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      textStyle: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    child: Text("View Payment History"),
-                  ),
-                ],
               ),
             );
           } catch (e) {
@@ -309,58 +397,17 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
         : 'Doctor';
 
     return Scaffold(
-      appBar: AppBarOnboarding(isBackButtonVisible: true, text: "EasyPaisa Payment"),
+      appBar: AppBarOnboarding(isBackButtonVisible: true, text: "Easypaisa Payment"),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           SingleChildScrollView(
             child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-                  // EasyPaisa Section
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4FFF5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    width: double.infinity,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.wallet,
-                          color: const Color(0xFF4CAF50),
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "EasyPaisa",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              Text(
-                                "Pay via EasyPaisa Mobile Account",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeaderImage(),
                   SizedBox(height: 30),
                   
                   // Payment Information
@@ -407,77 +454,79 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
                   
                   SizedBox(height: 30),
                   
-                  // Phone Number Section
                   Text(
-                    "Enter EasyPaisa Account",
+                    "Easypaisa Details",
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(height: 10),
-                  Text(
-                    "We'll send a payment request to this number",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
                   SizedBox(height: 20),
-
-            // Phone Number Input
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 5,
-                          offset: Offset(0, 3),
+                  
+                  // Phone number field with validation pattern
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Phone Number",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade800,
                         ),
-                      ],
-                    ),
-                    child: TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
                       ),
-              decoration: InputDecoration(
-                        prefixIcon: Container(
-                          padding: EdgeInsets.all(12),
-                          child: Text(
-                            "+92",
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(11),
+                        ],
+                        decoration: InputDecoration(
+                          hintText: "03XX-XXXXXXX",
+                          hintStyle: GoogleFonts.poppins(
+                            color: Colors.grey.shade400,
+                          ),
+                          prefixIcon: Icon(
+                            LucideIcons.smartphone,
+                            color: Color(0xFF00822B),
+                            size: 20,
+                          ),
+                          prefixText: _phoneController.text.isNotEmpty && !_phoneController.text.startsWith('03') ? '03' : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1,
                             ),
                           ),
-                        ),
-                        hintText: "3XX XXXXXXX",
-                filled: true,
-                        fillColor: Colors.white,
-                border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade200,
-                            width: 1,
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Color(0xFF00822B),
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(
-                            color: Color(0xFF4CAF50),
-                            width: 1,
+                          errorText: _phoneController.text.isNotEmpty && !RegExp(r'^03\d{2}[0-9]{7}$').hasMatch(_phoneController.text) 
+                              ? 'Enter a valid 11-digit Easypaisa number' 
+                              : null,
+                          errorStyle: GoogleFonts.poppins(
+                            color: Colors.red.shade600,
+                            fontSize: 12,
                           ),
+                          helperText: "Enter your 11-digit Easypaisa number",
+                          helperStyle: GoogleFonts.poppins(
+                            color: Colors.grey.shade500,
+                            fontSize: 12,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                   
                   SizedBox(height: 40),
@@ -559,48 +608,95 @@ class _EasypaisaPaymentScreenState extends State<EasypaisaPaymentScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, IconData icon, {bool isAmount = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isAmount ? Color(0xFFE8F5E9) : Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              color: isAmount ? Color(0xFF4CAF50) : Colors.grey.shade700,
-              size: 18,
-            ),
-          ),
-          SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: isAmount ? FontWeight.w700 : FontWeight.w500,
-                    color: isAmount ? Color(0xFF4CAF50) : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildHeaderImage() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Color(0xFFF4FFF5),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Image.asset(
+            'assets/images/easypaisa_logo.png',
+            height: 60,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                height: 60,
+                width: 120,
+                decoration: BoxDecoration(
+                  color: Color(0xFF00822B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "Easypaisa",
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 16),
+          Text(
+            "Fast and secure mobile payments",
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String title, String value, IconData icon, {bool isAmount = false}) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: isAmount ? Color(0xFF00822B) : Colors.grey[600],
+          size: 20,
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: isAmount ? Color(0xFF00822B) : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

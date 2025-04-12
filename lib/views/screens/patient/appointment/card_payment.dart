@@ -9,6 +9,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/utils/patient_navigation_helper.dart';
+import 'package:healthcare/views/screens/patient/appointment/completed_appointments_screen.dart';
+import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
+import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
 
 class CardPaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? appointmentDetails;
@@ -268,147 +271,208 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
             _isLoading = false;
           });
           
-          // Show success dialog
+          // Using a completely different dialog approach with AlertDialog
           await showDialog(
             context: context,
-            builder: (context) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Column(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFECF0FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      LucideIcons.check,
-                      color: Color(0xFF2754C3),
-                      size: 40,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    "Payment Successful",
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF222222),
-                    ),
-                  ),
-                ],
-              ),
-              content: Container(
-                constraints: BoxConstraints(minWidth: 300),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Your payment has been processed successfully.",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Color(0xFF555555),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF5F5F5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            LucideIcons.creditCard,
-                            size: 20,
-                            color: Color(0xFF2754C3),
+            barrierDismissible: false,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                contentPadding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                content: Container(
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header with gradient
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF2754C3),
+                              Color(0xFF4B7BFB),
+                            ],
                           ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Amount Paid",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Color(0xFF777777),
-                                  ),
-                                ),
-                                Text(
-                                  "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF222222),
-                                  ),
-                                ),
-                              ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                LucideIcons.checkCheck,
+                                color: Color(0xFF2754C3),
+                                size: 40,
+                              ),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: 16),
+                            Text(
+                              "Payment Successful!",
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "Your appointment has been confirmed",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      "Would you like to save this card for future use?",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Color(0xFF555555),
-                        fontWeight: FontWeight.w500,
+                      
+                      // Content area
+                      Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            // Amount box
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF5F7FF),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF2754C3).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      LucideIcons.creditCard,
+                                      size: 20,
+                                      color: Color(0xFF2754C3),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Amount Paid",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        Text(
+                                          "Rs. ${widget.appointmentDetails?['fee'] ?? '0'}",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            SizedBox(height: 20),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the dialog
-                    // Navigate to Finances tab (index 2) in the bottom nav
-                    PatientNavigationHelper.navigateToHome(context);
-                    Future.delayed(Duration(milliseconds: 100), () {
-                      PatientNavigationHelper.navigateToTab(context, 2);
-                    });
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Color(0xFF2754C3),
-                    textStyle: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                      
+                      // Buttons in separate container
+                      Padding(
+                        padding: EdgeInsets.only(left: 20, right: 20, bottom: 20),
+                        child: Column(
+                          children: [
+                            // First button
+                            Container(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PatientFinancesScreen(),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Color(0xFF2754C3),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                icon: Icon(LucideIcons.wallet, size: 18),
+                                label: Text(
+                                  "View Payment",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            
+                            SizedBox(height: 12),
+                            
+                            // Second button
+                            Container(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const AppointmentsScreen(),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Color(0xFF2754C3),
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    side: BorderSide(color: Color(0xFF2754C3).withOpacity(0.5), width: 1.5),
+                                  ),
+                                ),
+                                icon: Icon(LucideIcons.calendarCheck, size: 18),
+                                label: Text(
+                                  "View Booking",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Text("No, thanks"),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    // TODO: Save card to user's payment methods
-                    Navigator.pop(context); // Close the dialog
-                    // Navigate to Finances tab (index 2) in the bottom nav
-                    PatientNavigationHelper.navigateToHome(context);
-                    Future.delayed(Duration(milliseconds: 100), () {
-                      PatientNavigationHelper.navigateToTab(context, 2);
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF2754C3),
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    textStyle: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                  child: Text("Save Card"),
-                ),
-              ],
-            ),
+              );
+            },
           );
         } catch (e) {
           print('Error saving appointment and transaction: $e');
@@ -547,9 +611,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                         ),
                       ],
                     ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
                           "Payment Summary",
                           style: GoogleFonts.poppins(
@@ -582,9 +646,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 20),
+                    ),
+                  ),
+                  SizedBox(height: 20),
 
                   // Card Name Field
                   _buildTextField(
@@ -612,8 +676,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                   ),
                   
                   // Expiry Date and CVV Row
-            Row(
-              children: [
+                  Row(
+                    children: [
                       Expanded(
                         child: _buildTextField(
                           controller: _expiryDateController,
@@ -682,10 +746,10 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                     ),
                   ),
 
-            SizedBox(height: 30),
+                  SizedBox(height: 30),
 
                   // Process Payment Button
-            _buildSubmitButton(),
+                  _buildSubmitButton(),
                   
                   SizedBox(height: 20),
                 ],
@@ -891,18 +955,18 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 ),
               ],
             ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              obscureText: obscureText,
               inputFormatters: inputFormatters,
               onEditingComplete: onEditingComplete,
               focusNode: focusNode,
               style: GoogleFonts.poppins(
                 fontSize: 15,
               ),
-        decoration: InputDecoration(
-          hintText: hint,
+              decoration: InputDecoration(
+                hintText: hint,
                 prefixIcon: Icon(
                   icon,
                   color: _getCardTypeColor(),
@@ -926,7 +990,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                     width: 1,
                   ),
                 ),
-          filled: true,
+                filled: true,
                 fillColor: Colors.white,
                 contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 15),
               ),
@@ -1010,15 +1074,15 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
                 children: [
                   Text(
                     "Pay Now",
-          style: GoogleFonts.poppins(
-            fontSize: 16,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
-          ),
+                    ),
                   ),
                   SizedBox(width: 8),
                   Icon(LucideIcons.arrowRight, size: 18),
                 ],
-        ),
+              ),
       ),
     );
   }
