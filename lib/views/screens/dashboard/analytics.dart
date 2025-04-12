@@ -6,11 +6,13 @@ import 'package:healthcare/views/screens/analytics/patients.dart';
 import 'package:healthcare/views/screens/analytics/performance_analysis.dart';
 import 'package:healthcare/views/screens/analytics/reports.dart';
 import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
+import 'package:healthcare/views/screens/doctor/availability/hospital_selection_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:healthcare/services/doctor_profile_service.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -367,6 +369,37 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       iconColor: Color(0xFFFF9800),
                       onPressed: () {
                         NavigationHelper.navigateWithBottomBar(context, ReportsScreen());
+                      },
+                    ),
+                    _buildAnalyticsCard(
+                      icon: LucideIcons.building2,
+                      title: "Hospital Selection",
+                      description: "Manage your practice locations",
+                      bgColor: Color(0xFFE0F2F1),
+                      iconColor: Color(0xFF009688),
+                      onPressed: () async {
+                        try {
+                          // Get current selected hospitals
+                          final doctorService = DoctorProfileService();
+                          final currentHospitals = await doctorService.getDoctorSelectedHospitals();
+                          
+                          // Navigate to hospital selection screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HospitalSelectionScreen(
+                                selectedHospitals: currentHospitals,
+                              ),
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Could not load hospital selection'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       },
                     ),
                   ],

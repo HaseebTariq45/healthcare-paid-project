@@ -218,4 +218,52 @@ class DoctorProfileService {
       return [];
     }
   }
+
+  // Get selected hospitals for a doctor
+  Future<List<String>> getDoctorSelectedHospitals() async {
+    try {
+      final String uid = _auth.currentUser?.uid ?? '';
+      
+      if (uid.isEmpty) {
+        return [];
+      }
+      
+      // First try to get from doctor profile
+      final doctorDoc = await _firestore.collection('doctors').doc(uid).get();
+      
+      if (doctorDoc.exists && doctorDoc.data() != null) {
+        final data = doctorDoc.data()!;
+        
+        // Check if there's a 'hospitals' field containing selected hospitals
+        if (data.containsKey('hospitals') && data['hospitals'] is List) {
+          return List<String>.from(data['hospitals']);
+        }
+        
+        // Alternative: if there's a 'selectedHospitals' field
+        if (data.containsKey('selectedHospitals') && data['selectedHospitals'] is List) {
+          return List<String>.from(data['selectedHospitals']);
+        }
+      }
+      
+      // If not found in doctor profile, try the dedicated collection
+      final hospitalsDoc = await _firestore
+          .collection('doctorHospitals')
+          .doc(uid)
+          .get();
+          
+      if (hospitalsDoc.exists && hospitalsDoc.data() != null) {
+        final data = hospitalsDoc.data()!;
+        
+        if (data.containsKey('selectedHospitals') && data['selectedHospitals'] is List) {
+          return List<String>.from(data['selectedHospitals']);
+        }
+      }
+      
+      // Return empty list if no data found
+      return [];
+    } catch (e) {
+      debugPrint('Error getting doctor selected hospitals: $e');
+      return [];
+    }
+  }
 } 
