@@ -69,10 +69,8 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   String? notes;
   bool profileComplete = false;
   
-  // Add patientData map to store the complete patient data
   Map<String, dynamic> patientData = {};
   
-  // Image URLs
   String? profileImageUrl;
   String? medicalReport1Url;
   String? medicalReport2Url;
@@ -81,7 +79,6 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   bool _isRefreshing = false;
   static const String _patientProfileCacheKey = 'patient_profile_details_data';
 
-  // Categorized diseases for detailed view
   final Map<String, List<String>> diseasesMap = {};
 
   @override
@@ -101,76 +98,34 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    try {
+      setState(() {
+        _isLoading = true;
+      });
 
-    // Try to load data from cache first
-    await _loadCachedData();
-    
-    // Then fetch fresh data from Firestore
-    _fetchPatientData();
+      // First try to load data from cache
+      await _loadCachedData();
+      
+      // Then fetch fresh data from Firestore in the background
+      if (!mounted) return;
+      _fetchPatientData();
+    } catch (e) {
+      debugPrint('Error in _loadData: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadCachedData() async {
     try {
       // Use a longer maxAge for patient profile data (1 day)
-      final cachedData = await CacheService.getData(_patientProfileCacheKey, maxAge: CacheService.longCacheTime);
+      final cachedData = await CacheService.getData(
+        _patientProfileCacheKey, 
+        maxAge: CacheService.longCacheTime
+      );
       
-      if (cachedData != null) {
+      if (cachedData != null && mounted) {
         setState(() {
-          // Store the complete data
-          patientData = cachedData;
-          
-          name = cachedData['fullName'] ?? cachedData['name'] ?? "No Name";
-          email = cachedData['email'] ?? "";
-          phoneNumber = cachedData['phoneNumber'] ?? "";
-          cnic = cachedData['cnic'] ?? "";
-          
-          // Address Info
-          address = cachedData['address'] ?? "";
-          city = cachedData['city'] ?? "";
-          state = cachedData['state'] ?? "";
-          country = cachedData['country'] ?? "";
-          zipCode = cachedData['zipCode'] ?? "";
-          
-          // Medical Info
-          age = cachedData['age']?.toString() ?? "";
-          bloodGroup = cachedData['bloodGroup'] ?? "";
-          height = cachedData['height']?.toString() ?? "";
-          weight = cachedData['weight']?.toString() ?? "";
-          
-          // Handle list data
-          if (cachedData['allergies'] != null) {
-            if (cachedData['allergies'] is List) {
-              allergies = List<String>.from(cachedData['allergies']);
-            } else if (cachedData['allergies'] is String) {
-              allergies = json.decode(cachedData['allergies']).cast<String>();
-            }
-          }
-          
-          if (cachedData['diseases'] != null) {
-            if (cachedData['diseases'] is List) {
-              diseases = List<String>.from(cachedData['diseases']);
-            } else if (cachedData['diseases'] is String) {
-              diseases = json.decode(cachedData['diseases']).cast<String>();
-            }
-          }
-          
-          notes = cachedData['notes'] ?? "";
-          disability = cachedData['disability'];
-          
-          // Image URLs
-          profileImageUrl = cachedData['profileImageUrl'];
-          medicalReport1Url = cachedData['medicalReport1Url'];
-          medicalReport2Url = cachedData['medicalReport2Url'];
-          
-          // Profile completion status
-          profileComplete = cachedData['profileComplete'] ?? false;
-          
-          // Initialize diseases map
-          _categorizeDiseases();
-          
+          _updateStateWithData(cachedData);
           _isLoading = false;
         });
       }
@@ -179,12 +134,67 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     }
   }
 
-  Future<void> _fetchPatientData() async {
-    try {
-      setState(() {
-        _isRefreshing = true;
-      });
+  void _updateStateWithData(Map<String, dynamic> data) {
+    patientData = data;
+    
+    name = data['fullName'] ?? data['name'] ?? "No Name";
+    email = data['email'] ?? "";
+    phoneNumber = data['phoneNumber'] ?? "";
+    cnic = data['cnic'] ?? "";
+    
+    // Address Info
+    address = data['address'] ?? "";
+    city = data['city'] ?? "";
+    state = data['state'] ?? "";
+    country = data['country'] ?? "";
+    zipCode = data['zipCode'] ?? "";
+    
+    // Medical Info
+    age = data['age']?.toString() ?? "";
+    bloodGroup = data['bloodGroup'] ?? "";
+    height = data['height']?.toString() ?? "";
+    weight = data['weight']?.toString() ?? "";
+    
+    // Handle list data
+    if (data['allergies'] != null) {
+      if (data['allergies'] is List) {
+        allergies = List<String>.from(data['allergies']);
+      } else if (data['allergies'] is String) {
+        allergies = json.decode(data['allergies']).cast<String>();
+      }
+    }
+    
+    if (data['diseases'] != null) {
+      if (data['diseases'] is List) {
+        diseases = List<String>.from(data['diseases']);
+      } else if (data['diseases'] is String) {
+        diseases = json.decode(data['diseases']).cast<String>();
+      }
+    }
+    
+    notes = data['notes'] ?? "";
+    disability = data['disability'];
+    
+    // Image URLs
+    profileImageUrl = data['profileImageUrl'];
+    medicalReport1Url = data['medicalReport1Url'];
+    medicalReport2Url = data['medicalReport2Url'];
+    
+    // Profile completion status
+    profileComplete = data['profileComplete'] ?? false;
+    
+    // Initialize diseases map
+    _categorizeDiseases();
+  }
 
+  Future<void> _fetchPatientData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
       final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
       
       if (userId != null) {
@@ -211,57 +221,31 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           newData.addAll(patientSnapshot.data() as Map<String, dynamic>);
         }
         
-        // Save fresh data to cache with longer expiry for medical data
-        await CacheService.saveData(_patientProfileCacheKey, newData, expiry: CacheService.longCacheTime);
-        
-        // Update UI only if data has changed
+        if (!mounted) return;
+
+        // Check if data has changed
         if (!_areMapContentsEqual(patientData, newData)) {
           setState(() {
-            // Update the complete patient data
-            patientData = newData;
-            
-            name = newData['fullName'] ?? newData['name'] ?? "No Name";
-            email = newData['email'] ?? "";
-            phoneNumber = newData['phoneNumber'] ?? "";
-            cnic = newData['cnic'] ?? "";
-            
-            // Address Info
-            address = newData['address'] ?? "";
-            city = newData['city'] ?? "";
-            state = newData['state'] ?? "";
-            country = newData['country'] ?? "";
-            zipCode = newData['zipCode'] ?? "";
-            
-            // Medical Info
-            age = newData['age']?.toString() ?? "";
-            bloodGroup = newData['bloodGroup'] ?? "";
-            height = newData['height']?.toString() ?? "";
-            weight = newData['weight']?.toString() ?? "";
-            allergies = List<String>.from(newData['allergies'] ?? []);
-            diseases = List<String>.from(newData['diseases'] ?? []);
-            notes = newData['notes'] ?? "";
-            disability = newData['disability'];
-            
-            // Image URLs
-            profileImageUrl = newData['profileImageUrl'];
-            medicalReport1Url = newData['medicalReport1Url'];
-            medicalReport2Url = newData['medicalReport2Url'];
-            
-            // Profile completion status
-            profileComplete = newData['profileComplete'] ?? false;
-            
-            // Initialize diseases map
-            _categorizeDiseases();
+            _updateStateWithData(newData);
           });
+          
+          // Save fresh data to cache with longer expiry for medical data
+          await CacheService.saveData(
+            _patientProfileCacheKey, 
+            newData, 
+            expiry: CacheService.longCacheTime
+          );
         }
       }
     } catch (e) {
       debugPrint('Error fetching patient data: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-        _isRefreshing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -302,9 +286,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : Stack(
+        child: Stack(
                 children: [
                   Column(
                     children: [
@@ -333,8 +315,8 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                     ],
                   ),
                   
-                  // Refresh indicator at bottom
-                  if (_isRefreshing)
+                  // Loading indicator at bottom
+                  if (_isLoading || _isRefreshing)
                     Positioned(
                       bottom: 16,
                       left: 0,
@@ -368,7 +350,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                               ),
                               SizedBox(width: 8),
                               Text(
-                                "Refreshing profile data...",
+                                _isLoading ? "Loading profile..." : "Refreshing profile data...",
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: Colors.grey.shade700,

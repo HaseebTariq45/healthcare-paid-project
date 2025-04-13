@@ -38,7 +38,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   late List<MenuItem> menuItems;
   late double profileCompletionPercentage;
   bool isLoading = true;
-  bool isRefreshing = false; // Flag for background refresh
+  bool isRefreshing = false;
   String userName = "User";
   String? profileImageUrl;
   String userRole = "Patient";
@@ -65,22 +65,28 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      isLoading = true;
-    });
+    try {
+      setState(() {
+        isLoading = true;
+      });
 
-    // Try to load data from cache first
-    _loadCachedData();
-    
-    // Then fetch fresh data from Firestore
-    _fetchUserData();
+      // First try to load data from cache
+      await _loadCachedData();
+      
+      // Then fetch fresh data from Firestore in the background
+      if (!mounted) return;
+      _fetchUserData();
+    } catch (e) {
+      debugPrint('Error in _loadData: $e');
+      setState(() => isLoading = false);
+    }
   }
 
-  void _loadCachedData() async {
+  Future<void> _loadCachedData() async {
     try {
       Map<String, dynamic>? cachedData = await CacheService.getData(_userCacheKey);
       
-      if (cachedData != null) {
+      if (cachedData != null && mounted) {
         // Get completion percentage from cache or calculate it
         double cachedPercentage = 0.0;
         if (cachedData.containsKey('completionPercentage')) {
@@ -104,6 +110,10 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   }
 
   Future<void> _fetchUserData() async {
+    if (!mounted) return;
+    
+    setState(() => isRefreshing = true);
+    
     try {
       String userId = FirebaseAuth.instance.currentUser!.uid;
       
@@ -113,8 +123,8 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
           .doc(userId)
           .get();
       
-      if (!userDoc.exists) {
-        setState(() => isLoading = false);
+      if (!userDoc.exists || !mounted) {
+        setState(() => isRefreshing = false);
         return;
       }
       
@@ -132,24 +142,24 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
         userData.addAll(patientData);
       }
       
-      // Get completionPercentage from Firestore or calculate it
-      double storedPercentage = 0.0;
-      if (userData.containsKey('completionPercentage')) {
-        storedPercentage = (userData['completionPercentage'] as num).toDouble();
-      } else {
-        storedPercentage = _calculateCompletionPercentage(userData);
-        
-        // Update the completionPercentage in Firestore if it's not already there
+      // Calculate completion percentage
+      double storedPercentage = userData.containsKey('completionPercentage') 
+          ? (userData['completionPercentage'] as num).toDouble()
+          : _calculateCompletionPercentage(userData);
+      
+      // Update Firestore with calculated percentage if needed
+      if (!userData.containsKey('completionPercentage')) {
         await FirebaseFirestore.instance
             .collection('patients')
             .doc(userId)
             .set({'completionPercentage': storedPercentage}, SetOptions(merge: true));
       }
       
+      if (!mounted) return;
+
       // Check if data has changed before updating state
       bool hasDataChanged = _userData == null || 
-          _userData!['fullName'] != userData['fullName'] ||
-          _userData!['profileImageUrl'] != userData['profileImageUrl'] ||
+          !_areMapContentsEqual(_userData!, userData) ||
           profileCompletionPercentage != storedPercentage;
       
       if (hasDataChanged) {
@@ -159,17 +169,20 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
           profileImageUrl = userData['profileImageUrl'];
           userRole = userData['role'] ?? "Patient";
           profileCompletionPercentage = storedPercentage;
-          isLoading = false;
         });
         
-        // Save updated data to cache
-        CacheService.saveData(_userCacheKey, userData);
-      } else {
-        setState(() => isLoading = false);
+        // Save updated data to cache with expiration
+        await CacheService.saveData(_userCacheKey, userData);
       }
     } catch (e) {
       debugPrint('Error fetching profile data: $e');
-      setState(() => isLoading = false);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isRefreshing = false;
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -250,9 +263,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: isLoading && _userData == null
-            ? Center(child: CircularProgressIndicator())
-            : Stack(
+        child: Stack(
                 children: [
                   RefreshIndicator(
                     onRefresh: _refreshData,
@@ -329,8 +340,8 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                     ),
                   ),
                   
-                  // Refresh indicator at bottom
-                  if (isRefreshing)
+                  // Loading indicator at bottom
+                  if (isLoading || isRefreshing)
                     Positioned(
                       bottom: 16,
                       left: 0,
@@ -364,7 +375,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                               ),
                               SizedBox(width: 8),
                               Text(
-                                "Refreshing...",
+                                isLoading ? "Loading profile..." : "Refreshing...",
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   color: Colors.grey.shade700,
