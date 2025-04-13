@@ -14,6 +14,9 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../../../../services/cache_service.dart';
 
 // Document type enum for upload functionality
 enum DocumentType { identification, medical }
@@ -66,12 +69,17 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   String? notes;
   bool profileComplete = false;
   
+  // Add patientData map to store the complete patient data
+  Map<String, dynamic> patientData = {};
+  
   // Image URLs
   String? profileImageUrl;
   String? medicalReport1Url;
   String? medicalReport2Url;
   
-  bool isLoading = true;
+  bool _isLoading = true;
+  bool _isRefreshing = false;
+  static const String _patientProfileCacheKey = 'patient_profile_details_data';
 
   // Categorized diseases for detailed view
   final Map<String, List<String>> diseasesMap = {};
@@ -89,96 +97,188 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     allergies = widget.allergies ?? [];
     diseases = widget.diseases ?? [];
     
-    // Fetch user data from Firestore
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Try to load data from cache first
+    await _loadCachedData();
+    
+    // Then fetch fresh data from Firestore
     _fetchPatientData();
   }
-  
-  Future<void> _fetchPatientData() async {
-    setState(() {
-      isLoading = true;
-    });
+
+  Future<void> _loadCachedData() async {
+    final cachedData = await CacheService.getData(_patientProfileCacheKey);
     
+    if (cachedData != null) {
+      setState(() {
+        // Store the complete data
+        patientData = cachedData;
+        
+        name = cachedData['fullName'] ?? cachedData['name'] ?? "No Name";
+        email = cachedData['email'] ?? "";
+        phoneNumber = cachedData['phoneNumber'] ?? "";
+        cnic = cachedData['cnic'] ?? "";
+        
+        // Address Info
+        address = cachedData['address'] ?? "";
+        city = cachedData['city'] ?? "";
+        state = cachedData['state'] ?? "";
+        country = cachedData['country'] ?? "";
+        zipCode = cachedData['zipCode'] ?? "";
+        
+        // Medical Info
+        age = cachedData['age']?.toString() ?? "";
+        bloodGroup = cachedData['bloodGroup'] ?? "";
+        height = cachedData['height']?.toString() ?? "";
+        weight = cachedData['weight']?.toString() ?? "";
+        
+        // Handle list data
+        if (cachedData['allergies'] != null) {
+          if (cachedData['allergies'] is List) {
+            allergies = List<String>.from(cachedData['allergies']);
+          } else if (cachedData['allergies'] is String) {
+            allergies = json.decode(cachedData['allergies']).cast<String>();
+          }
+        }
+        
+        if (cachedData['diseases'] != null) {
+          if (cachedData['diseases'] is List) {
+            diseases = List<String>.from(cachedData['diseases']);
+          } else if (cachedData['diseases'] is String) {
+            diseases = json.decode(cachedData['diseases']).cast<String>();
+          }
+        }
+        
+        notes = cachedData['notes'] ?? "";
+        disability = cachedData['disability'];
+        
+        // Image URLs
+        profileImageUrl = cachedData['profileImageUrl'];
+        medicalReport1Url = cachedData['medicalReport1Url'];
+        medicalReport2Url = cachedData['medicalReport2Url'];
+        
+        // Profile completion status
+        profileComplete = cachedData['profileComplete'] ?? false;
+        
+        // Initialize diseases map
+        _categorizeDiseases();
+        
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchPatientData() async {
     try {
-      final auth = FirebaseAuth.instance;
-      final firestore = FirebaseFirestore.instance;
-      
-      // Use provided userId or current user id
-      final userId = widget.userId ?? auth.currentUser?.uid;
+      setState(() {
+        _isRefreshing = true;
+      });
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
       
       if (userId != null) {
-        // First try to get data from users collection
-        final userDoc = await firestore.collection('users').doc(userId).get();
+        // Get user data
+        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
         
-        // Then get data from patients collection which has medical details
-        final patientDoc = await firestore.collection('patients').doc(userId).get();
+        // Get patient data
+        DocumentSnapshot patientSnapshot = await FirebaseFirestore.instance
+            .collection('patients')
+            .doc(userId)
+            .get();
         
-        Map<String, dynamic> userData = {};
+        Map<String, dynamic> newData = {};
         
-        if (userDoc.exists) {
-          userData.addAll(userDoc.data() ?? {});
+        // Merge user and patient data
+        if (userSnapshot.exists) {
+          newData.addAll(userSnapshot.data() as Map<String, dynamic>);
         }
         
-        if (patientDoc.exists) {
-          userData.addAll(patientDoc.data() ?? {});
+        if (patientSnapshot.exists) {
+          newData.addAll(patientSnapshot.data() as Map<String, dynamic>);
         }
         
-        if (userDoc.exists || patientDoc.exists) {
+        // Save fresh data to cache
+        await CacheService.saveData(_patientProfileCacheKey, newData);
+        
+        // Update UI only if data has changed
+        if (!_areMapContentsEqual(patientData, newData)) {
           setState(() {
-            // Basic Info
-            name = userData['fullName'] ?? userData['name'] ?? "No Name";
-            email = userData['email'] ?? "";
-            phoneNumber = userData['phoneNumber'] ?? "";
-            cnic = userData['cnic'] ?? "";
+            // Update the complete patient data
+            patientData = newData;
+            
+            name = newData['fullName'] ?? newData['name'] ?? "No Name";
+            email = newData['email'] ?? "";
+            phoneNumber = newData['phoneNumber'] ?? "";
+            cnic = newData['cnic'] ?? "";
             
             // Address Info
-            address = userData['address'] ?? "";
-            city = userData['city'] ?? "";
-            state = userData['state'] ?? "";
-            country = userData['country'] ?? "";
-            zipCode = userData['zipCode'] ?? "";
+            address = newData['address'] ?? "";
+            city = newData['city'] ?? "";
+            state = newData['state'] ?? "";
+            country = newData['country'] ?? "";
+            zipCode = newData['zipCode'] ?? "";
             
             // Medical Info
-            age = userData['age']?.toString() ?? "";
-            bloodGroup = userData['bloodGroup'] ?? "";
-            height = userData['height']?.toString() ?? "";
-            weight = userData['weight']?.toString() ?? "";
-            allergies = List<String>.from(userData['allergies'] ?? []);
-            diseases = List<String>.from(userData['diseases'] ?? []);
-            notes = userData['notes'] ?? "";
-            disability = userData['disability'];
+            age = newData['age']?.toString() ?? "";
+            bloodGroup = newData['bloodGroup'] ?? "";
+            height = newData['height']?.toString() ?? "";
+            weight = newData['weight']?.toString() ?? "";
+            allergies = List<String>.from(newData['allergies'] ?? []);
+            diseases = List<String>.from(newData['diseases'] ?? []);
+            notes = newData['notes'] ?? "";
+            disability = newData['disability'];
             
             // Image URLs
-            profileImageUrl = userData['profileImageUrl'];
-            medicalReport1Url = userData['medicalReport1Url'];
-            medicalReport2Url = userData['medicalReport2Url'];
+            profileImageUrl = newData['profileImageUrl'];
+            medicalReport1Url = newData['medicalReport1Url'];
+            medicalReport2Url = newData['medicalReport2Url'];
             
             // Profile completion status
-            profileComplete = userData['profileComplete'] ?? false;
+            profileComplete = newData['profileComplete'] ?? false;
             
             // Initialize diseases map
             _categorizeDiseases();
-            
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            name = "Profile Not Found";
-            isLoading = false;
           });
         }
-      } else {
-        setState(() {
-          name = "Not Signed In";
-          isLoading = false;
-        });
       }
     } catch (e) {
       print('Error fetching patient data: $e');
+    } finally {
       setState(() {
-        name = "Error Loading Profile";
-        isLoading = false;
+        _isLoading = false;
+        _isRefreshing = false;
       });
     }
+  }
+
+  // Helper method to compare maps (deep comparison)
+  bool _areMapContentsEqual(Map<String, dynamic> map1, Map<String, dynamic> map2) {
+    if (map1.length != map2.length) return false;
+    
+    for (String key in map1.keys) {
+      if (!map2.containsKey(key)) return false;
+      
+      if (map1[key] is Map && map2[key] is Map) {
+        if (!_areMapContentsEqual(
+            Map<String, dynamic>.from(map1[key] as Map),
+            Map<String, dynamic>.from(map2[key] as Map))) {
+          return false;
+        }
+      } else if (map1[key] != map2[key]) {
+        return false;
+      }
+    }
+    
+    return true;
   }
 
   void _categorizeDiseases() {
@@ -197,29 +297,76 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: isLoading 
-          ? Center(
-              child: CircularProgressIndicator(
-                color: const Color(0xFF3366CC),
-              ),
-            )
-          : Column(
-          children: [
-            _buildProfileHeader(),
-            _buildTabBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: const BouncingScrollPhysics(),
+        child: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : Stack(
                 children: [
-                  _buildSummaryTab(),
-                  _buildMedicalHistoryTab(),
-                  _buildDocumentsTab(),
+                  Column(
+                    children: [
+                      _buildProfileHeader(),
+                      _buildTabBar(),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            _buildSummaryTab(),
+                            _buildMedicalHistoryTab(),
+                            _buildDocumentsTab(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // Refresh indicator at bottom
+                  if (_isRefreshing)
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    const Color(0xFF3366CC),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Refreshing profile data...",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

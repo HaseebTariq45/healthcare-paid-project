@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/views/screens/analytics/reports.dart';
+import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/patient/dashboard/finance.dart';
 import 'package:healthcare/views/screens/patient/dashboard/home.dart';
 import 'package:healthcare/views/screens/patient/dashboard/profile.dart';
@@ -65,7 +65,7 @@ class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPa
       suppressProfilePrompt: suppressProfilePrompt,
       profileCompletionPercentage: profileCompletionPercentage,
     ),
-    ReportsScreen(),
+    AppointmentsScreen(),
     PatientFinancesScreen(),
     PatientMenuScreen(
       profileCompletionPercentage: profileCompletionPercentage,
@@ -87,8 +87,8 @@ class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPa
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Reports',
+            icon: Icon(Icons.calendar_today),
+            label: 'Appointments',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),

@@ -8,6 +8,7 @@ import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.dart';
 import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_page1.dart';
 import 'package:healthcare/views/screens/onboarding/splash.dart';
+import 'package:healthcare/views/screens/admin/admin_dashboard.dart';
 
 enum UserRole {
   patient,
@@ -21,33 +22,121 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Admin credentials - keep only this for admin access
-  static const String adminPhoneNumber = "+923031234567";
-  static const String adminOTP = "123456";
-
-  // Check if credentials match admin
-  bool isAdminCredentials(String phoneNumber, String otp) {
-    return phoneNumber == adminPhoneNumber && otp == adminOTP;
-  }
+  // Cache for admin credentials
+  static Map<String, dynamic>? _cachedAdminCredentials;
+  static DateTime? _lastAdminCredentialsFetch;
+  static final Duration _cacheDuration = Duration(minutes: 5);
 
   // Get current user
-  User? get currentUser => _auth.currentUser;
+  User? get currentUser {
+    // Check if we're in admin mode
+    if (_isAdminSession()) {
+      return null; // Admin doesn't have a Firebase Auth user
+    }
+    return _auth.currentUser;
+  }
 
   // Get current user stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   // Check if user is logged in
-  bool get isLoggedIn => _auth.currentUser != null;
+  bool get isLoggedIn {
+    // Check if we have a Firebase Auth user
+    if (_auth.currentUser != null) {
+      return true;
+    }
+    
+    // Check if we have an admin session
+    try {
+      final prefs = _getPrefs();
+      return prefs != null && prefs.containsKey('admin_session');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Fetch admin credentials from Firestore
+  Future<Map<String, dynamic>?> _fetchAdminCredentials(String phoneNumber) async {
+    try {
+      // If we already have cached credentials and they're not expired, return them
+      if (_cachedAdminCredentials != null && 
+          _lastAdminCredentialsFetch != null &&
+          DateTime.now().difference(_lastAdminCredentialsFetch!) < _cacheDuration) {
+        return _cachedAdminCredentials;
+      }
+      
+      print('***** FETCHING ADMIN CREDENTIALS FOR $phoneNumber *****');
+      
+      // Query Firestore for admin credentials
+      final querySnapshot = await _firestore
+          .collection('admin_credentials')
+          .where('phoneNumber', isEqualTo: phoneNumber)
+          .where('active', isEqualTo: true)
+          .limit(1)
+          .get();
+      
+      if (querySnapshot.docs.isEmpty) {
+        print('***** NO ADMIN CREDENTIALS FOUND *****');
+        return null;
+      }
+      
+      // Get the admin document
+      final doc = querySnapshot.docs.first;
+      final data = doc.data();
+      
+      print('***** FOUND ADMIN CREDENTIALS: ${data['phoneNumber']} *****');
+      
+      // Cache the credentials
+      _cachedAdminCredentials = {
+        'id': doc.id,
+        'phoneNumber': data['phoneNumber'],
+        'pin': data['pin'],
+        'active': data['active'],
+      };
+      _lastAdminCredentialsFetch = DateTime.now();
+      
+      return _cachedAdminCredentials;
+    } catch (e) {
+      debugPrint('Error fetching admin credentials: $e');
+      return null;
+    }
+  }
+
+  // Check if credentials match admin
+  Future<bool> isAdminCredentials(String phoneNumber, String otp) async {
+    final adminCredentials = await _fetchAdminCredentials(phoneNumber);
+    if (adminCredentials == null) return false;
+    
+    return adminCredentials['pin'] == otp;
+  }
+
+  // Check if phone number is for an admin
+  Future<bool> isAdminPhoneNumber(String phoneNumber) async {
+    final adminCredentials = await _fetchAdminCredentials(phoneNumber);
+    return adminCredentials != null;
+  }
 
   // Get user role from shared preferences (for quicker access)
   Future<UserRole> getUserRole() async {  
-    // If not logged in, return unknown
+    // Check for admin session first
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? adminUserId = prefs.getString('admin_session');
+    
+    if (adminUserId != null) {
+      print('***** FOUND ADMIN SESSION: $adminUserId *****');
+      final String? adminRoleStr = prefs.getString('user_role_$adminUserId');
+      if (adminRoleStr == 'admin') {
+        print('***** RETURNING ADMIN ROLE FOR ADMIN SESSION *****');
+        return UserRole.admin;
+      }
+    }
+    
+    // If not admin and not logged in, return unknown
     if (currentUser == null) {
       print('***** NO CURRENT USER, RETURNING UNKNOWN ROLE *****');
       return UserRole.unknown;
     }
     
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? roleStr = prefs.getString('user_role_${currentUser!.uid}');
     print('***** ROLE FROM PREFS: $roleStr for user ${currentUser!.uid} *****');
     
@@ -164,8 +253,9 @@ class AuthService {
     required String phoneNumber,
   }) async {
     try {
-      // Special handling for admin only
-      if (phoneNumber == adminPhoneNumber) {
+      // Special handling for admin
+      final isAdmin = await isAdminPhoneNumber(phoneNumber);
+      if (isAdmin) {
         return {
           'success': true,
           'verificationId': 'admin-verification-id-${DateTime.now().millisecondsSinceEpoch}',
@@ -258,29 +348,95 @@ class AuthService {
     try {
       // Handle admin verification
       if (verificationId.startsWith('admin-verification-id-')) {
-        if (smsCode == adminOTP) {
-          // Create a temporary auth instance for admin user
+        // Extract timestamp from stored admin verification data
+        final String timestampPart = verificationId.split('-').last;
+        final int timestamp = int.tryParse(timestampPart) ?? 0;
+        
+        // Basic validation: ensure the verification ID is not more than 10 minutes old
+        if (DateTime.now().millisecondsSinceEpoch - timestamp > 600000) {
+          return {
+            'success': false,
+            'message': 'Admin verification code expired',
+            'isAdmin': true
+          };
+        }
+        
+        // Find the admin with matching PIN
+        final querySnapshot = await _firestore
+            .collection('admin_credentials')
+            .where('active', isEqualTo: true)
+            .get();
+        
+        String adminPhoneNumber = '';
+        String adminId = '';
+        bool isValidAdmin = false;
+        
+        for (var doc in querySnapshot.docs) {
+          final data = doc.data();
+          if (data['pin'] == smsCode) {
+            adminPhoneNumber = data['phoneNumber'];
+            adminId = doc.id;
+            isValidAdmin = true;
+            break;
+          }
+        }
+        
+        if (isValidAdmin) {
+          // Create or get admin user from Firestore directly (no Firebase Auth)
           try {
-            final userCredential = await _auth.signInAnonymously();
-            final User? adminUser = userCredential.user;
+            // Look for existing admin user
+            final adminUsersQuery = await _firestore.collection('users')
+                .where('phoneNumber', isEqualTo: adminPhoneNumber)
+                .where('role', isEqualTo: 'admin')
+                .limit(1)
+                .get();
+                
+            String adminUserId;
             
-            if (adminUser != null) {
-              // Create or update admin user in Firestore
-              await _firestore.collection('users').doc(adminUser.uid).set({
+            if (adminUsersQuery.docs.isNotEmpty) {
+              // Use existing admin user
+              adminUserId = adminUsersQuery.docs.first.id;
+              
+              // Update last login
+              await _firestore.collection('users').doc(adminUserId).update({
+                'lastLogin': FieldValue.serverTimestamp(),
+              });
+            } else {
+              // Create new admin user document
+              final adminUserRef = _firestore.collection('users').doc();
+              adminUserId = adminUserRef.id;
+              
+              await adminUserRef.set({
                 'phoneNumber': adminPhoneNumber,
                 'role': 'admin',
                 'fullName': 'Admin User',
                 'profileComplete': true,
+                'createdAt': FieldValue.serverTimestamp(),
                 'lastLogin': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
-              
-              // Cache admin role
-              await _saveUserRole(UserRole.admin);
+                'adminCredentialId': adminId,
+              });
             }
+            
+            // Store admin session info in SharedPreferences
+            final SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString('admin_user_id', adminUserId);
+            await prefs.setString('admin_phone', adminPhoneNumber);
+            await prefs.setString('user_role_$adminUserId', 'admin');
+            
+            // Update the last login timestamp in admin_credentials
+            await _firestore.collection('admin_credentials').doc(adminId).update({
+              'lastLogin': FieldValue.serverTimestamp()
+            });
+            
+            // Save admin session
+            await _saveAdminSession(adminUserId);
+            
+            print('***** ADMIN VERIFICATION SUCCESS - USER ID: $adminUserId *****');
+            print('***** ADMIN SESSION SAVED *****');
             
             return {
               'success': true,
-              'user': adminUser,
+              'userId': adminUserId,
               'isNewUser': false,
               'message': 'Admin verification successful',
               'isAdmin': true
@@ -411,6 +567,16 @@ class AuthService {
 
   // Check if profile is complete
   Future<bool> isProfileComplete() async {
+    // Check for admin session first
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? adminUserId = prefs.getString('admin_session');
+    
+    // Admin users always have a complete profile
+    if (adminUserId != null) {
+      print('***** ADMIN USER - PROFILE ALWAYS COMPLETE *****');
+      return true;
+    }
+    
     if (currentUser == null) return false;
     
     try {
@@ -581,10 +747,72 @@ class AuthService {
         );
       }
     }
+    else if (userRole == UserRole.admin) {
+      print('***** SIMPLE NAVIGATION: Routing to ADMIN DASHBOARD *****');
+      return AdminDashboard();
+    }
     else {
       // Default/fallback
       print('***** SIMPLE NAVIGATION: Unknown role, routing to onboarding *****');
       return SplashScreen();
     }
+  }
+
+  // Save admin session
+  Future<void> _saveAdminSession(String adminUserId) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Store the admin user ID
+    await prefs.setString('admin_session', adminUserId);
+    await prefs.setString('user_role_$adminUserId', 'admin');
+    
+    // Cache the role
+    await _saveUserRole(UserRole.admin);
+  }
+
+  // Check if this is an admin session
+  bool _isAdminSession() {
+    try {
+      // SharedPreferences.getInstance() returns a Future, cannot be used synchronously
+      final prefs = _getPrefs();
+      return prefs?.containsKey('admin_session') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+  
+  // Helper method to get cached prefs
+  SharedPreferences? _prefsInstance;
+  
+  // Constructor to initialize SharedPreferences
+  AuthService() {
+    _initPrefs();
+  }
+  
+  SharedPreferences? _getPrefs() {
+    return _prefsInstance;
+  }
+  
+  // Initialize prefs at service startup
+  Future<void> _initPrefs() async {
+    try {
+      _prefsInstance = await SharedPreferences.getInstance();
+    } catch (e) {
+      debugPrint('Error initializing SharedPreferences: $e');
+    }
+  }
+  
+  // Get current user ID (works for both regular users and admin)
+  String? get currentUserId {
+    // Check if we're in admin mode
+    final prefs = _getPrefs();
+    final String? adminUserId = prefs?.getString('admin_session');
+    
+    if (adminUserId != null) {
+      print('***** USING ADMIN USER ID: $adminUserId *****');
+      return adminUserId;
+    }
+    
+    return _auth.currentUser?.uid;
   }
 } 

@@ -12,6 +12,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../../../../services/cache_service.dart';
 
 class PatientMenuScreen extends StatefulWidget {
   final String name;
@@ -35,74 +38,156 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   late List<MenuItem> menuItems;
   late int profileCompletionPercentage;
   bool isLoading = true;
+  bool isRefreshing = false; // Flag for background refresh
   String userName = "User";
   String? profileImageUrl;
   String userRole = "Patient";
-  Map<String, dynamic> userData = {};
+  Map<String, dynamic>? _userData;
+  static const String _userCacheKey = 'patient_profile_data';
   
   @override
   void initState() {
     super.initState();
     _initializeMenuItems();
     profileCompletionPercentage = widget.profileCompletionPercentage;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    // Try to load data from cache first
+    await _loadCachedData();
+    
+    // Then fetch fresh data from Firestore
     _fetchUserData();
   }
 
-  Future<void> _fetchUserData() async {
-    try {
-      final auth = FirebaseAuth.instance;
-      final firestore = FirebaseFirestore.instance;
-      final userId = auth.currentUser?.uid;
-      
-      if (userId == null) {
-        setState(() {
-          isLoading = false;
-        });
-        return;
-      }
-      
-      // Get data from both collections
-      final patientDoc = await firestore.collection('patients').doc(userId).get();
-      final userDoc = await firestore.collection('users').doc(userId).get();
-      
-      Map<String, dynamic> mergedData = {};
-      
-      if (patientDoc.exists) {
-        mergedData.addAll(patientDoc.data() ?? {});
-      }
-      if (userDoc.exists) {
-        mergedData.addAll(userDoc.data() ?? {});
-      }
-      
-      // Get medical records count
-      final medicalRecordsSnapshot = await firestore
-          .collection('medicalRecords')
-          .where('patientId', isEqualTo: userId)
-          .get();
-          
-      // Get appointments count
-      final appointmentsSnapshot = await firestore
-          .collection('appointments')
-          .where('patientId', isEqualTo: userId)
-          .get();
-      
+  Future<void> _loadCachedData() async {
+    final cachedData = await CacheService.getData(_userCacheKey);
+    
+    if (cachedData != null) {
       setState(() {
-        userData = mergedData;
-        userName = mergedData['fullName'] ?? mergedData['name'] ?? "User";
-        profileImageUrl = mergedData['profileImageUrl'];
-        userRole = mergedData['role'] ?? "Patient";
-        profileCompletionPercentage = (mergedData['completionPercentage'] ?? 0).toInt();
-        isLoading = false;
-      });
-      
-    } catch (e) {
-      print('Error fetching user data: $e');
-      setState(() {
+        _userData = cachedData;
+        userName = cachedData['fullName'] ?? cachedData['name'] ?? "User";
+        profileImageUrl = cachedData['profileImageUrl'];
+        userRole = cachedData['role'] ?? "Patient";
+        profileCompletionPercentage = _calculateCompletionPercentage(cachedData);
         isLoading = false;
       });
     }
   }
-  
+
+  Future<void> _fetchUserData() async {
+    try {
+      setState(() {
+        isRefreshing = true;
+      });
+
+      User? user = FirebaseAuth.instance.currentUser;
+      
+      if (user != null) {
+        DocumentSnapshot snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (snapshot.exists) {
+          Map<String, dynamic> newData = snapshot.data() as Map<String, dynamic>;
+          
+          // Calculate completion percentage
+          int calculatedPercentage = _calculateCompletionPercentage(newData);
+          
+          // Update the user data with the calculated percentage
+          if (newData['completionPercentage'] != calculatedPercentage) {
+            // Update in Firestore
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .update({'completionPercentage': calculatedPercentage});
+                
+            // Update the local data
+            newData['completionPercentage'] = calculatedPercentage;
+          }
+          
+          // Save the fresh data to cache
+          await CacheService.saveData(_userCacheKey, newData);
+          
+          // Update UI only if the data has changed
+          if (_userData == null || !_areMapContentsEqual(_userData!, newData)) {
+            setState(() {
+              _userData = newData;
+              userName = newData['fullName'] ?? newData['name'] ?? "User";
+              profileImageUrl = newData['profileImageUrl'];
+              userRole = newData['role'] ?? "Patient";
+              profileCompletionPercentage = calculatedPercentage;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+        isRefreshing = false;
+      });
+    }
+  }
+
+  // Calculate profile completion percentage based on filled fields
+  int _calculateCompletionPercentage(Map<String, dynamic> userData) {
+    int totalFields = 10; // Total number of important profile fields
+    int filledFields = 0;
+    
+    // Check basic profile fields
+    if ((userData['fullName']?.toString() ?? '').isNotEmpty) filledFields++;
+    if ((userData['email']?.toString() ?? '').isNotEmpty) filledFields++;
+    if ((userData['phoneNumber']?.toString() ?? '').isNotEmpty) filledFields++;
+    
+    // Check medical info
+    if ((userData['age']?.toString() ?? '').isNotEmpty) filledFields++;
+    if ((userData['bloodGroup']?.toString() ?? '').isNotEmpty) filledFields++;
+    if ((userData['height']?.toString() ?? '').isNotEmpty) filledFields++;
+    if ((userData['weight']?.toString() ?? '').isNotEmpty) filledFields++;
+    
+    // Check address info
+    if ((userData['address']?.toString() ?? '').isNotEmpty) filledFields++;
+    if ((userData['city']?.toString() ?? '').isNotEmpty) filledFields++;
+    
+    // Check profile image
+    if ((userData['profileImageUrl']?.toString() ?? '').isNotEmpty) filledFields++;
+    
+    return ((filledFields / totalFields) * 100).round();
+  }
+
+  // Helper method to compare maps (deep comparison)
+  bool _areMapContentsEqual(Map<String, dynamic> map1, Map<String, dynamic> map2) {
+    if (map1.length != map2.length) return false;
+    
+    for (String key in map1.keys) {
+      if (!map2.containsKey(key)) return false;
+      
+      if (map1[key] is Map && map2[key] is Map) {
+        if (!_areMapContentsEqual(
+            Map<String, dynamic>.from(map1[key] as Map),
+            Map<String, dynamic>.from(map2[key] as Map))) {
+          return false;
+        }
+      } else if (map1[key] != map2[key]) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  Future<void> _refreshData() async {
+    await _fetchUserData();
+  }
+
   void _initializeMenuItems() {
     menuItems = [
       MenuItem("Edit Profile", LucideIcons.user, const ProfileEditorScreen()),
@@ -118,82 +203,129 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: isLoading 
-          ? Center(
-              child: CircularProgressIndicator(
-                color: const Color(0xFF3366CC),
-              ),
-            )
-          : SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildProfileHeader(),
-                
-                // Always show profile completion card
-                _buildProfileCompletionCard(),
-                
-                SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 25),
-                        
-                        Text(
-                          "Settings",
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                            letterSpacing: 0.5,
+        child: isLoading && _userData == null
+            ? Center(child: CircularProgressIndicator())
+            : Stack(
+                children: [
+                  SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _buildProfileHeader(),
+                          
+                          // Always show profile completion card
+                          _buildProfileCompletionCard(),
+                          
+                          SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 25),
+                                  
+                                  Text(
+                                    "Settings",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  
+                                  // Menu items
+                                  ...menuItems.map((item) => _buildMenuItem(item)).toList(),
+                                  
+                                  // Logout button
+                                  _buildLogoutButton(),
+                                  
+                                  const SizedBox(height: 25),
+                                  
+                                  // App version info
+                                  Center(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          "HealthCare App",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF3366CC),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Version 1.0.0",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Menu items
-                        ...menuItems.map((item) => _buildMenuItem(item)).toList(),
-                        
-                        // Logout button
-                        _buildLogoutButton(),
-                        
-                        const SizedBox(height: 25),
-                        
-                        // App version info
-                        Center(
-                          child: Column(
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // Refresh indicator at bottom
+                  if (isRefreshing)
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                "HealthCare App",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF3366CC),
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    const Color(0xFF3366CC),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(width: 8),
                               Text(
-                                "Version 1.0.0",
+                                "Refreshing...",
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                  color: Colors.grey.shade700,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+                ],
+              ),
       ),
     );
   }

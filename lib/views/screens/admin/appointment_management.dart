@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:healthcare/services/admin_service.dart';
 
 class AppointmentManagement extends StatefulWidget {
   const AppointmentManagement({Key? key}) : super(key: key);
@@ -18,9 +19,11 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
   String _selectedDoctorFilter = 'All Doctors';
   DateTimeRange? _selectedDateRange;
   
-  // Mock data - to be replaced with actual data fetching
-  final List<Map<String, dynamic>> _appointments = [];
-  bool _isLoading = false;
+  // Service and data
+  final AdminService _adminService = AdminService();
+  List<Map<String, dynamic>> _appointments = [];
+  bool _isLoading = true;
+  String? _errorMessage;
   
   @override
   void initState() {
@@ -34,20 +37,27 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
     super.dispose();
   }
   
-  // Simulated appointment loading
+  // Load appointments from AdminService
   Future<void> _loadAppointments() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
     
-    // Simulate network delay
-    await Future.delayed(Duration(milliseconds: 800));
-    
-    setState(() {
-      _appointments.clear();
-      _appointments.addAll(_getMockAppointments());
-      _isLoading = false;
-    });
+    try {
+      final appointments = await _adminService.getAllAppointments();
+      
+      setState(() {
+        _appointments = appointments;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading appointments: $e');
+      setState(() {
+        _errorMessage = 'Failed to load appointments: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
   
   // Filtered appointments based on search and filters
@@ -67,9 +77,9 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
       
       // Apply date range filter
       if (_selectedDateRange != null) {
-        final appointmentDate = DateFormat('dd MMM yyyy').parse(appointment['date']);
+        final appointmentDate = appointment['actualDate'] as DateTime;
         if (appointmentDate.isBefore(_selectedDateRange!.start) || 
-            appointmentDate.isAfter(_selectedDateRange!.end)) {
+            appointmentDate.isAfter(_selectedDateRange!.end.add(Duration(days: 1)))) {
           return false;
         }
       }
@@ -100,6 +110,60 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
       doctors.add(appointment['doctorName']);
     }
     return doctors.toList();
+  }
+  
+  // Update appointment status
+  Future<void> _updateAppointmentStatus(String appointmentId, String status) async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final result = await _adminService.updateAppointmentStatus(appointmentId, status);
+      
+      if (result['success']) {
+        // Refresh appointments list
+        await _loadAppointments();
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Appointment status updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${result['message']}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
   
   @override
@@ -234,16 +298,68 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
           Expanded(
             child: _isLoading
                 ? Center(child: CircularProgressIndicator())
-                : filteredAppointments.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: filteredAppointments.length,
-                        itemBuilder: (context, index) {
-                          final appointment = filteredAppointments[index];
-                          return _buildAppointmentCard(appointment);
-                        },
-                      ),
+                : _errorMessage != null
+                    ? _buildErrorState()
+                    : filteredAppointments.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: EdgeInsets.all(16),
+                            itemCount: filteredAppointments.length,
+                            itemBuilder: (context, index) {
+                              final appointment = filteredAppointments[index];
+                              return _buildAppointmentCard(appointment);
+                            },
+                          ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: Colors.red.shade400,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Failed to load appointments',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.red.shade600,
+            ),
+          ),
+          SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Text(
+              _errorMessage ?? 'An unknown error occurred',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton.icon(
+            icon: Icon(Icons.refresh),
+            label: Text('Try Again'),
+            onPressed: _loadAppointments,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF3366CC),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),
@@ -532,7 +648,7 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                             ),
                           ),
                           Text(
-                            appointment['specialty'],
+                            appointment['specialty'] ?? 'Doctor',
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -630,12 +746,12 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                         label: 'Reason',
                         value: appointment['reason'],
                       ),
-                      if (appointment['amount'] != null) ...[
+                      if (appointment['displayAmount'] != null) ...[
                         SizedBox(height: 8),
                         _buildDetailRow(
                           icon: Icons.payments,
                           label: 'Fee',
-                          value: appointment['displayAmount'] ?? 'Rs ${appointment['amount']}',
+                          value: appointment['displayAmount'],
                         ),
                       ],
                     ],
@@ -647,8 +763,7 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                 // Action buttons
                 Row(
                   children: [
-                    if (appointment['status'] == 'Pending' || 
-                        appointment['status'] == 'Confirmed') ...[
+                    if (appointment['status'] == 'Pending') ...[
                       Expanded(
                         child: OutlinedButton.icon(
                           icon: Icon(Icons.check_circle),
@@ -656,7 +771,7 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                           onPressed: () => _showConfirmationDialog(
                             appointment['id'],
                             'Are you sure you want to confirm this appointment?',
-                            'Confirm',
+                            'confirmed',
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Color(0xFF4CAF50),
@@ -677,7 +792,7 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                           onPressed: () => _showConfirmationDialog(
                             appointment['id'],
                             'Are you sure you want to cancel this appointment?',
-                            'Cancel',
+                            'cancelled',
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Color(0xFFFF5722),
@@ -689,25 +804,30 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                       SizedBox(width: 8),
                     ],
                     
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: Icon(Icons.edit),
-                        label: Text('Edit'),
-                        onPressed: () => _showEditDialog(appointment),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Color(0xFF3366CC),
-                          side: BorderSide(color: Color(0xFF3366CC)),
-                          padding: EdgeInsets.symmetric(vertical: 12),
+                    if (appointment['status'] == 'Confirmed') ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: Icon(Icons.done_all),
+                          label: Text('Complete'),
+                          onPressed: () => _showConfirmationDialog(
+                            appointment['id'],
+                            'Are you sure you want to mark this appointment as completed?',
+                            'completed',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Color(0xFF3366CC),
+                            side: BorderSide(color: Color(0xFF3366CC)),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
-                    ),
-                    
-                    SizedBox(width: 8),
+                      SizedBox(width: 8),
+                    ],
                     
                     Expanded(
                       child: ElevatedButton.icon(
                         icon: Icon(Icons.visibility),
-                        label: Text('View'),
+                        label: Text('Details'),
                         onPressed: () => _showAppointmentDetails(appointment),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF3366CC),
@@ -761,199 +881,133 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
     );
   }
   
-  // Show confirmation dialog for actions
-  void _showConfirmationDialog(String appointmentId, String message, String action) {
+  void _showConfirmationDialog(String appointmentId, String message, String status) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('$action Appointment'),
+        title: Text('Confirm Action'),
         content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('No'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Implement the action logic here
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Appointment ${action.toLowerCase()}ed successfully'),
-                  backgroundColor: action == 'Confirm' ? Color(0xFF4CAF50) : Color(0xFFFF5722),
-                ),
-              );
-            },
-            child: Text('Yes'),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  // Show edit dialog
-  void _showEditDialog(Map<String, dynamic> appointment) {
-    // This would typically open a form to edit appointment details
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Edit Appointment'),
-        content: Text('Editing appointment ${appointment['id']}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Appointment updated successfully'),
-                  backgroundColor: Color(0xFF3366CC),
-                ),
-              );
+              _updateAppointmentStatus(appointmentId, status);
             },
-            child: Text('Save'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: status == 'cancelled' ? Color(0xFFFF5722) : Color(0xFF4CAF50),
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Confirm'),
           ),
         ],
       ),
     );
   }
   
-  // Show appointment details
   void _showAppointmentDetails(Map<String, dynamic> appointment) {
-    // This would typically open a detailed view of the appointment
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Appointment Details'),
-        content: Text('Viewing details for appointment ${appointment['id']}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          constraints: BoxConstraints(maxWidth: 500),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Appointment Details',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                    splashRadius: 24,
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              _buildDetailItem('Appointment ID', appointment['id']),
+              Divider(),
+              _buildDetailItem('Patient', appointment['patientName']),
+              _buildDetailItem('Doctor', appointment['doctorName']),
+              _buildDetailItem('Specialty', appointment['specialty'] ?? 'Not specified'),
+              Divider(),
+              _buildDetailItem('Date', appointment['date']),
+              _buildDetailItem('Time', appointment['time']),
+              _buildDetailItem('Hospital', appointment['hospital']),
+              _buildDetailItem('Type', appointment['type'] ?? 'In-person'),
+              Divider(),
+              _buildDetailItem('Reason', appointment['reason']),
+              _buildDetailItem('Fee', appointment['displayAmount'] ?? 'Not specified'),
+              _buildDetailItem('Status', appointment['status']),
+              _buildDetailItem('Payment Status', appointment['paymentStatus'] ?? 'Not specified'),
+              SizedBox(height: 24),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF3366CC),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text('Close'),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
   
-  // Mock appointment data
-  List<Map<String, dynamic>> _getMockAppointments() {
-    return [
-      {
-        "id": "APT123456",
-        "patientId": "P001",
-        "doctorId": "D001",
-        "patientName": "Ahmed Khan",
-        "doctorName": "Dr. Sara Malik",
-        "specialty": "Cardiologist",
-        "date": "15 Jun 2023",
-        "time": "09:00 AM",
-        "hospital": "Aga Khan Hospital, Karachi",
-        "reason": "Chest Pain",
-        "status": "Completed",
-        "amount": 2500,
-        "displayAmount": "Rs 2,500",
-        "type": "In-Person Visit",
-      },
-      {
-        "id": "APT123457",
-        "patientId": "P002",
-        "doctorId": "D002",
-        "patientName": "Fatima Ali",
-        "doctorName": "Dr. Usman Ahmed",
-        "specialty": "Dermatologist",
-        "date": "20 Jun 2023",
-        "time": "02:30 PM",
-        "hospital": "Shifa International Hospital, Islamabad",
-        "reason": "Skin Rash",
-        "status": "Confirmed",
-        "amount": 2000,
-        "displayAmount": "Rs 2,000",
-        "type": "Video Consultation",
-      },
-      {
-        "id": "APT123458",
-        "patientId": "P003",
-        "doctorId": "D003",
-        "patientName": "Bilal Khan",
-        "doctorName": "Dr. Ayesha Iqbal",
-        "specialty": "Orthopedic",
-        "date": "25 Jun 2023",
-        "time": "11:00 AM",
-        "hospital": "Liaquat National Hospital, Karachi",
-        "reason": "Knee Pain",
-        "status": "Pending",
-        "amount": 3000,
-        "displayAmount": "Rs 3,000",
-        "type": "In-Person Visit",
-      },
-      {
-        "id": "APT123459",
-        "patientId": "P004",
-        "doctorId": "D001",
-        "patientName": "Sara Ahmed",
-        "doctorName": "Dr. Sara Malik",
-        "specialty": "Cardiologist",
-        "date": "28 Jun 2023",
-        "time": "04:15 PM",
-        "hospital": "Aga Khan Hospital, Karachi",
-        "reason": "Follow-up",
-        "status": "Confirmed",
-        "amount": 2500,
-        "displayAmount": "Rs 2,500",
-        "type": "Video Consultation",
-      },
-      {
-        "id": "APT123460",
-        "patientId": "P005",
-        "doctorId": "D004",
-        "patientName": "Ali Hassan",
-        "doctorName": "Dr. Zainab Khan",
-        "specialty": "Neurologist",
-        "date": "30 Jun 2023",
-        "time": "10:45 AM",
-        "hospital": "CMH Hospital, Lahore",
-        "reason": "Headache",
-        "status": "Cancelled",
-        "amount": 3500,
-        "displayAmount": "Rs 3,500",
-        "type": "In-Person Visit",
-      },
-      {
-        "id": "APT123461",
-        "patientId": "P006",
-        "doctorId": "D005",
-        "patientName": "Zainab Malik",
-        "doctorName": "Dr. Fahad Ahmed",
-        "specialty": "Gynecologist",
-        "date": "02 Jul 2023",
-        "time": "09:30 AM",
-        "hospital": "Jinnah Hospital, Karachi",
-        "reason": "Prenatal Checkup",
-        "status": "Pending",
-        "amount": 2800,
-        "displayAmount": "Rs 2,800",
-        "type": "In-Person Visit",
-      },
-      {
-        "id": "APT123462",
-        "patientId": "P007",
-        "doctorId": "D006",
-        "patientName": "Usman Ali",
-        "doctorName": "Dr. Asad Khan",
-        "specialty": "ENT Specialist",
-        "date": "05 Jul 2023",
-        "time": "01:00 PM",
-        "hospital": "PIMS Hospital, Islamabad",
-        "reason": "Ear Infection",
-        "status": "Confirmed",
-        "amount": 2200,
-        "displayAmount": "Rs 2,200",
-        "type": "In-Person Visit",
-      },
-    ];
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 } 

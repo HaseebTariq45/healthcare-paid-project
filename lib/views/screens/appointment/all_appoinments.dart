@@ -104,7 +104,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               // Determine appointment status
               String status = appointmentData['status'] ?? 'pending';
               if (status.toLowerCase() == 'pending' || status.toLowerCase() == 'confirmed') {
-                status = 'upcoming';
+                // Check if the appointment has already passed
+                if (_isAppointmentPast(appointmentDate, formattedTime)) {
+                  status = 'completed'; // Automatically move to completed/past
+                } else {
+                  status = 'upcoming';
+                }
               } else if (status.toLowerCase() == 'completed') {
                 status = 'completed';
               } else if (status.toLowerCase() == 'cancelled') {
@@ -127,6 +132,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
                 'cancellationReason': appointmentData['cancellationReason'],
                 'type': appointmentData['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation',
+                'actualDate': appointmentDate, // Store the actual DateTime for sorting
+                'userRating': appointmentData['userRating'],
+                'userFeedback': appointmentData['userFeedback'],
+                'isRated': appointmentData['isRated'] ?? false,
               });
               print('Successfully added appointment to list');
             } else {
@@ -152,6 +161,75 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     }
   }
   
+  // Helper method to check if an appointment has already passed
+  bool _isAppointmentPast(DateTime appointmentDate, String timeStr) {
+    final now = DateTime.now();
+    
+    // First check if the date is in the past
+    if (appointmentDate.year < now.year ||
+        (appointmentDate.year == now.year && appointmentDate.month < now.month) ||
+        (appointmentDate.year == now.year && appointmentDate.month == now.month && appointmentDate.day < now.day)) {
+      return true;
+    }
+    
+    // If it's today, check if the time has passed
+    if (appointmentDate.year == now.year && 
+        appointmentDate.month == now.month && 
+        appointmentDate.day == now.day) {
+      
+      // Parse the time string (HH:MM AM/PM format)
+      final parsedTime = _parseTimeString(timeStr);
+      
+      // Check if the appointment time has passed
+      final appointmentDateTime = DateTime(
+        appointmentDate.year,
+        appointmentDate.month,
+        appointmentDate.day,
+        parsedTime.hour,
+        parsedTime.minute,
+      );
+      
+      return now.isAfter(appointmentDateTime);
+    }
+    
+    return false;
+  }
+  
+  // Helper method to parse time strings like "10:30 AM" or "02:15 PM"
+  TimeOfDay _parseTimeString(String timeStr) {
+    // Default to noon if parsing fails
+    TimeOfDay result = TimeOfDay(hour: 12, minute: 0);
+    
+    try {
+      timeStr = timeStr.trim().toUpperCase();
+      
+      bool isPM = timeStr.endsWith('PM');
+      
+      // Remove AM/PM indicator
+      timeStr = timeStr.replaceAll(' AM', '').replaceAll(' PM', '');
+      
+      // Split hours and minutes
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        int hour = int.parse(parts[0]);
+        int minute = int.parse(parts[1]);
+        
+        // Convert to 24-hour format if PM
+        if (isPM && hour < 12) {
+          hour += 12;
+        } else if (!isPM && hour == 12) {
+          hour = 0;
+        }
+        
+        result = TimeOfDay(hour: hour, minute: minute);
+      }
+    } catch (e) {
+      print('Error parsing time string: $e');
+    }
+    
+    return result;
+  }
+
   void _filterAppointments() {
     // First filter by tab/status
     final List<Map<String, dynamic>> statusFiltered = _appointments.where((appointment) {
@@ -681,11 +759,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                             SizedBox(width: 12),
                             Expanded(
                               child: _buildActionButton(
-                                "Schedule Again",
-                                LucideIcons.repeat,
-                                Color(0xFF4CAF50),
+                                appointment['isRated'] == true ? "Update Review" : "Rate Doctor",
+                                LucideIcons.star,
+                                Color(0xFFFF9800),
                                 () {
-                                  // Handle reschedule
+                                  _showRatingDialog(context, appointment);
                                 },
                               ),
                             ),
@@ -774,5 +852,295 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         ),
       ),
     );
+  }
+
+  void _showRatingDialog(BuildContext context, Map<String, dynamic> appointment) {
+    double _rating = appointment['userRating']?.toDouble() ?? 0;
+    TextEditingController _feedbackController = TextEditingController();
+    _feedbackController.text = appointment['userFeedback'] ?? '';
+    bool _isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFF8E1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        LucideIcons.star,
+                        size: 35,
+                        color: Color(0xFFFFB300),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      "Rate Your Experience",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      "How was your appointment with Dr. ${appointment['doctorName'].split(' ').last}?",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            index < _rating ? Icons.star : Icons.star_border,
+                            color: index < _rating ? Color(0xFFFFB300) : Colors.grey,
+                            size: 36,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _rating = index + 1;
+                            });
+                          },
+                        );
+                      }),
+                    ),
+                    SizedBox(height: 20),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Color(0xFFE0E0E0),
+                        ),
+                      ),
+                      child: TextField(
+                        controller: _feedbackController,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                        ),
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: "Share your feedback (optional)",
+                          hintStyle: GoogleFonts.poppins(
+                            color: Colors.grey.shade400,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isSubmitting 
+                                ? null 
+                                : () => Navigator.of(context).pop(),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Color(0xFF666666),
+                              side: BorderSide(color: Color(0xFFE0E0E0)),
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              "Cancel",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isSubmitting || _rating == 0
+                                ? null
+                                : () async {
+                                    setState(() {
+                                      _isSubmitting = true;
+                                    });
+                                    
+                                    await _submitRating(
+                                      appointment['id'],
+                                      appointment['doctorName'],
+                                      _rating,
+                                      _feedbackController.text,
+                                    );
+                                    
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop();
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF1E74FD),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              disabledBackgroundColor: Color(0xFFBDBDBD),
+                            ),
+                            child: _isSubmitting
+                                ? SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(
+                                    "Submit",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  Future<void> _submitRating(
+    String appointmentId, 
+    String doctorName,
+    double rating, 
+    String feedback
+  ) async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId == null) {
+        return;
+      }
+      
+      // Get appointment document
+      final appointmentDoc = await firestore
+          .collection('appointments')
+          .doc(appointmentId)
+          .get();
+      
+      if (!appointmentDoc.exists) {
+        print('Appointment document not found');
+        return;
+      }
+      
+      final appointmentData = appointmentDoc.data() as Map<String, dynamic>;
+      final doctorId = appointmentData['doctorId'];
+      
+      if (doctorId == null) {
+        print('Doctor ID not found in appointment');
+        return;
+      }
+      
+      // Update appointment with rating
+      await firestore.collection('appointments').doc(appointmentId).update({
+        'userRating': rating,
+        'userFeedback': feedback,
+        'isRated': true,
+        'ratingTimestamp': FieldValue.serverTimestamp(),
+      });
+      
+      // Create or update review document
+      final reviewRef = firestore.collection('doctor_reviews').doc();
+      await reviewRef.set({
+        'doctorId': doctorId,
+        'patientId': userId,
+        'appointmentId': appointmentId,
+        'rating': rating,
+        'feedback': feedback,
+        'doctorName': doctorName,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      
+      // Update doctor's average rating
+      // First get all reviews for the doctor
+      final reviewsSnapshot = await firestore
+          .collection('doctor_reviews')
+          .where('doctorId', isEqualTo: doctorId)
+          .get();
+      
+      double totalRating = 0;
+      int reviewCount = reviewsSnapshot.docs.length;
+      
+      for (var doc in reviewsSnapshot.docs) {
+        totalRating += (doc.data()['rating'] as num).toDouble();
+      }
+      
+      double averageRating = reviewCount > 0 ? totalRating / reviewCount : 0;
+      
+      // Update doctor document with new average rating
+      await firestore.collection('doctors').doc(doctorId).update({
+        'rating': averageRating,
+        'reviewCount': reviewCount,
+      });
+      
+      // Update local data to reflect changes
+      for (int i = 0; i < _appointments.length; i++) {
+        if (_appointments[i]['id'] == appointmentId) {
+          _appointments[i]['userRating'] = rating;
+          _appointments[i]['userFeedback'] = feedback;
+          _appointments[i]['isRated'] = true;
+          break;
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _filterAppointments();
+        });
+      }
+      
+      print('Rating submitted successfully');
+    } catch (e) {
+      print('Error submitting rating: $e');
+    }
   }
 }

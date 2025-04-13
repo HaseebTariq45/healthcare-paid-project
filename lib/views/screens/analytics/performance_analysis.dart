@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
-import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
-import 'package:healthcare/views/screens/doctor/hospitals/manage_hospitals_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class PerformanceAnalysis extends StatelessWidget {
@@ -42,68 +40,15 @@ class PerformanceAnalysis extends StatelessWidget {
             
             SizedBox(height: 24),
             
-            // Quick Actions
+            // Performance metrics section
             Text(
-              "Manage Your Schedule",
+              "Performance Metrics",
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
-            SizedBox(height: 16),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionCard(
-                    title: "Manage Hospitals",
-                    subtitle: "Add or remove your hospitals",
-                    icon: LucideIcons.building2,
-                    backgroundColor: Color(0xFFE8EAF6),
-                    iconColor: Color(0xFF3F51B5),
-                    onTap: () {
-                      // Use cached navigation for better performance
-                      NavigationHelper.navigateToCachedScreen(
-                        context, 
-                        "ManageHospitalsScreen", 
-                        () => ManageHospitalsScreen()
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: _buildActionCard(
-                    title: "Set Availability",
-                    subtitle: "Update your schedule",
-                    icon: LucideIcons.calendar,
-                    backgroundColor: Color(0xFFE0F2F1),
-                    iconColor: Color(0xFF009688),
-                    onTap: () {
-                      // Use cached navigation for better performance
-                      NavigationHelper.navigateToCachedScreen(
-                        context, 
-                        "DoctorAvailabilityScreen", 
-                        () => DoctorAvailabilityScreen()
-                      );
-                    },
-                  ),
-              ),
-            ],
-          ),
-            
-            SizedBox(height: 24),
-            
-            // Performance metrics section
-              Text(
-              "Performance Metrics",
-                style: GoogleFonts.poppins(
-                fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
             SizedBox(height: 16),
             
             // Metrics cards
@@ -153,11 +98,11 @@ class PerformanceAnalysis extends StatelessWidget {
         children: [
           Text(
             "Performance Summary",
-                  style: GoogleFonts.poppins(
+            style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-                    color: Colors.white,
-              ),
+              color: Colors.white,
+            ),
           ),
           SizedBox(height: 16),
           Row(
@@ -175,12 +120,12 @@ class PerformanceAnalysis extends StatelessWidget {
 
   Widget _buildSummaryItem(String value, String label) {
     return Column(
-            children: [
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
@@ -190,63 +135,9 @@ class PerformanceAnalysis extends StatelessWidget {
           style: GoogleFonts.poppins(
             fontSize: 12,
             color: Colors.white.withOpacity(0.9),
-            ),
           ),
-        ],
-    );
-  }
-  
-  Widget _buildActionCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color backgroundColor,
-    required Color iconColor,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 24,
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: Colors.black54,
-              ),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 
@@ -260,7 +151,7 @@ class PerformanceAnalysis extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        children: [
           Text(
             title,
             style: GoogleFonts.poppins(
@@ -272,16 +163,16 @@ class PerformanceAnalysis extends StatelessWidget {
           SizedBox(height: 8),
           Text(
             value,
-                  style: GoogleFonts.poppins(
+            style: GoogleFonts.poppins(
               fontSize: 22,
-                    fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.bold,
               color: textColor,
-              ),
+            ),
           ),
           SizedBox(height: 4),
-        Text(
+          Text(
             subtitle,
-          style: GoogleFonts.poppins(
+            style: GoogleFonts.poppins(
               fontSize: 12,
               color: textColor.withOpacity(0.8),
             ),

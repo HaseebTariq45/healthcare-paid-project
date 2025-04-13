@@ -5,6 +5,7 @@ import 'package:healthcare/views/screens/admin/manage_patients.dart';
 import 'package:healthcare/views/screens/admin/system_settings.dart';
 import 'package:healthcare/views/screens/admin/analytics_dashboard.dart';
 import 'package:healthcare/views/screens/admin/appointment_management.dart';
+import 'package:healthcare/services/admin_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -138,65 +139,52 @@ class AdminHome extends StatefulWidget {
 }
 
 class _AdminHomeState extends State<AdminHome> {
-  // Mock data for statistics
-  String doctorCount = '42';
-  String patientCount = '367';
-  String appointmentCount = '89';
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _recentActivities = [
-    {
-      'title': 'New Doctor Registration',
-      'description': 'Dr. Ahsan Khan has registered as a Cardiologist.',
-      'time': '10 minutes ago',
-      'icon': Icons.check_circle,
-      'color': Color(0xFF3366CC),
-    },
-    {
-      'title': 'Patient Complaint',
-      'description': 'Sara Ahmed reported an issue with appointment scheduling.',
-      'time': '1 hour ago',
-      'icon': Icons.warning,
-      'color': Color(0xFFFF5722),
-    },
-    {
-      'title': 'System Update',
-      'description': 'Payment system was updated successfully.',
-      'time': '2 hours ago',
-      'icon': Icons.update,
-      'color': Color(0xFF4CAF50),
-    },
-  ];
+  // Create a service instance
+  final AdminService _adminService = AdminService();
+  
+  // State variables
+  bool _isLoading = true;
+  Map<String, dynamic> _dashboardStats = {};
+  List<Map<String, dynamic>> _recentActivities = [];
 
   @override
   void initState() {
     super.initState();
-    // In a real app, we would fetch data here
-    // _fetchDashboardData();
+    _fetchDashboardData();
   }
 
-  // Simulating a data refresh
-  Future<void> _refreshDashboardData() async {
+  // Fetch dashboard data
+  Future<void> _fetchDashboardData() async {
     setState(() {
       _isLoading = true;
     });
     
-    // Simulate network delay
-    await Future.delayed(Duration(seconds: 2));
-    
-    // In a real app, we would make API calls here
-    // For now, just update with random data
+    try {
+      // Get dashboard stats and recent activities in parallel
+      final statsResult = await _adminService.getDashboardStats();
+      final activitiesResult = await _adminService.getRecentActivities();
+      
+      if (mounted) {
+        setState(() {
+          _dashboardStats = statsResult;
+          _recentActivities = activitiesResult;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching dashboard data: $e');
+      if (mounted) {
     setState(() {
-      doctorCount = (40 + (DateTime.now().second % 10)).toString();
-      patientCount = (360 + (DateTime.now().second % 20)).toString();
-      appointmentCount = (80 + (DateTime.now().second % 15)).toString();
       _isLoading = false;
     });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: _refreshDashboardData,
+      onRefresh: _fetchDashboardData,
       child: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -258,9 +246,24 @@ class _AdminHomeState extends State<AdminHome> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildStatCard('Doctors', doctorCount, Icons.medical_services, Color(0xFF4CAF50)),
-                      _buildStatCard('Patients', patientCount, Icons.people, Color(0xFFFFC107)),
-                      _buildStatCard('Appointments', appointmentCount, Icons.bar_chart, Color(0xFFFF5722)),
+                      _buildStatCard(
+                        'Doctors', 
+                        _isLoading ? '-' : _dashboardStats['doctorCount']?.toString() ?? '0', 
+                        Icons.medical_services, 
+                        Color(0xFF4CAF50)
+                      ),
+                      _buildStatCard(
+                        'Patients', 
+                        _isLoading ? '-' : _dashboardStats['patientCount']?.toString() ?? '0', 
+                        Icons.people, 
+                        Color(0xFFFFC107)
+                      ),
+                      _buildStatCard(
+                        'Appointments', 
+                        _isLoading ? '-' : _dashboardStats['appointmentCount']?.toString() ?? '0', 
+                        Icons.calendar_today, 
+                        Color(0xFFFF5722)
+                      ),
                     ],
                   ),
                 ],
@@ -339,18 +342,131 @@ class _AdminHomeState extends State<AdminHome> {
                     }
                   },
                 ),
-                _buildActionCard(
-                  'System Settings',
-                  Icons.settings,
-                  Color(0xFFFF5722),
-                  () {
-                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
-                    if (adminDashboardState != null) {
-                      adminDashboardState.setState(() {
-                        adminDashboardState._selectedIndex = 5;
-                      });
-                    }
-                  },
+              ],
+            ),
+            
+            SizedBox(height: 24),
+            
+            // Revenue and Status
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.attach_money,
+                              color: Color(0xFF4CAF50),
+                              size: 24,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Revenue',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          _isLoading 
+                              ? '-' 
+                              : _dashboardStats['revenueFormatted'] ?? 'Rs 0.00',
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF4CAF50),
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Total revenue from appointments',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.event_note,
+                              color: Color(0xFF3366CC),
+                              size: 24,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Appointment Status',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatusCounter('Confirmed', 
+                              _isLoading ? 0 : _dashboardStats['confirmedAppointments'] ?? 0, 
+                              Color(0xFF3366CC)
+                            ),
+                            _buildStatusCounter('Completed', 
+                              _isLoading ? 0 : _dashboardStats['completedAppointments'] ?? 0, 
+                              Color(0xFF4CAF50)
+                            ),
+                            _buildStatusCounter('Cancelled', 
+                              _isLoading ? 0 : _dashboardStats['cancelledAppointments'] ?? 0, 
+                              Color(0xFFFF5722)
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -358,11 +474,6 @@ class _AdminHomeState extends State<AdminHome> {
             SizedBox(height: 24),
             
             // Recent Activities
-            Padding(
-              padding: const EdgeInsets.only(top: 24, bottom: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
                   Text(
                     'Recent Activities',
                     style: GoogleFonts.poppins(
@@ -371,24 +482,71 @@ class _AdminHomeState extends State<AdminHome> {
                       color: Colors.black87,
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.refresh),
-                    onPressed: _isLoading ? null : _refreshDashboardData,
-                    tooltip: 'Refresh',
+            SizedBox(height: 16),
+            if (_isLoading)
+              Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF3366CC),
+                ),
+              )
+            else if (_recentActivities.isEmpty)
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.grey.shade400,
+                        size: 40,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'No recent activities found',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
                   ),
                 ],
               ),
             ),
-            ..._recentActivities.map((activity) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildActivityCard(
-                activity['title'],
-                activity['description'],
-                activity['time'],
-                activity['icon'],
-                activity['color'],
-              ),
+              )
+            else
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: _recentActivities.map((activity) => _buildActivityItem(
+                    activity['title'] ?? 'Activity',
+                    activity['description'] ?? 'Description',
+                    activity['time'] ?? 'Recently',
+                    activity['icon'] ?? Icons.info,
+                    activity['color'] ?? Colors.grey,
             )).toList(),
+                ),
+              ),
           ],
         ),
       ),
@@ -473,36 +631,48 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
   
-  Widget _buildActivityCard(String title, String description, String time, IconData icon, Color color) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+  Widget _buildStatusCounter(String label, int count, Color color) {
+    return Column(
+      children: [
+        Text(
+          count.toString(),
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
           ),
-        ],
-      ),
-      child: Row(
+        ),
+        SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildActivityItem(String title, String description, String time, IconData icon, Color color) {
+    return Column(
+      children: [
+        Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.all(10),
+              padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+                shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
               color: color,
-              size: 24,
+                size: 16,
+              ),
             ),
-          ),
-          SizedBox(width: 16),
+            SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,32 +680,36 @@ class _AdminHomeState extends State<AdminHome> {
                 Text(
                   title,
                   style: GoogleFonts.poppins(
-                    fontSize: 16,
+                      fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Colors.black87,
                   ),
                 ),
-                SizedBox(height: 4),
+                  SizedBox(height: 2),
                 Text(
                   description,
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.black54,
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                   ),
                 ),
-                SizedBox(height: 8),
+            SizedBox(width: 8),
                 Text(
                   time,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey,
+                fontSize: 10,
+                color: Colors.grey.shade500,
                   ),
                 ),
               ],
             ),
-          ),
+        Divider(height: 24),
         ],
-      ),
     );
   }
 } 

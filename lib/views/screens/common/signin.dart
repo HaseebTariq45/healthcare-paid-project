@@ -87,6 +87,18 @@ class _SignINState extends State<SignIN> {
         );
       }
       
+      // Check if this is an admin phone number
+      final isAdmin = await _authService.isAdminPhoneNumber(formattedPhoneNumber);
+      if (isAdmin) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Admin verification required'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      
       // Always proceed with OTP for real security - don't skip verification
       _proceedWithOTP(formattedPhoneNumber);
       
