@@ -528,33 +528,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         mergedData.addAll(patientDoc.data() ?? {});
       }
 
-      // Get appointments based on selected category
+      // Get appointments
       List<Map<String, dynamic>> appointments = [];
       try {
-        // Define status filters based on category
-        List<String> statusFilters;
-        switch (_selectedCategoryIndex) {
-          case 0: // All
-            statusFilters = ['pending', 'confirmed', 'completed', 'cancelled', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
-            break;
-          case 1: // Upcoming
-            statusFilters = ['pending', 'confirmed', 'Pending', 'Confirmed'];
-            break;
-          case 2: // Completed
-            statusFilters = ['completed', 'Completed'];
-            break;
-          case 3: // Cancelled
-            statusFilters = ['cancelled', 'Cancelled'];
-            break;
-          default:
-            statusFilters = ['pending', 'confirmed', 'completed', 'cancelled', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
-        }
-
         final appointmentsSnapshot = await firestore
             .collection('appointments')
             .where('patientId', isEqualTo: userId)
-            .where('status', whereIn: statusFilters)
             .get();
+
+        final DateTime now = DateTime.now();
 
         for (var appointmentDoc in appointmentsSnapshot.docs) {
           final appointmentData = appointmentDoc.data();
@@ -563,33 +545,88 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           if (appointmentData['doctorId'] != null) {
             final doctorDoc = await firestore
                 .collection('doctors')
-                .doc(appointmentData['doctorId'])
+                .doc(appointmentData['doctorId'].toString())
                 .get();
             
             if (doctorDoc.exists) {
               final doctorData = doctorDoc.data() as Map<String, dynamic>;
               
-              // Format the appointment date
-              DateTime appointmentDate;
-              if (appointmentData['appointmentDate'] != null) {
-                appointmentDate = (appointmentData['appointmentDate'] as Timestamp).toDate();
-              } else if (appointmentData['date'] != null && appointmentData['date'] is Timestamp) {
-                appointmentDate = (appointmentData['date'] as Timestamp).toDate();
-              } else {
-                appointmentDate = DateTime.now();
-              }
+              // Get appointment date and time
+              final String dateStr = appointmentData['date']?.toString() ?? '';
+              final String timeStr = appointmentData['time']?.toString() ?? '';
               
-              String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
-              String period = appointmentDate.hour >= 12 ? "PM" : "AM";
-              int displayHour = appointmentDate.hour > 12 ? appointmentDate.hour - 12 : appointmentDate.hour;
-              displayHour = displayHour == 0 ? 12 : displayHour;
-              String formattedTimeDisplay = "$displayHour:${appointmentDate.minute.toString().padLeft(2, '0')} $period";
+              DateTime? appointmentDateTime;
+              
+              // Try to parse date and time
+              try {
+                if (dateStr.contains('/')) {
+                  // Parse dd/MM/yyyy format
+                  final parts = dateStr.split('/');
+                  if (parts.length == 3) {
+                    appointmentDateTime = DateTime(
+                      int.parse(parts[2]),  // year
+                      int.parse(parts[1]),  // month
+                      int.parse(parts[0]),  // day
+                    );
+                  }
+                } else {
+                  // Try parsing ISO format
+                  appointmentDateTime = DateTime.parse(dateStr);
+                }
+
+                // Add time if available
+                if (appointmentDateTime != null && timeStr.isNotEmpty) {
+                  // Clean up time string and handle AM/PM
+                  String cleanTime = timeStr.toUpperCase().trim();
+                  bool isPM = cleanTime.contains('PM');
+                  cleanTime = cleanTime.replaceAll('AM', '').replaceAll('PM', '').trim();
+                  
+                  final timeParts = cleanTime.split(':');
+                  if (timeParts.length >= 2) {
+                    int hour = int.parse(timeParts[0]);
+                    int minute = int.parse(timeParts[1]);
+                    
+                    // Convert to 24-hour format if PM
+                    if (isPM && hour < 12) {
+                      hour += 12;
+                    }
+                    // Handle 12 AM case
+                    if (!isPM && hour == 12) {
+                      hour = 0;
+                    }
+                    
+                    appointmentDateTime = DateTime(
+                      appointmentDateTime.year,
+                      appointmentDateTime.month,
+                      appointmentDateTime.day,
+                      hour,
+                      minute,
+                    );
+                  }
+                }
+              } catch (e) {
+                print('Error parsing date/time for appointment: $e');
+                print('Date string: $dateStr');
+                print('Time string: $timeStr');
+              }
+
+              // Determine appointment status based on date/time
+              String status;
+              if (appointmentDateTime != null) {
+                status = appointmentDateTime.isAfter(now) ? 'upcoming' : 'completed';
+                print('Appointment DateTime: $appointmentDateTime');
+                print('Current DateTime: $now');
+                print('Status determined: $status');
+              } else {
+                status = appointmentData['status']?.toString().toLowerCase() ?? 'upcoming';
+                print('Using fallback status: $status');
+              }
               
               appointments.add({
                 'id': appointmentDoc.id,
-                'date': formattedDate,
-                'time': formattedTimeDisplay,
-                'status': appointmentData['status'] ?? 'pending',
+                'date': dateStr,
+                'time': timeStr,
+                'status': status,
                 'doctorName': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
                 'specialty': doctorData['specialty'] ?? 'General',
                 'hospitalName': appointmentData['hospitalName'] ?? 'Unknown Hospital',
@@ -1298,6 +1335,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildAppointmentsSection() {
+    // Filter appointments based on status
+    final List<Map<String, dynamic>> upcoming = upcomingAppointments.where((a) => 
+      a['status']?.toString().toLowerCase() == 'upcoming').toList();
+    final List<Map<String, dynamic>> completed = upcomingAppointments.where((a) => 
+      a['status']?.toString().toLowerCase() == 'completed').toList();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
       child: Column(
@@ -1335,44 +1378,70 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           SizedBox(height: 15),
           Container(
             height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedCategoryIndex = index;
-                      _tabController.animateTo(index);
-                    });
-                  },
-                  child: Container(
-                    margin: EdgeInsets.only(right: 10),
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: _selectedCategoryIndex == index
-                          ? Color(0xFF3366CC)
-                          : Color(0xFFF5F7FF),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _categories[index],
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: _selectedCategoryIndex == index
-                            ? Colors.white
-                            : Colors.grey.shade600,
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategoryIndex = 0;
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 0
+                            ? Color(0xFF3366CC)
+                            : Color(0xFFF5F7FF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        "Upcoming",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _selectedCategoryIndex == 0
+                              ? Colors.white
+                              : Colors.grey.shade600,
+                        ),
                       ),
                     ),
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategoryIndex = 1;
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 1
+                            ? Color(0xFF3366CC)
+                            : Color(0xFFF5F7FF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        "Completed",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _selectedCategoryIndex == 1
+                              ? Colors.white
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 15),
-          if (upcomingAppointments.isEmpty)
+          if ((_selectedCategoryIndex == 0 ? upcoming : completed).isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -1385,7 +1454,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                     SizedBox(height: 12),
                     Text(
-                      "No appointments found",
+                      "No ${_selectedCategoryIndex == 0 ? 'upcoming' : 'completed'} appointments",
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -1397,8 +1466,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
             )
           else
-            // Only show latest 2 appointments on home screen
-            for (var appointment in upcomingAppointments.take(2))
+            for (var appointment in (_selectedCategoryIndex == 0 ? upcoming : completed).take(2))
               _buildAppointmentCard(appointment),
         ],
       ),
@@ -1406,6 +1474,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
+    final String statusText = appointment['status']?.toString().toLowerCase() ?? 'upcoming';
+    final bool isUpcoming = statusText == 'upcoming' || statusText == 'pending' || statusText == 'confirmed';
+    
+    final Color statusColor = isUpcoming
+        ? Color.fromRGBO(64, 124, 226, 1)
+        : Color(0xFF4CAF50);
+            
+    final String displayStatus = isUpcoming ? "Upcoming" : "Completed";
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -1503,11 +1580,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ),
                     ),
                     child: Text(
-                      appointment['status'],
+                      displayStatus,
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF3366CC),
+                        color: statusColor,
                       ),
                     ),
                   ),
@@ -1584,27 +1661,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                               letterSpacing: 0.3,
                             ),
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 15),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Color(0xFF3366CC).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Color(0xFF3366CC).withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: IconButton(
-                          onPressed: () {
-                            // Show details
-                          },
-                          icon: Icon(
-                            LucideIcons.info,
-                            color: Color(0xFF3366CC),
-                            size: 20,
                           ),
                         ),
                       ),

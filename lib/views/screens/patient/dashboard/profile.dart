@@ -66,16 +66,16 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
 
   Future<void> _loadData() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+    setState(() {
+      isLoading = true;
+    });
 
       // First try to load data from cache
       await _loadCachedData();
-      
+    
       // Then fetch fresh data from Firestore in the background
       if (!mounted) return;
-      _fetchUserData();
+    _fetchUserData();
     } catch (e) {
       debugPrint('Error in _loadData: $e');
       setState(() => isLoading = false);
@@ -156,7 +156,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
       }
       
       if (!mounted) return;
-
+      
       // Check if data has changed before updating state
       bool hasDataChanged = _userData == null || 
           !_areMapContentsEqual(_userData!, userData) ||
@@ -260,10 +260,15 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pop();
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: Stack(
+          child: Stack(
                 children: [
                   RefreshIndicator(
                     onRefresh: _refreshData,
@@ -273,127 +278,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                         padding: EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            _buildProfileHeader(),
-                            
-                            // Always show profile completion card
-                            _buildProfileCompletionCard(),
-                            
-                            SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 25),
-                                    
-                                    Text(
-                                      "Settings",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    
-                                    // Menu items
-                                    ...menuItems.map((item) => _buildMenuItem(item)).toList(),
-                                    
-                                    // Logout button
-                                    _buildLogoutButton(),
-                                    
-                                    const SizedBox(height: 25),
-                                    
-                                    // App version info
-                                    Center(
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            "HealthCare App",
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF3366CC),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            "Version 1.0.0",
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  // Loading indicator at bottom
-                  if (isLoading || isRefreshing)
-                    Positioned(
-                      bottom: 16,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    const Color(0xFF3366CC),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                isLoading ? "Loading profile..." : "Refreshing...",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildProfileHeader() {
-    return Container(
+                        Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -421,23 +306,8 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    LucideIcons.arrowLeft,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
               Text(
                 "My Profile",
                 style: GoogleFonts.poppins(
@@ -555,6 +425,123 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
             ],
           ),
         ],
+                          ),
+                        ),
+                        
+                        // Always show profile completion card
+                        _buildProfileCompletionCard(),
+                        
+                        SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 25),
+                                
+                                Text(
+                                  "Settings",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                
+                                // Menu items
+                                ...menuItems.map((item) => _buildMenuItem(item)).toList(),
+                                
+                                // Logout button
+                                _buildLogoutButton(),
+                                
+                                const SizedBox(height: 25),
+                                
+                                // App version info
+                                Center(
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        "HealthCare App",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF3366CC),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Version 1.0.0",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Loading indicator at bottom
+              if (isLoading || isRefreshing)
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                const Color(0xFF3366CC),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            isLoading ? "Loading profile..." : "Refreshing...",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

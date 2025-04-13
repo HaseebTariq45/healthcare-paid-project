@@ -4,6 +4,8 @@ import 'package:healthcare/views/components/onboarding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class AppointmentDetailsScreen extends StatefulWidget {
   final String? appointmentId;
@@ -21,6 +23,7 @@ class AppointmentDetailsScreen extends StatefulWidget {
 
 class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
   bool _isLoading = true;
+  bool _isRefreshing = false;
   Map<String, dynamic> _appointmentData = {};
   String _doctorName = "Doctor";
   String _appointmentDate = "Upcoming";
@@ -38,6 +41,7 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
   bool _isUpcoming = true;
   String? _cancellationReason;
   String _doctorImage = 'assets/images/User.png';
+  static const String _appointmentDetailsCacheKey = 'appointment_details_';
 
   @override
   void initState() {
@@ -49,13 +53,46 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
         _isLoading = false;
       });
     } else if (widget.appointmentId != null) {
-      // Fetch appointment data from Firebase
-      _fetchAppointmentData();
+      // Load data from cache first, then fetch from Firebase
+      _loadData();
     } else {
       // No appointment ID or details provided, show default data
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadData() async {
+    try {
+      // First try to load data from cache
+      await _loadCachedData();
+      
+      // Then fetch fresh data from Firebase
+      if (mounted) {
+        _fetchAppointmentData();
+      }
+    } catch (e) {
+      print('Error in _loadData: $e');
+    }
+  }
+
+  Future<void> _loadCachedData() async {
+    if (widget.appointmentId == null) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? cachedData = prefs.getString(_appointmentDetailsCacheKey + widget.appointmentId!);
+      
+      if (cachedData != null) {
+        final Map<String, dynamic> decoded = json.decode(cachedData);
+        _processAppointmentDetails(decoded);
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading cached data: $e');
     }
   }
 
@@ -131,8 +168,10 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
   }
 
   Future<void> _fetchAppointmentData() async {
+    if (!mounted || widget.appointmentId == null) return;
+    
     setState(() {
-      _isLoading = true;
+      _isRefreshing = true;
     });
 
     try {
@@ -146,7 +185,7 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
       
       if (!appointmentDoc.exists || appointmentDoc.data() == null) {
         setState(() {
-          _isLoading = false;
+          _isRefreshing = false;
         });
         return;
       }
@@ -225,16 +264,31 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           print('Error fetching doctor information: $e');
         }
       }
+
+      // Save to cache
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_appointmentDetailsCacheKey + widget.appointmentId!, json.encode(appointmentDetails));
+      } catch (e) {
+        print('Error saving to cache: $e');
+      }
+      
+      if (!mounted) return;
       
       // Process the appointment details
       _processAppointmentDetails(appointmentDetails);
       
+      setState(() {
+        _isRefreshing = false;
+      });
+      
     } catch (e) {
       print('Error fetching appointment data: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -271,28 +325,73 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF3366CC),
-              ),
-            )
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildHeaderSection(),
-                  _buildAppointmentTimeSection(),
-                  _buildDoctorInfoSection(),
-                  _buildHospitalSection(),
-                  _buildPaymentSection(),
-                  _buildAppointmentDetailsSection(),
-                  if (_reason != "No reason provided") _buildReasonSection(),
-                  if (_isCancelled && _cancellationReason != null) _buildCancellationSection(),
-                  _buildActionButtons(),
-                  SizedBox(height: 30),
-                ],
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildHeaderSection(),
+                _buildAppointmentTimeSection(),
+                _buildDoctorInfoSection(),
+                _buildHospitalSection(),
+                _buildPaymentSection(),
+                _buildAppointmentDetailsSection(),
+                if (_reason != "No reason provided") _buildReasonSection(),
+                if (_isCancelled && _cancellationReason != null) _buildCancellationSection(),
+                _buildActionButtons(),
+                SizedBox(height: 30),
+              ],
+            ),
+          ),
+          
+          // Loading indicator at bottom
+          if (_isRefreshing)
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF3366CC),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "Refreshing appointment details...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
+        ],
+      ),
     );
   }
 
@@ -504,18 +603,6 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Color(0xFF3366CC).withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              LucideIcons.phone,
-              color: Color(0xFF3366CC),
-              size: 20,
             ),
           ),
         ],
