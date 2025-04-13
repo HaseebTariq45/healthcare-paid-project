@@ -90,7 +90,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     try {
       final FirebaseFirestore firestore = FirebaseFirestore.instance;
       final String? userId = FirebaseAuth.instance.currentUser?.uid;
-
+      
       if (userId == null) {
         setState(() {
           _isRefreshing = false;
@@ -98,31 +98,31 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         });
         return;
       }
-
+      
       print('Fetching appointments for user: $userId');
-
+      
       // Query appointments collection
       final QuerySnapshot appointmentsSnapshot = await firestore
           .collection('appointments')
           .where('patientId', isEqualTo: userId)
           .get();
-
+      
       print('Found ${appointmentsSnapshot.docs.length} appointments in database');
-
+      
       List<Map<String, dynamic>> appointments = [];
       
       for (var doc in appointmentsSnapshot.docs) {
         try {
           Map<String, dynamic> appointment = doc.data() as Map<String, dynamic>;
           appointment['id'] = doc.id;
-
+          
           // Fetch doctor details for this appointment
           if (appointment['doctorId'] != null) {
             final doctorDoc = await firestore
                 .collection('doctors')
                 .doc(appointment['doctorId'].toString())
                 .get();
-
+            
             if (doctorDoc.exists) {
               final doctorData = doctorDoc.data() as Map<String, dynamic>;
               // Merge doctor data into appointment
@@ -156,7 +156,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_appointmentsCacheKey, json.encode(appointments));
-      } catch (e) {
+        } catch (e) {
         print('Error saving to cache: $e');
       }
 
@@ -168,10 +168,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     } catch (e) {
       print('Error fetching appointments: $e');
       if (mounted) {
-        setState(() {
+      setState(() {
           _isRefreshing = false;
-          _isLoading = false;
-        });
+        _isLoading = false;
+      });
       }
     }
   }
@@ -223,16 +223,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             if (timeParts.length >= 2) {
               int hour = int.parse(timeParts[0]);
               int minute = int.parse(timeParts[1]);
-              
-              // Convert to 24-hour format if PM
-              if (isPM && hour < 12) {
-                hour += 12;
+        
+        // Convert to 24-hour format if PM
+        if (isPM && hour < 12) {
+          hour += 12;
               }
               // Handle 12 AM case
               if (!isPM && hour == 12) {
-                hour = 0;
-              }
-              
+          hour = 0;
+        }
+        
               appointmentDateTime = DateTime(
                 appointmentDateTime.year,
                 appointmentDateTime.month,
@@ -241,8 +241,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 minute,
               );
             }
-          }
-        } catch (e) {
+      }
+    } catch (e) {
           print('Error parsing date/time for appointment: $e');
           print('Date string: $dateStr');
           print('Time string: $timeStr');
@@ -807,19 +807,19 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                 
                 // Action buttons row
                 Row(
-                  children: [
-                    Expanded(
+                        children: [
+                          Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AppointmentDetailsScreen(
-                                appointmentDetails: appointment,
-                              ),
-                            ),
-                          );
-                        },
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AppointmentDetailsScreen(
+                                      appointmentDetails: appointment,
+                                    ),
+                                  ),
+                                );
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: statusColor,
                           foregroundColor: Colors.white,
@@ -832,7 +832,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         ),
                         icon: Icon(LucideIcons.clipboardList, size: 18),
                         label: Text(
-                          "View Details",
+                              "View Details",
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -844,8 +844,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                     
                     // Add Review button for completed appointments that haven't been reviewed
                     if (canReview) ...[
-                      SizedBox(width: 12),
-                      Expanded(
+                            SizedBox(width: 12),
+                            Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _showRatingDialog(context, appointment),
                           style: ElevatedButton.styleFrom(
@@ -885,7 +885,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              LucideIcons.star,
+                                LucideIcons.star,
                               size: 16,
                               color: Color(0xFFFFB300),
                             ),
@@ -899,11 +899,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                               ),
                             ),
                           ],
-                        ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
-                  ],
-                ),
               ],
             ),
           ),
@@ -1181,9 +1181,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   }
   
   Future<void> _submitRating(
-    String appointmentId,
+    String appointmentId, 
     String doctorName,
-    double rating,
+    double rating, 
     String feedback
   ) async {
     try {

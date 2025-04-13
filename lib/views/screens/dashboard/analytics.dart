@@ -7,6 +7,7 @@ import 'package:healthcare/views/screens/analytics/performance_analysis.dart';
 import 'package:healthcare/views/screens/analytics/reports.dart';
 import 'package:healthcare/views/screens/doctor/availability/doctor_availability_screen.dart';
 import 'package:healthcare/views/screens/doctor/availability/hospital_selection_screen.dart';
+import 'package:healthcare/views/screens/menu/appointment_history.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -318,16 +319,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   mainAxisSpacing: 15,
                   children: [
                     _buildAnalyticsCard(
-                      icon: LucideIcons.trendingUp,
-                      title: "Performance Analysis",
-                      description: "Track your growth metrics",
-                      bgColor: Color(0xFFE3F2FD),
-                      iconColor: Color(0xFF2196F3),
-                      onPressed: () {
-                        NavigationHelper.navigateWithBottomBar(context, PerformanceAnalysis());
-                      },
-                    ),
-                    _buildAnalyticsCard(
                       icon: LucideIcons.activity,
                       title: "Financial Analytics",
                       description: "Revenue & expense reports",
@@ -335,6 +326,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       iconColor: Color(0xFF03A9F4),
                       onPressed: () {
                         NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
+                      },
+                    ),
+                    _buildAnalyticsCard(
+                      icon: LucideIcons.clipboardCheck,
+                      title: "Appointments",
+                      description: "View appointment history",
+                      bgColor: Color(0xFFF0F4FF),
+                      iconColor: Color(0xFF3366CC),
+                      onPressed: () {
+                        NavigationHelper.navigateWithBottomBar(context, AppointmentHistoryScreen());
                       },
                     ),
                     _buildAnalyticsCard(
@@ -359,16 +360,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       iconColor: Color(0xFF4CAF50),
                       onPressed: () {
                         NavigationHelper.navigateWithBottomBar(context, PatientsScreen());
-                      },
-                    ),
-                    _buildAnalyticsCard(
-                      icon: LucideIcons.clipboardList,
-                      title: "Reports",
-                      description: "View all reports",
-                      bgColor: Color(0xFFFFF3E0),
-                      iconColor: Color(0xFFFF9800),
-                      onPressed: () {
-                        NavigationHelper.navigateWithBottomBar(context, ReportsScreen());
                       },
                     ),
                     _buildAnalyticsCard(

@@ -55,9 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
   double _overallRating = 0.0;
   int _reviewCount = 0;
   
-  // Appointments data
-  List<Map<String, dynamic>> _upcomingAppointments = [];
-
   @override
   void initState() {
     super.initState();
@@ -116,9 +113,6 @@ class _HomeScreenState extends State<HomeScreen> {
         await _loadProfileData();
       }
       
-      // Load upcoming appointments
-      await _loadUpcomingAppointments(currentUser.uid);
-      
     } catch (e) {
       print('Error loading user data: $e');
     } finally {
@@ -139,22 +133,48 @@ class _HomeScreenState extends State<HomeScreen> {
       // Get doctor stats - this now uses consistent earnings calculation
       final doctorStats = await _doctorProfileService.getDoctorStats();
       
-      if (mounted) {
-        setState(() {
-          // Set doctor profile info
-          _userName = doctorProfile['fullName'] ?? "Doctor";
-          _specialty = doctorProfile['specialty'] ?? "";
-          _profileImageUrl = doctorProfile['profileImageUrl'];
-          _overallRating = doctorProfile.containsKey('rating') 
-              ? (doctorProfile['rating'] as num).toDouble() 
-              : 0.0;
-          
-          // Set statistics
-          if (doctorStats['success'] == true) {
-            _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
-            _reviewCount = doctorStats['totalReviews'] ?? 0;
+      // Fetch doctor ratings from doctor_reviews collection
+      final User? currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        final String doctorId = currentUser.uid;
+        
+        // Query doctor_reviews collection for this doctor
+        final QuerySnapshot reviewsSnapshot = await _firestore
+            .collection('doctor_reviews')
+            .where('doctorId', isEqualTo: doctorId)
+            .get();
+        
+        // Calculate average rating
+        double totalRating = 0;
+        int reviewCount = reviewsSnapshot.docs.length;
+        
+        for (var doc in reviewsSnapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (data.containsKey('rating')) {
+            totalRating += (data['rating'] as num).toDouble();
           }
-        });
+        }
+        
+        // Calculate average rating if there are reviews
+        double averageRating = reviewCount > 0 ? totalRating / reviewCount : 0.0;
+        
+        if (mounted) {
+          setState(() {
+            // Set doctor profile info
+            _userName = doctorProfile['fullName'] ?? "Doctor";
+            _specialty = doctorProfile['specialty'] ?? "";
+            _profileImageUrl = doctorProfile['profileImageUrl'];
+            
+            // Use the calculated rating from reviews instead of profile rating
+            _overallRating = averageRating;
+            
+            // Set statistics
+            if (doctorStats['success'] == true) {
+              _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
+              _reviewCount = reviewCount; // Use actual count from reviews query
+            }
+          });
+        }
       }
     } catch (e) {
       print('Error loading doctor profile data: $e');
@@ -174,21 +194,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       print('Error loading profile data: $e');
-    }
-  }
-  
-  // Load upcoming appointments
-  Future<void> _loadUpcomingAppointments(String userId) async {
-    try {
-      final appointments = await _doctorProfileService.getUpcomingAppointments(limit: 5);
-      
-      if (mounted) {
-        setState(() {
-          _upcomingAppointments = appointments;
-        });
-      }
-    } catch (e) {
-      print('Error loading upcoming appointments: $e');
     }
   }
 
@@ -510,170 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   
                   SizedBox(height: 25),
 
-            // Upcoming Appointments
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Upcoming Appointments",
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                      TextButton.icon(
-                  onPressed: () {
-                    NavigationHelper.navigateWithBottomBar(context, AppointmentsScreen());
-                  },
-                        icon: Icon(
-                          LucideIcons.chevronRight,
-                          size: 18,
-                          color: Color.fromRGBO(64, 124, 226, 1),
-                        ),
-                        label: Text(
-                    "See all",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Color.fromRGBO(64, 124, 226, 1),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-                  SizedBox(height: 15),
-
-            Column(
-              children: _upcomingAppointments.isEmpty
-                  ? [
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 30),
-                          child: Column(
-                            children: [
-                              Icon(
-                                LucideIcons.calendar,
-                                size: 50,
-                                color: Colors.grey.shade300,
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                "No upcoming appointments",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    ]
-                  : _upcomingAppointments.map((appointment) {
-                      final index = _upcomingAppointments.indexOf(appointment);
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 15),
-                        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color.fromRGBO(158, 158, 158, 0.15),
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.grey.shade100,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: index % 3 == 0
-                                    ? Color(0xFFE3F2FD)
-                                    : index % 3 == 1
-                                        ? Color(0xFFE8F5E9)
-                                        : Color(0xFFFFF8E1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  appointment['dateTime'] != null
-                                      ? DateFormat('d').format(appointment['dateTime'])
-                                      : "${10 + index}",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: index % 3 == 0
-                                        ? Color(0xFF2196F3)
-                                        : index % 3 == 1
-                                            ? Color(0xFF4CAF50)
-                                            : Color(0xFFFFC107),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Appointment with ${appointment['patientName']}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    "${appointment['date']} • ${appointment['time']}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                // Navigate to appointment details
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AppointmentDetailsScreen(
-                                      appointmentId: appointment['id'],
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Color.fromRGBO(64, 124, 226, 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  "View",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color.fromRGBO(64, 124, 226, 1),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                  // Add extra space at the bottom
                   SizedBox(height: 25),
                 ],
               ),
