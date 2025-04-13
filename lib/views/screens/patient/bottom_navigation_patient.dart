@@ -7,7 +7,7 @@ import 'package:healthcare/views/screens/patient/dashboard/profile.dart';
 class BottomNavigationBarPatientScreen extends StatefulWidget {
   final String profileStatus;
   final bool suppressProfilePrompt;
-  final int profileCompletionPercentage;
+  final double profileCompletionPercentage;
 
   // Singleton pattern for the key to prevent duplicates
   static final GlobalKey<_BottomNavigationBarPatientScreenState> _navigatorKey = 
@@ -20,7 +20,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
     Key? key, 
     required this.profileStatus,
     this.suppressProfilePrompt = false,
-    this.profileCompletionPercentage = 0,
+    this.profileCompletionPercentage = 0.0,
   }) : super(key: key);  // Use the passed key, not the static navigatorKey
 
   @override
@@ -37,7 +37,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
         MaterialPageRoute(
           builder: (context) => BottomNavigationBarPatientScreen(
             profileStatus: "complete",
-            profileCompletionPercentage: 100,
+            profileCompletionPercentage: 100.0,
           ),
         ),
       );
@@ -48,7 +48,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
 class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPatientScreen> {
   late String profileStatus;
   late bool suppressProfilePrompt;
-  late int profileCompletionPercentage;
+  late double profileCompletionPercentage;
   int _selectedIndex = 0;
 
   @override

@@ -2177,7 +2177,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                   builder: (context) => BottomNavigationBarPatientScreen(
                     profileStatus: "incomplete",
                     suppressProfilePrompt: true,
-                    profileCompletionPercentage: _completionPercentage.toInt(),
+                    profileCompletionPercentage: _completionPercentage,
                   ),
                 ),
               );
@@ -2576,7 +2576,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
             MaterialPageRoute(
               builder: (context) => BottomNavigationBarPatientScreen(
                 profileStatus: "complete",
-                profileCompletionPercentage: finalPercentage.toInt(),
+                profileCompletionPercentage: finalPercentage,
               ),
             ),
           ),

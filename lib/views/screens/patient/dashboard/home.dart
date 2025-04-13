@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,6 +14,7 @@ import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Disease category model
 class DiseaseCategory {
@@ -34,13 +36,13 @@ class DiseaseCategory {
 class PatientHomeScreen extends StatefulWidget {
   final String profileStatus;
   final bool suppressProfilePrompt;
-  final int profileCompletionPercentage;
+  final double profileCompletionPercentage;
   
   const PatientHomeScreen({
     super.key, 
     this.profileStatus = "incomplete",
     this.suppressProfilePrompt = false,
-    this.profileCompletionPercentage = 0,
+    this.profileCompletionPercentage = 0.0,
   });
 
   @override
@@ -50,7 +52,7 @@ class PatientHomeScreen extends StatefulWidget {
 class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTickerProviderStateMixin {
   late String profileStatus;
   late bool suppressProfilePrompt;
-  late int profileCompletionPercentage;
+  late double profileCompletionPercentage;
   late TabController _tabController;
   final List<String> _categories = ["All", "Upcoming", "Completed", "Cancelled"];
   int _selectedCategoryIndex = 0;
@@ -59,8 +61,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   String userName = "User";
   String? profileImageUrl;
   bool isLoading = true;
+  bool isRefreshing = false; // Flag for background refresh
   List<Map<String, dynamic>> upcomingAppointments = [];
   Map<String, dynamic> userData = {};
+  static const String _userCacheKey = 'patient_home_data';
 
   // Updated disease categories data with 12 specialties
   final List<DiseaseCategory> _diseaseCategories = [
@@ -432,8 +436,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     // Initialize quick access doctors with a selection from different specialties
     _initializeQuickAccessDoctors();
     
-    // Fetch user data from Firestore
-    _fetchUserData();
+    // Load data with caching
+    _loadData();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (profileStatus.toLowerCase() != "complete" && !suppressProfilePrompt) {
@@ -446,27 +450,60 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
       }
     });
   }
-  
-  // Fetch user data from Firestore
-  Future<void> _fetchUserData() async {
+
+  Future<void> _loadData() async {
     setState(() {
       isLoading = true;
     });
+
+    // Try to load data from cache first
+    await _loadCachedData();
     
+    // Then fetch fresh data from Firestore
+    await _fetchUserData();
+  }
+
+  Future<void> _loadCachedData() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      String? cachedData = prefs.getString(_userCacheKey);
+      
+      if (cachedData != null) {
+        Map<String, dynamic> data = json.decode(cachedData);
+        
+        setState(() {
+          userData = data;
+          userName = data['fullName'] ?? data['name'] ?? "User";
+          profileImageUrl = data['profileImageUrl'];
+          profileStatus = data['profileComplete'] == true ? "complete" : "incomplete";
+          profileCompletionPercentage = (data['completionPercentage'] as num?)?.toDouble() ?? 0.0;
+          upcomingAppointments = List<Map<String, dynamic>>.from(data['appointments'] ?? []);
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cached data: $e');
+    }
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      setState(() {
+        isRefreshing = true;
+      });
+
       final auth = FirebaseAuth.instance;
       final firestore = FirebaseFirestore.instance;
       final userId = auth.currentUser?.uid;
       
       if (userId == null) {
         setState(() {
+          isRefreshing = false;
           isLoading = false;
         });
         return;
       }
-      
-      print('Fetching data for user ID: $userId');
-      
+
       // First try to get data from patients collection for medical details
       final patientDoc = await firestore.collection('patients').doc(userId).get();
       
@@ -477,24 +514,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
       
       // Check if either document exists
       if (!patientDoc.exists && !userDoc.exists) {
-        print('No user data found in either collection');
-        setState(() {
-          isLoading = false;
-        });
+        debugPrint('No user data found in either collection');
+        setState(() => isLoading = false);
         return;
       }
       
       // Merge data, prioritizing patients collection for medical info
       if (userDoc.exists) {
         mergedData.addAll(userDoc.data() ?? {});
-        print('User data found: ${userDoc.data()?.keys.toList()}');
       }
       
       if (patientDoc.exists) {
         mergedData.addAll(patientDoc.data() ?? {});
-        print('Patient data found: ${patientDoc.data()?.keys.toList()}');
       }
-      
+
       // Get appointments based on selected category
       List<Map<String, dynamic>> appointments = [];
       try {
@@ -517,98 +550,66 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             statusFilters = ['pending', 'confirmed', 'completed', 'cancelled', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
         }
 
-        print('Fetching appointments with status filters: $statusFilters');
-        
-        // First try without the status filter to see if we have any appointments at all
-        final allAppointmentsSnapshot = await firestore
-            .collection('appointments')
-            .where('patientId', isEqualTo: userId)
-            .get();
-            
-        print('Total appointments found for patient: ${allAppointmentsSnapshot.docs.length}');
-        
-        if (allAppointmentsSnapshot.docs.isNotEmpty) {
-          // Print all appointments and their status for debugging
-          for (var doc in allAppointmentsSnapshot.docs) {
-            print('Appointment ${doc.id} status: ${doc.data()['status']}');
-          }
-        }
-
         final appointmentsSnapshot = await firestore
             .collection('appointments')
             .where('patientId', isEqualTo: userId)
             .where('status', whereIn: statusFilters)
             .get();
-        
-        print('Found ${appointmentsSnapshot.docs.length} appointments matching status filter');
-        
+
         for (var appointmentDoc in appointmentsSnapshot.docs) {
-          try {
-            final appointmentData = appointmentDoc.data();
-            print('Processing appointment: ${appointmentDoc.id}');
-            print('Appointment data: $appointmentData');
+          final appointmentData = appointmentDoc.data();
+          
+          // Fetch doctor details
+          if (appointmentData['doctorId'] != null) {
+            final doctorDoc = await firestore
+                .collection('doctors')
+                .doc(appointmentData['doctorId'])
+                .get();
             
-            // Fetch doctor details
-            if (appointmentData['doctorId'] != null) {
-              final doctorDoc = await firestore
-                  .collection('doctors')
-                  .doc(appointmentData['doctorId'])
-                  .get();
+            if (doctorDoc.exists) {
+              final doctorData = doctorDoc.data() as Map<String, dynamic>;
               
-              if (doctorDoc.exists) {
-                final doctorData = doctorDoc.data() as Map<String, dynamic>;
-                print('Found doctor data: ${doctorData['fullName'] ?? doctorData['name']}');
-                
-                // Format the appointment date
-                DateTime appointmentDate;
-                if (appointmentData['appointmentDate'] != null) {
-                  appointmentDate = (appointmentData['appointmentDate'] as Timestamp).toDate();
-                } else if (appointmentData['date'] != null && appointmentData['date'] is Timestamp) {
-                  appointmentDate = (appointmentData['date'] as Timestamp).toDate();
-                } else {
-                  appointmentDate = DateTime.now();
-                }
-                
-                String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
-                String formattedTime = "${appointmentDate.hour.toString().padLeft(2, '0')}:${appointmentDate.minute.toString().padLeft(2, '0')}";
-                
-                // Convert to 12-hour format for display
-                String period = appointmentDate.hour >= 12 ? "PM" : "AM";
-                int displayHour = appointmentDate.hour > 12 ? appointmentDate.hour - 12 : appointmentDate.hour;
-                displayHour = displayHour == 0 ? 12 : displayHour; // Handle midnight (0:00) as 12 AM
-                String formattedTimeDisplay = "$displayHour:${appointmentDate.minute.toString().padLeft(2, '0')} $period";
-                
-                appointments.add({
-                  'id': appointmentDoc.id,
-                  'date': appointmentData['date'] ?? formattedDate,
-                  'time': appointmentData['time'] ?? formattedTimeDisplay,
-                  'status': appointmentData['status'] ?? 'pending',
-                  'doctorName': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
-                  'specialty': doctorData['specialty'] ?? 'General',
-                  'hospitalName': appointmentData['hospitalName'] ?? 'Unknown Hospital',
-                  'reason': appointmentData['reason'] ?? 'Consultation',
-                  'doctorImage': doctorData['profileImageUrl'] ?? 'assets/images/User.png',
-                  'fee': appointmentData['fee']?.toString() ?? '0',
-                  'paymentStatus': appointmentData['paymentStatus'] ?? 'pending',
-                  'paymentMethod': appointmentData['paymentMethod'] ?? 'Not specified',
-                  'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
-                  'type': appointmentData['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation',
-                });
-                print('Successfully added appointment to list');
+              // Format the appointment date
+              DateTime appointmentDate;
+              if (appointmentData['appointmentDate'] != null) {
+                appointmentDate = (appointmentData['appointmentDate'] as Timestamp).toDate();
+              } else if (appointmentData['date'] != null && appointmentData['date'] is Timestamp) {
+                appointmentDate = (appointmentData['date'] as Timestamp).toDate();
               } else {
-                print('Doctor document not found for ID: ${appointmentData['doctorId']}');
+                appointmentDate = DateTime.now();
               }
+              
+              String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
+              String period = appointmentDate.hour >= 12 ? "PM" : "AM";
+              int displayHour = appointmentDate.hour > 12 ? appointmentDate.hour - 12 : appointmentDate.hour;
+              displayHour = displayHour == 0 ? 12 : displayHour;
+              String formattedTimeDisplay = "$displayHour:${appointmentDate.minute.toString().padLeft(2, '0')} $period";
+              
+              appointments.add({
+                'id': appointmentDoc.id,
+                'date': formattedDate,
+                'time': formattedTimeDisplay,
+                'status': appointmentData['status'] ?? 'pending',
+                'doctorName': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
+                'specialty': doctorData['specialty'] ?? 'General',
+                'hospitalName': appointmentData['hospitalName'] ?? 'Unknown Hospital',
+                'reason': appointmentData['reason'] ?? 'Consultation',
+                'doctorImage': doctorData['profileImageUrl'] ?? 'assets/images/User.png',
+                'fee': appointmentData['fee']?.toString() ?? '0',
+                'paymentStatus': appointmentData['paymentStatus'] ?? 'pending',
+                'paymentMethod': appointmentData['paymentMethod'] ?? 'Not specified',
+                'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
+                'type': appointmentData['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation',
+              });
             }
-          } catch (e) {
-            print('Error processing appointment: $e');
           }
         }
       } catch (e) {
-        print('Error fetching appointments: $e');
+        debugPrint('Error fetching appointments: $e');
       }
-      
+
       // Calculate profile completion percentage if not available
-      int completionPercentage = 0;
+      double completionPercentage = 0.0;
       if (mergedData['completionPercentage'] == null) {
         int fieldsCompleted = 0;
         int totalFields = 10; // Adjust based on your required fields
@@ -627,13 +628,28 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         if (mergedData['weight'] != null && mergedData['weight'].toString().isNotEmpty) fieldsCompleted++;
         if (mergedData['profileImageUrl'] != null && mergedData['profileImageUrl'].toString().isNotEmpty) fieldsCompleted++;
         
-        completionPercentage = ((fieldsCompleted / totalFields) * 100).toInt();
+        completionPercentage = ((fieldsCompleted / totalFields) * 100).toDouble();
       } else {
-        completionPercentage = (mergedData['completionPercentage'] is int) 
-            ? mergedData['completionPercentage'] 
-            : (mergedData['completionPercentage'] is double)
-                ? mergedData['completionPercentage'].toInt()
-                : int.tryParse(mergedData['completionPercentage'].toString()) ?? 0;
+        completionPercentage = (mergedData['completionPercentage'] is double)
+            ? mergedData['completionPercentage']
+            : (mergedData['completionPercentage'] is int)
+                ? mergedData['completionPercentage'].toDouble()
+                : double.tryParse(mergedData['completionPercentage'].toString()) ?? 0.0;
+      }
+
+      // Convert Timestamps to strings in mergedData to make it cacheable
+      Map<String, dynamic> cacheableData = Map<String, dynamic>.from(mergedData);
+      _convertTimestampsToStrings(cacheableData);
+
+      // Save to cache
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_userCacheKey, json.encode({
+          ...cacheableData,
+          'appointments': appointments,
+        }));
+      } catch (e) {
+        debugPrint('Error saving to cache: $e');
       }
       
       setState(() {
@@ -644,15 +660,36 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         profileCompletionPercentage = completionPercentage;
         upcomingAppointments = appointments;
         isLoading = false;
+        isRefreshing = false;
       });
-      
-      print('User data loaded: $userName, Profile Status: $profileStatus, Completion: $profileCompletionPercentage%');
     } catch (e) {
-      print('Error fetching user data: $e');
+      debugPrint('Error fetching user data: $e');
       setState(() {
         isLoading = false;
+        isRefreshing = false;
       });
     }
+  }
+
+  // Helper method to convert Timestamps to strings in a map
+  void _convertTimestampsToStrings(Map<String, dynamic> data) {
+    data.forEach((key, value) {
+      if (value is Timestamp) {
+        data[key] = value.toDate().toIso8601String();
+      } else if (value is Map<String, dynamic>) {
+        _convertTimestampsToStrings(value);
+      } else if (value is List) {
+        for (var i = 0; i < value.length; i++) {
+          if (value[i] is Map<String, dynamic>) {
+            _convertTimestampsToStrings(value[i]);
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _refreshData() async {
+    await _fetchUserData();
   }
 
   void _initializeQuickAccessDoctors() {
@@ -674,25 +711,78 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: isLoading
+        child: isLoading && userData.isEmpty
             ? Center(
                 child: CircularProgressIndicator(
                   color: const Color(0xFF3366CC),
                 ),
               )
-            : SingleChildScrollView(
-                physics: BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    
-                    _buildBanner(),
-                    _buildDiseaseCategories(),
-                    _buildAppointmentsSection(),
-                    SizedBox(height: 20),
-                  ],
-                ),
+            : Stack(
+                children: [
+                  RefreshIndicator(
+                    onRefresh: _refreshData,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          _buildBanner(),
+                          _buildDiseaseCategories(),
+                          _buildAppointmentsSection(),
+                          SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  // Refresh indicator at bottom
+                  if (isRefreshing)
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    const Color(0xFF3366CC),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Refreshing...",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
       ),
     );

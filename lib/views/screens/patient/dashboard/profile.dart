@@ -19,14 +19,14 @@ import '../../../../services/cache_service.dart';
 class PatientMenuScreen extends StatefulWidget {
   final String name;
   final String role;
-  final int profileCompletionPercentage;
+  final double profileCompletionPercentage;
   final UserType userType;
   
   const PatientMenuScreen({
     super.key,
     this.name = "Amna",
     this.role = "Patient",
-    this.profileCompletionPercentage = 0,
+    this.profileCompletionPercentage = 0.0,
     this.userType = UserType.patient,
   });
 
@@ -36,7 +36,7 @@ class PatientMenuScreen extends StatefulWidget {
 
 class _PatientMenuScreenState extends State<PatientMenuScreen> {
   late List<MenuItem> menuItems;
-  late int profileCompletionPercentage;
+  late double profileCompletionPercentage;
   bool isLoading = true;
   bool isRefreshing = false; // Flag for background refresh
   String userName = "User";
@@ -50,7 +50,18 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     super.initState();
     _initializeMenuItems();
     profileCompletionPercentage = widget.profileCompletionPercentage;
+    // Clean up expired cache entries when app starts
+    _cleanupCache();
     _loadData();
+  }
+
+  // Clean up expired cache
+  Future<void> _cleanupCache() async {
+    try {
+      await CacheService.cleanupExpiredCache();
+    } catch (e) {
+      debugPrint('Error cleaning up cache: $e');
+    }
   }
 
   Future<void> _loadData() async {
@@ -59,86 +70,111 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     });
 
     // Try to load data from cache first
-    await _loadCachedData();
+    _loadCachedData();
     
     // Then fetch fresh data from Firestore
     _fetchUserData();
   }
 
-  Future<void> _loadCachedData() async {
-    final cachedData = await CacheService.getData(_userCacheKey);
-    
-    if (cachedData != null) {
-      setState(() {
-        _userData = cachedData;
-        userName = cachedData['fullName'] ?? cachedData['name'] ?? "User";
-        profileImageUrl = cachedData['profileImageUrl'];
-        userRole = cachedData['role'] ?? "Patient";
-        profileCompletionPercentage = _calculateCompletionPercentage(cachedData);
-        isLoading = false;
-      });
+  void _loadCachedData() async {
+    try {
+      Map<String, dynamic>? cachedData = await CacheService.getData(_userCacheKey);
+      
+      if (cachedData != null) {
+        // Get completion percentage from cache or calculate it
+        double cachedPercentage = 0.0;
+        if (cachedData.containsKey('completionPercentage')) {
+          cachedPercentage = (cachedData['completionPercentage'] as num).toDouble();
+        } else {
+          cachedPercentage = _calculateCompletionPercentage(cachedData);
+        }
+        
+        setState(() {
+          _userData = cachedData;
+          userName = cachedData['fullName'] ?? cachedData['name'] ?? "User";
+          profileImageUrl = cachedData['profileImageUrl'];
+          userRole = cachedData['role'] ?? "Patient";
+          profileCompletionPercentage = cachedPercentage;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cached data: $e');
     }
   }
 
   Future<void> _fetchUserData() async {
     try {
-      setState(() {
-        isRefreshing = true;
-      });
-
-      User? user = FirebaseAuth.instance.currentUser;
+      String userId = FirebaseAuth.instance.currentUser!.uid;
       
-      if (user != null) {
-        DocumentSnapshot snapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (snapshot.exists) {
-          Map<String, dynamic> newData = snapshot.data() as Map<String, dynamic>;
-          
-          // Calculate completion percentage
-          int calculatedPercentage = _calculateCompletionPercentage(newData);
-          
-          // Update the user data with the calculated percentage
-          if (newData['completionPercentage'] != calculatedPercentage) {
-            // Update in Firestore
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .update({'completionPercentage': calculatedPercentage});
-                
-            // Update the local data
-            newData['completionPercentage'] = calculatedPercentage;
-          }
-          
-          // Save the fresh data to cache
-          await CacheService.saveData(_userCacheKey, newData);
-          
-          // Update UI only if the data has changed
-          if (_userData == null || !_areMapContentsEqual(_userData!, newData)) {
-            setState(() {
-              _userData = newData;
-              userName = newData['fullName'] ?? newData['name'] ?? "User";
-              profileImageUrl = newData['profileImageUrl'];
-              userRole = newData['role'] ?? "Patient";
-              profileCompletionPercentage = calculatedPercentage;
-            });
-          }
-        }
+      // Fetch user data from the users collection
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (!userDoc.exists) {
+        setState(() => isLoading = false);
+        return;
+      }
+      
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      
+      // Fetch patient data from the patients collection
+      DocumentSnapshot patientDoc = await FirebaseFirestore.instance
+          .collection('patients')
+          .doc(userId)
+          .get();
+      
+      // If patient document exists, merge with userData (patient data takes precedence)
+      if (patientDoc.exists) {
+        Map<String, dynamic> patientData = patientDoc.data() as Map<String, dynamic>;
+        userData.addAll(patientData);
+      }
+      
+      // Get completionPercentage from Firestore or calculate it
+      double storedPercentage = 0.0;
+      if (userData.containsKey('completionPercentage')) {
+        storedPercentage = (userData['completionPercentage'] as num).toDouble();
+      } else {
+        storedPercentage = _calculateCompletionPercentage(userData);
+        
+        // Update the completionPercentage in Firestore if it's not already there
+        await FirebaseFirestore.instance
+            .collection('patients')
+            .doc(userId)
+            .set({'completionPercentage': storedPercentage}, SetOptions(merge: true));
+      }
+      
+      // Check if data has changed before updating state
+      bool hasDataChanged = _userData == null || 
+          _userData!['fullName'] != userData['fullName'] ||
+          _userData!['profileImageUrl'] != userData['profileImageUrl'] ||
+          profileCompletionPercentage != storedPercentage;
+      
+      if (hasDataChanged) {
+        setState(() {
+          _userData = userData;
+          userName = userData['fullName'] ?? userData['name'] ?? "User";
+          profileImageUrl = userData['profileImageUrl'];
+          userRole = userData['role'] ?? "Patient";
+          profileCompletionPercentage = storedPercentage;
+          isLoading = false;
+        });
+        
+        // Save updated data to cache
+        CacheService.saveData(_userCacheKey, userData);
+      } else {
+        setState(() => isLoading = false);
       }
     } catch (e) {
-      print('Error fetching user data: $e');
-    } finally {
-      setState(() {
-        isLoading = false;
-        isRefreshing = false;
-      });
+      debugPrint('Error fetching profile data: $e');
+      setState(() => isLoading = false);
     }
   }
 
   // Calculate profile completion percentage based on filled fields
-  int _calculateCompletionPercentage(Map<String, dynamic> userData) {
+  double _calculateCompletionPercentage(Map<String, dynamic> userData) {
     int totalFields = 10; // Total number of important profile fields
     int filledFields = 0;
     
@@ -160,7 +196,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     // Check profile image
     if ((userData['profileImageUrl']?.toString() ?? '').isNotEmpty) filledFields++;
     
-    return ((filledFields / totalFields) * 100).round();
+    return (filledFields / totalFields) * 100;
   }
 
   // Helper method to compare maps (deep comparison)
@@ -185,7 +221,18 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   }
 
   Future<void> _refreshData() async {
-    await _fetchUserData();
+    try {
+      setState(() {
+        isRefreshing = true;
+      });
+      await _fetchUserData();
+    } catch (e) {
+      debugPrint('Error refreshing data: $e');
+    } finally {
+      setState(() {
+        isRefreshing = false;
+      });
+    }
   }
 
   void _initializeMenuItems() {
@@ -207,73 +254,77 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
             ? Center(child: CircularProgressIndicator())
             : Stack(
                 children: [
-                  SingleChildScrollView(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildProfileHeader(),
-                          
-                          // Always show profile completion card
-                          _buildProfileCompletionCard(),
-                          
-                          SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 25),
-                                  
-                                  Text(
-                                    "Settings",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                      letterSpacing: 0.5,
+                  RefreshIndicator(
+                    onRefresh: _refreshData,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildProfileHeader(),
+                            
+                            // Always show profile completion card
+                            _buildProfileCompletionCard(),
+                            
+                            SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 25),
+                                    
+                                    Text(
+                                      "Settings",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  
-                                  // Menu items
-                                  ...menuItems.map((item) => _buildMenuItem(item)).toList(),
-                                  
-                                  // Logout button
-                                  _buildLogoutButton(),
-                                  
-                                  const SizedBox(height: 25),
-                                  
-                                  // App version info
-                                  Center(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          "HealthCare App",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF3366CC),
+                                    const SizedBox(height: 16),
+                                    
+                                    // Menu items
+                                    ...menuItems.map((item) => _buildMenuItem(item)).toList(),
+                                    
+                                    // Logout button
+                                    _buildLogoutButton(),
+                                    
+                                    const SizedBox(height: 25),
+                                    
+                                    // App version info
+                                    Center(
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            "HealthCare App",
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF3366CC),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "Version 1.0.0",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600,
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "Version 1.0.0",
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                ],
+                                    const SizedBox(height: 20),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -846,7 +897,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  "$profileCompletionPercentage%",
+                  "${profileCompletionPercentage.round()}%",
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

@@ -113,64 +113,69 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
   }
 
   Future<void> _loadCachedData() async {
-    final cachedData = await CacheService.getData(_patientProfileCacheKey);
-    
-    if (cachedData != null) {
-      setState(() {
-        // Store the complete data
-        patientData = cachedData;
-        
-        name = cachedData['fullName'] ?? cachedData['name'] ?? "No Name";
-        email = cachedData['email'] ?? "";
-        phoneNumber = cachedData['phoneNumber'] ?? "";
-        cnic = cachedData['cnic'] ?? "";
-        
-        // Address Info
-        address = cachedData['address'] ?? "";
-        city = cachedData['city'] ?? "";
-        state = cachedData['state'] ?? "";
-        country = cachedData['country'] ?? "";
-        zipCode = cachedData['zipCode'] ?? "";
-        
-        // Medical Info
-        age = cachedData['age']?.toString() ?? "";
-        bloodGroup = cachedData['bloodGroup'] ?? "";
-        height = cachedData['height']?.toString() ?? "";
-        weight = cachedData['weight']?.toString() ?? "";
-        
-        // Handle list data
-        if (cachedData['allergies'] != null) {
-          if (cachedData['allergies'] is List) {
-            allergies = List<String>.from(cachedData['allergies']);
-          } else if (cachedData['allergies'] is String) {
-            allergies = json.decode(cachedData['allergies']).cast<String>();
+    try {
+      // Use a longer maxAge for patient profile data (1 day)
+      final cachedData = await CacheService.getData(_patientProfileCacheKey, maxAge: CacheService.longCacheTime);
+      
+      if (cachedData != null) {
+        setState(() {
+          // Store the complete data
+          patientData = cachedData;
+          
+          name = cachedData['fullName'] ?? cachedData['name'] ?? "No Name";
+          email = cachedData['email'] ?? "";
+          phoneNumber = cachedData['phoneNumber'] ?? "";
+          cnic = cachedData['cnic'] ?? "";
+          
+          // Address Info
+          address = cachedData['address'] ?? "";
+          city = cachedData['city'] ?? "";
+          state = cachedData['state'] ?? "";
+          country = cachedData['country'] ?? "";
+          zipCode = cachedData['zipCode'] ?? "";
+          
+          // Medical Info
+          age = cachedData['age']?.toString() ?? "";
+          bloodGroup = cachedData['bloodGroup'] ?? "";
+          height = cachedData['height']?.toString() ?? "";
+          weight = cachedData['weight']?.toString() ?? "";
+          
+          // Handle list data
+          if (cachedData['allergies'] != null) {
+            if (cachedData['allergies'] is List) {
+              allergies = List<String>.from(cachedData['allergies']);
+            } else if (cachedData['allergies'] is String) {
+              allergies = json.decode(cachedData['allergies']).cast<String>();
+            }
           }
-        }
-        
-        if (cachedData['diseases'] != null) {
-          if (cachedData['diseases'] is List) {
-            diseases = List<String>.from(cachedData['diseases']);
-          } else if (cachedData['diseases'] is String) {
-            diseases = json.decode(cachedData['diseases']).cast<String>();
+          
+          if (cachedData['diseases'] != null) {
+            if (cachedData['diseases'] is List) {
+              diseases = List<String>.from(cachedData['diseases']);
+            } else if (cachedData['diseases'] is String) {
+              diseases = json.decode(cachedData['diseases']).cast<String>();
+            }
           }
-        }
-        
-        notes = cachedData['notes'] ?? "";
-        disability = cachedData['disability'];
-        
-        // Image URLs
-        profileImageUrl = cachedData['profileImageUrl'];
-        medicalReport1Url = cachedData['medicalReport1Url'];
-        medicalReport2Url = cachedData['medicalReport2Url'];
-        
-        // Profile completion status
-        profileComplete = cachedData['profileComplete'] ?? false;
-        
-        // Initialize diseases map
-        _categorizeDiseases();
-        
-        _isLoading = false;
-      });
+          
+          notes = cachedData['notes'] ?? "";
+          disability = cachedData['disability'];
+          
+          // Image URLs
+          profileImageUrl = cachedData['profileImageUrl'];
+          medicalReport1Url = cachedData['medicalReport1Url'];
+          medicalReport2Url = cachedData['medicalReport2Url'];
+          
+          // Profile completion status
+          profileComplete = cachedData['profileComplete'] ?? false;
+          
+          // Initialize diseases map
+          _categorizeDiseases();
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cached patient data: $e');
     }
   }
 
@@ -180,7 +185,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
         _isRefreshing = true;
       });
 
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
       
       if (userId != null) {
         // Get user data
@@ -206,8 +211,8 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
           newData.addAll(patientSnapshot.data() as Map<String, dynamic>);
         }
         
-        // Save fresh data to cache
-        await CacheService.saveData(_patientProfileCacheKey, newData);
+        // Save fresh data to cache with longer expiry for medical data
+        await CacheService.saveData(_patientProfileCacheKey, newData, expiry: CacheService.longCacheTime);
         
         // Update UI only if data has changed
         if (!_areMapContentsEqual(patientData, newData)) {
@@ -251,7 +256,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
         }
       }
     } catch (e) {
-      print('Error fetching patient data: $e');
+      debugPrint('Error fetching patient data: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -310,9 +315,18 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                           controller: _tabController,
                           physics: const BouncingScrollPhysics(),
                           children: [
-                            _buildSummaryTab(),
-                            _buildMedicalHistoryTab(),
-                            _buildDocumentsTab(),
+                            RefreshIndicator(
+                              onRefresh: _refreshData,
+                              child: _buildSummaryTab(),
+                            ),
+                            RefreshIndicator(
+                              onRefresh: _refreshData,
+                              child: _buildMedicalHistoryTab(),
+                            ),
+                            RefreshIndicator(
+                              onRefresh: _refreshData,
+                              child: _buildDocumentsTab(),
+                            ),
                           ],
                         ),
                       ),
@@ -1605,5 +1619,21 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
         ],
       ),
     );
+  }
+
+  // Add a method to refresh data 
+  Future<void> _refreshData() async {
+    try {
+      setState(() {
+        _isRefreshing = true;
+      });
+      await _fetchPatientData();
+    } catch (e) {
+      debugPrint('Error refreshing data: $e');
+    } finally {
+      setState(() {
+        _isRefreshing = false;
+      });
+    }
   }
 } 

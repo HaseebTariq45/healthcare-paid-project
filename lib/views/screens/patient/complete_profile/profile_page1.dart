@@ -573,7 +573,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                   builder: (context) => BottomNavigationBarPatientScreen(
                     profileStatus: "incomplete",
                     suppressProfilePrompt: true,
-                    profileCompletionPercentage: _completionPercentage.toInt(),
+                    profileCompletionPercentage: _completionPercentage,
                   ),
                 ),
               );
