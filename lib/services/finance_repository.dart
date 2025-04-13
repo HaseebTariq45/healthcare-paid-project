@@ -39,6 +39,42 @@ class FinancialTransaction {
     this.paymentMethod,
   });
 
+  factory FinancialTransaction.fromJson(Map<String, dynamic> json) {
+    return FinancialTransaction(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      amount: json['amount'].toDouble(),
+      date: DateTime.parse(json['date'] as String),
+      type: TransactionType.values.firstWhere(
+        (e) => e.toString() == 'TransactionType.${json['type']}',
+      ),
+      status: TransactionStatus.values.firstWhere(
+        (e) => e.toString() == 'TransactionStatus.${json['status']}',
+      ),
+      appointmentId: json['appointmentId'] as String?,
+      doctorName: json['doctorName'] as String?,
+      hospitalName: json['hospitalName'] as String?,
+      paymentMethod: json['paymentMethod'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'amount': amount,
+      'date': date.toIso8601String(),
+      'type': type.toString().split('.').last,
+      'status': status.toString().split('.').last,
+      'appointmentId': appointmentId,
+      'doctorName': doctorName,
+      'hospitalName': hospitalName,
+      'paymentMethod': paymentMethod,
+    };
+  }
+
   factory FinancialTransaction.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return FinancialTransaction(

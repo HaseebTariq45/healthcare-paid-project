@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/services/finance_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class PatientFinancesScreen extends StatefulWidget {
   const PatientFinancesScreen({super.key});
@@ -25,9 +27,11 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
   };
   
   bool _isLoading = true;
+  bool _isRefreshing = false;
   String? _userId;
   List<FinancialTransaction> _transactions = [];
   List<FinancialTransaction> _filteredTransactions = [];
+  static const String _financeCacheKey = 'patient_finance_data';
 
   @override
   void initState() {
@@ -45,7 +49,7 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
       setState(() {
         _userId = user.uid;
       });
-      _loadFinancialData();
+      _loadData();
     } else {
       setState(() {
         _isLoading = false;
@@ -91,65 +95,87 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
     }
   }
 
-  // Load financial data from Firebase
-  Future<void> _loadFinancialData() async {
-    print('Starting to load financial data...');
+  Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
     });
+
+    // Try to load data from cache first
+    await _loadCachedData();
+    
+    // Then fetch fresh data from Firebase
+    await _loadFinancialData();
+  }
+
+  Future<void> _loadCachedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? cachedData = prefs.getString(_financeCacheKey);
+      
+      if (cachedData != null) {
+        Map<String, dynamic> data = json.decode(cachedData);
+        
+        setState(() {
+          _financialSummary = Map<String, num>.from(data['summary'] ?? {});
+          
+          // Convert cached transactions back to FinancialTransaction objects
+          List<dynamic> txList = data['transactions'] ?? [];
+          _transactions = txList.map((tx) => FinancialTransaction.fromJson(tx)).toList();
+          
+          _filterTransactions(_selectedType);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cached data: $e');
+    }
+  }
+
+  // Load financial data from Firebase
+  Future<void> _loadFinancialData() async {
+    if (_userId == null) {
+      debugPrint('Error: No user ID available');
+      return;
+    }
+
+    setState(() {
+      _isRefreshing = true;
+    });
     
     try {
-      if (_userId == null) {
-        print('Error: No user ID available');
-        return;
-      }
-      print('Loading financial data for user: $_userId');
-
-      final repository = new FinanceRepository();
+      final repository = FinanceRepository();
       
       // Get transactions and summary from repository
       final transactions = await repository.getUserTransactions();
       final summary = await repository.getFinancialSummary();
       
-      // Log transaction details to help debug
-      print('Final transaction count: ${transactions.length}');
-      Map<String, int> transactionCountByType = {};
-      for (var tx in transactions) {
-        var type = tx.type.toString();
-        transactionCountByType[type] = (transactionCountByType[type] ?? 0) + 1;
+      // Prepare data for caching
+      Map<String, dynamic> cacheData = {
+        'summary': summary,
+        'transactions': transactions.map((tx) => tx.toJson()).toList(),
+      };
+
+      // Save to cache
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_financeCacheKey, json.encode(cacheData));
+      } catch (e) {
+        debugPrint('Error saving to cache: $e');
       }
-      print('Transaction counts by type: $transactionCountByType');
-      
-      // Check for possible duplicates
-      Map<String, List<FinancialTransaction>> appointmentTransactions = {};
-      for (var tx in transactions) {
-        if (tx.appointmentId != null) {
-          if (!appointmentTransactions.containsKey(tx.appointmentId)) {
-            appointmentTransactions[tx.appointmentId!] = [];
-          }
-          appointmentTransactions[tx.appointmentId]!.add(tx);
-        }
-      }
-      
-      // Log any potential duplicate transactions
-      appointmentTransactions.forEach((appointmentId, txs) {
-        if (txs.length > 1) {
-          print('Warning: Multiple transactions for appointment $appointmentId: ${txs.length}');
-        }
-      });
-      
+
       setState(() {
         _transactions = transactions;
         _filterTransactions(_selectedType); // Apply current filter
-        
         _financialSummary = summary;
         _isLoading = false;
+        _isRefreshing = false;
       });
     } catch (e, stackTrace) {
-      print('Error loading financial data: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('Error loading financial data: $e');
+      debugPrint('Stack trace: $stackTrace');
       setState(() {
         _isLoading = false;
+        _isRefreshing = false;
       });
     }
   }
@@ -164,14 +190,64 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            _buildHeader(),
-            _buildFinancialSummary(),
-            _buildTabBar(),
-            Expanded(
-              child: _buildTransactionsList(),
+            Column(
+              children: [
+                _buildHeader(),
+                _buildFinancialSummary(),
+                _buildTabBar(),
+                Expanded(
+                  child: _buildTransactionsList(),
+                ),
+              ],
             ),
+            // Refresh indicator at bottom
+            if (_isRefreshing)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              const Color(0xFF0167FF),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Refreshing...",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -204,7 +280,7 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
             ],
           ),
           IconButton(
-            onPressed: _loadFinancialData,
+            onPressed: _loadData,
             icon: Icon(LucideIcons.refreshCcw),
             tooltip: 'Refresh',
           ),
