@@ -65,6 +65,263 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
     }
   }
 
+  // Get card icon based on card name
+  IconData _getCardIcon(String cardName) {
+    cardName = cardName.toLowerCase();
+    if (cardName.contains('visa')) return Icons.credit_card;
+    if (cardName.contains('mastercard')) return Icons.account_balance_wallet;
+    if (cardName.contains('american express') || cardName.contains('amex')) return Icons.account_balance;
+    if (cardName.contains('discover')) return Icons.person;
+    return Icons.credit_card;
+  }
+
+  // Generate gradient colors based on card color
+  List<Color> _getGradientColors(String colorString) {
+    try {
+      final baseColor = Color(int.parse(colorString));
+      return [
+        baseColor,
+        baseColor.withOpacity(0.7),
+        baseColor.withOpacity(0.5),
+      ];
+    } catch (e) {
+      return [Color(0xFF2754C3), Color(0xFF5E81F4)];
+    }
+  }
+
+  Widget _buildCardItem(Map<String, dynamic> card, int index, bool isSelected) {
+    final List<Color> gradientColors = _getGradientColors(card['color']);
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCardIndex = index;
+        });
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: gradientColors[0].withOpacity(0.3),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+          border: isSelected 
+            ? Border.all(color: Colors.white, width: 2) 
+            : null,
+        ),
+        child: Stack(
+          children: [
+            // Card background
+            Container(
+              height: 180,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: gradientColors,
+                ),
+              ),
+            ),
+            
+            // Card content
+            Positioned.fill(
+              child: Container(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Card type icon
+                        Icon(
+                          _getCardIcon(card['name']),
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        
+                        // Default tag if applicable
+                        if (card['isDefault'] == true)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.white, width: 1),
+                            ),
+                            child: Text(
+                              "DEFAULT",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 20),
+                    
+                    // Card number
+                    Text(
+                      card['number'],
+                      style: GoogleFonts.spaceGrotesk(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    
+                    Spacer(),
+                    
+                    // Card holder info and expiry
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "CARD HOLDER",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              card['holderName'] ?? "Card Holder",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "EXPIRES",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              card['expiry'] ?? "MM/YY",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Selection indicator
+            if (isSelected)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.check,
+                      color: gradientColors[0],
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddCardButton() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CardPaymentScreen(
+              appointmentDetails: widget.appointmentDetails,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        height: 80,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: Color(0xFF3366FF).withOpacity(0.5),
+            width: 1,
+            style: BorderStyle.solid,
+          ),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_circle_outline,
+                color: Color(0xFF3366FF),
+                size: 24,
+              ),
+              SizedBox(width: 10),
+              Text(
+                "Add New Payment Method",
+                style: GoogleFonts.poppins(
+                  color: Color(0xFF3366FF),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _processPayment() async {
     if (savedCards.isEmpty) {
       _showError("No card selected");
@@ -152,113 +409,270 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
           if (mounted) {
             showDialog(
               context: context,
+              barrierDismissible: false,
               builder: (context) => AlertDialog(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                title: Column(
+                contentPadding: EdgeInsets.zero,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Header with success icon
                     Container(
-                      padding: EdgeInsets.all(10),
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 24),
                       decoration: BoxDecoration(
-                        color: Color(0xFFECF0FF),
-                        shape: BoxShape.circle,
+                        color: Color(0xFF3366FF),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                       ),
-                      child: Icon(
-                        LucideIcons.check,
-                        color: Color(0xFF2754C3),
-                        size: 40,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: Color(0xFF3366FF),
+                              size: 32,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            "Payment Successful",
+                            style: GoogleFonts.poppins(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 10),
-                    Text(
-                      "Payment Successful",
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF222222),
+                    
+                    // Payment details
+                    Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          // Amount
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF5F8FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Color(0xFFD6E4FF)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFE5EDFF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.attach_money,
+                                    size: 24,
+                                    color: Color(0xFF3366FF),
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Amount Paid",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      Text(
+                                        "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          SizedBox(height: 16),
+                          
+                          // Doctor details
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF5F8FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Color(0xFFD6E4FF)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFE5EDFF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.medical_services,
+                                    size: 24,
+                                    color: Color(0xFF3366FF),
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Doctor",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      Text(
+                                        "${widget.appointmentDetails?['doctorName'] ?? 'Doctor'}",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          SizedBox(height: 16),
+                          
+                          // Payment method
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFF5F8FF),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Color(0xFFD6E4FF)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFE5EDFF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.credit_card,
+                                    size: 24,
+                                    color: Color(0xFF3366FF),
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Payment Method",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      Text(
+                                        selectedCard["name"],
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          SizedBox(height: 24),
+                          
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    PatientNavigationHelper.navigateToHome(context);
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    side: BorderSide(
+                                      color: Color(0xFF3366FF),
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Go to Home",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 16,
+                                      color: Color(0xFF3366FF),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    PatientNavigationHelper.navigateToHome(context);
+                                    Future.delayed(Duration(milliseconds: 100), () {
+                                      PatientNavigationHelper.navigateToTab(context, 2);
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF3366FF),
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "View History",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                content: Container(
-                  constraints: BoxConstraints(minWidth: 300),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Your payment has been processed successfully.",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Color(0xFF555555),
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              LucideIcons.creditCard,
-                              size: 20,
-                              color: Color(0xFF2754C3),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Amount Paid",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color: Color(0xFF777777),
-                                    ),
-                                  ),
-                                  Text(
-                                    "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF222222),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      PatientNavigationHelper.navigateToHome(context);
-                      Future.delayed(Duration(milliseconds: 100), () {
-                        PatientNavigationHelper.navigateToTab(context, 2);
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF2754C3),
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      textStyle: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    child: Text("View Payment History"),
-                  ),
-                ],
               ),
             );
           }
@@ -299,6 +713,7 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFF8F9FC),
       appBar: AppBar(
         title: Text(
           "Select Payment Method",
@@ -306,29 +721,52 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        elevation: 0,
+        backgroundColor: Colors.white,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF3366FF),
+              ),
+            )
           : savedCards.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        LucideIcons.creditCard,
-                        size: 48,
-                        color: Colors.grey,
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFEFF2FF),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.credit_card,
+                          size: 48,
+                          color: Color(0xFF3366FF),
+                        ),
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: 24),
                       Text(
                         "No payment methods added yet",
                         style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.grey.shade700,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF333333),
                         ),
                       ),
                       SizedBox(height: 8),
-                      TextButton(
+                      Text(
+                        "Add a card to proceed with your payment",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Color(0xFF757575),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 24),
+                      ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -339,7 +777,20 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
                             ),
                           );
                         },
-                        child: Text("Add Payment Method"),
+                        icon: Icon(Icons.add_circle_outline),
+                        label: Text("Add Payment Method"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF3366FF),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -347,167 +798,54 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
               : Column(
                   children: [
                     Expanded(
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: savedCards.length,
-                        itemBuilder: (context, index) {
-                          final card = savedCards[index];
-                          final isSelected = index == _selectedCardIndex;
+                      child: ListView(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        children: [
+                          // Build list of cards
+                          for (int i = 0; i < savedCards.length; i++)
+                            _buildCardItem(savedCards[i], i, i == _selectedCardIndex),
                           
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCardIndex = index;
-                              });
-                            },
-                            child: Container(
-                              margin: EdgeInsets.only(bottom: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isSelected ? Color(0xFF3366FF) : Colors.grey.shade200,
-                                  width: isSelected ? 2 : 1,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Color(int.parse(card['color'])),
-                                      borderRadius: BorderRadius.vertical(
-                                        top: Radius.circular(isSelected ? 14 : 16),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          card['type'] == 'Card'
-                                              ? LucideIcons.creditCard
-                                              : LucideIcons.wallet,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                card['name'],
-                                                style: GoogleFonts.poppins(
-                                                  color: Colors.white,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              Text(
-                                                card['number'],
-                                                style: GoogleFonts.poppins(
-                                                  color: Colors.white.withOpacity(0.9),
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (card['isDefault'] == true)
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              "Default",
-                                              style: GoogleFonts.poppins(
-                                                color: Color(int.parse(card['color'])),
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (isSelected)
-                                    Container(
-                                      padding: EdgeInsets.all(16),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            LucideIcons.check,
-                                            color: Color(0xFF3366FF),
-                                            size: 20,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            "Selected for payment",
-                                            style: GoogleFonts.poppins(
-                                              color: Color(0xFF3366FF),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                          // Add card button
+                          _buildAddCardButton(),
+                          
+                          SizedBox(height: 16),
+                        ],
                       ),
                     ),
-                    Padding(
+                    
+                    // Bottom payment button
+                    Container(
                       padding: EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _processPayment,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFF3366FF),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                "Pay Now",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CardPaymentScreen(
-                                    appointmentDetails: widget.appointmentDetails,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Text("Add New Card"),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, -5),
                           ),
                         ],
+                      ),
+                      child: SafeArea(
+                        child: ElevatedButton(
+                          onPressed: _processPayment,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF3366FF),
+                            foregroundColor: Colors.white,
+                            minimumSize: Size(double.infinity, 56),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Text(
+                            "Pay Now",
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],

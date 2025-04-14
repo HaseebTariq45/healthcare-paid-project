@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CacheService {
   // Default cache time is 5 minutes (300,000 milliseconds)
@@ -65,17 +66,43 @@ class CacheService {
     }
   }
   
+  // Convert Firestore data to JSON-serializable format
+  static dynamic _makeSerializable(dynamic data) {
+    if (data is Timestamp) {
+      // Convert Timestamp to ISO8601 string
+      return data.toDate().toIso8601String();
+    } else if (data is Map) {
+      // Process map entries recursively
+      return Map.fromEntries(data.entries.map(
+        (entry) => MapEntry(entry.key.toString(), _makeSerializable(entry.value))
+      ));
+    } else if (data is List) {
+      // Process list items recursively
+      return data.map((item) => _makeSerializable(item)).toList();
+    } else if (data is DocumentReference) {
+      // Convert DocumentReference to path string
+      return data.path;
+    } else {
+      // Return primitive values as is
+      return data;
+    }
+  }
+
   // Save data to cache
   static Future<bool> saveData(String key, Map<String, dynamic> data, {int? expiry}) async {
     try {
       final prefs = await _prefs;
       
+      // Make data serializable (convert Timestamps, DocumentReferences, etc.)
+      final serializableData = _makeSerializable(data);
+      
       // Encode the data - use compute for larger datasets to avoid UI jank
       String encodedData;
       if (data.length > 100) {
-        encodedData = await compute(_encodeJson, data);
+        // Use json.encode directly for large datasets due to compute() type constraints
+        encodedData = json.encode(serializableData);
       } else {
-        encodedData = json.encode(data);
+        encodedData = json.encode(serializableData);
       }
       
       // Save the data
@@ -98,8 +125,8 @@ class CacheService {
     }
   }
   
-  // Helper method to encode JSON in a separate isolate
-  static String _encodeJson(Map<String, dynamic> data) {
+  // Helper method to encode JSON in a separate isolate - currently unused due to typing limitations
+  static String _encodeJson(dynamic data) {
     return json.encode(data);
   }
   

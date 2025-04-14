@@ -4,6 +4,7 @@ import 'package:healthcare/views/screens/dashboard/menu.dart'; // Add this impor
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter/services.dart'; // For TextInputFormatters
 
 class PaymentMethodsScreen extends StatefulWidget {
   final UserType userType;
@@ -1035,7 +1036,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     }
 
     // Regular view for when payment methods exist
-    return Column(
+    return SingleChildScrollView(
+      child: Column(
       children: [
         // Card preview section
         Container(
@@ -1146,10 +1148,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   ),
                 ],
               ),
+              SizedBox(height: 20), // Add some bottom padding
             ],
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -1171,18 +1175,26 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         break;
     }
     
+    // Get wallet provider if applicable
+    final bool isWallet = payment["type"] == "Wallet";
+    final String walletProvider = payment["provider"] ?? (isWallet ? "JazzCash" : "");
+    
     // Handle edge case where color might be missing
     String colorHex = payment["color"] ?? "0xFF3366FF";
+    
+    // Get a contrasting color for the decoration elements
+    Color primaryColor = Color(int.parse(colorHex));
+    Color accentColor = Color(int.parse(colorHex)).withOpacity(0.7);
+    Color textColor = Colors.white;
     
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),
       margin: EdgeInsets.only(right: 12, left: 4, top: isSelected ? 0 : 12, bottom: isSelected ? 0 : 12),
       decoration: BoxDecoration(
-        color: Color(int.parse(colorHex)),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Color(int.parse(colorHex)).withOpacity(0.4),
+            color: primaryColor.withOpacity(0.4),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -1191,16 +1203,54 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(int.parse(colorHex)),
-            Color(int.parse(colorHex)).withAlpha(220),
+            primaryColor,
+            accentColor,
           ],
         ),
       ),
       child: Stack(
         children: [
-          // Payment card content
+          // Background decoration elements
+          Positioned(
+            top: -20,
+            right: -20,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -40,
+            left: -30,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 30,
+            right: 20,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          
+          // Card content
           Padding(
-            padding: EdgeInsets.all(20),
+            padding: EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1209,47 +1259,79 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          cardIcon,
-                          color: Colors.white,
-                          size: 26,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          payment["name"] ?? payment["type"] ?? "Payment Card",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 16,
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          child: Icon(
+                            cardIcon,
+                            color: textColor,
+                            size: 24,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              payment["name"] ?? payment["type"] ?? "Payment Card",
+                              style: GoogleFonts.poppins(
+                                color: textColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (isWallet && walletProvider.isNotEmpty)
+                              Text(
+                                walletProvider,
+                                style: GoogleFonts.poppins(
+                                  color: textColor.withOpacity(0.8),
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
+                    
+                    // Card chip icon for cards, or provider icon for wallets
                     Container(
-                      padding: EdgeInsets.all(6),
+                      padding: EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        cardIcon,
-                        color: Colors.white,
+                        payment["type"] == "Card" 
+                            ? Icons.memory 
+                            : payment["type"] == "Wallet" 
+                                ? Icons.phone_android
+                                : Icons.account_balance,
+                        color: textColor,
                         size: 18,
                       ),
                     ),
                   ],
                 ),
+                
                 Spacer(),
+                
+                // Card number with custom styling
                 Text(
                   payment["number"] ?? "••••••••",
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 18,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: textColor,
+                    fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 1,
+                    letterSpacing: 1.5,
                   ),
                 ),
-                SizedBox(height: 12),
+                
+                SizedBox(height: 16),
+                
+                // Card details in footer
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1259,21 +1341,23 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         Text(
                           payment["type"] == "Bank" ? "ACCOUNT HOLDER" : "CARD HOLDER",
                           style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(0.7),
+                            color: textColor.withOpacity(0.7),
                             fontSize: 10,
+                            letterSpacing: 1.2,
                           ),
                         ),
                         SizedBox(height: 4),
                         Text(
                           payment["holder"] ?? "Card Holder",
                           style: GoogleFonts.poppins(
-                            color: Colors.white,
+                            color: textColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
+                    
                     if (payment["expiry"] != null && payment["expiry"].toString().isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1281,54 +1365,67 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           Text(
                             "EXPIRES",
                             style: GoogleFonts.poppins(
-                              color: Colors.white.withOpacity(0.7),
+                              color: textColor.withOpacity(0.7),
                               fontSize: 10,
+                              letterSpacing: 1.2,
                             ),
                           ),
                           SizedBox(height: 4),
                           Text(
                             payment["expiry"],
                             style: GoogleFonts.poppins(
-                              color: Colors.white,
+                              color: textColor,
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
+                      
+                    // Show default marker for non-expiry cards like wallets
+                    if ((payment["expiry"] == null || payment["expiry"].toString().isEmpty) && 
+                        payment["type"] != "Card")
+                      Container(),
                   ],
                 ),
               ],
             ),
           ),
           
-          // Default badge
+          // Default badge with improved design
           if (payment["isDefault"] == true)
             Positioned(
               top: 0,
               right: 0,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    bottomLeft: Radius.circular(16),
+                    topRight: Radius.circular(24),
+                    bottomLeft: Radius.circular(24),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.check,
-                      color: Color(int.parse(colorHex)),
+                      Icons.verified,
+                      color: primaryColor,
                       size: 14,
                     ),
                     SizedBox(width: 4),
                     Text(
                       "Default",
                       style: GoogleFonts.poppins(
-                        color: Color(int.parse(colorHex)),
+                        color: primaryColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -1345,35 +1442,41 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   Widget _buildDetailsRow(String label, String? value, IconData icon) {
     // Handle null or empty values
     final displayValue = (value == null || value.isEmpty) ? "Not provided" : value;
+    final bool isEmpty = (value == null || value.isEmpty);
     
     return Container(
-      padding: EdgeInsets.all(14),
+      padding: EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+      margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: Colors.grey.shade100,
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Color(0xFF3366FF).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               color: Color(0xFF3366FF),
-              size: 18,
+              size: 20,
             ),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1381,16 +1484,19 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 Text(
                   label,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                     color: Color(0xFF666666),
                   ),
                 ),
+                SizedBox(height: 4),
                 Text(
                   displayValue,
                   style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: (value == null || value.isEmpty) ? Colors.grey : Color(0xFF333333),
+                    fontSize: 16,
+                    fontWeight: isEmpty ? FontWeight.normal : FontWeight.w600,
+                    color: isEmpty ? Colors.grey.shade400 : Color(0xFF333333),
+                    letterSpacing: isEmpty ? 0 : 0.5,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1409,17 +1515,17 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         backgroundColor: color.withOpacity(0.1),
         foregroundColor: color,
         elevation: 0,
-        padding: EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: color.withOpacity(0.3)),
         ),
       ),
-      icon: Icon(icon, size: 18),
+      icon: Icon(icon, size: 20),
       label: Text(
         label,
         style: GoogleFonts.poppins(
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           fontSize: 15,
         ),
       ),
@@ -1433,6 +1539,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     _cardNumberController.text = '';
     _expiryController.text = '';
     _cvvController.text = '';
+    
+    // Default wallet provider
+    String walletProvider = "JazzCash";
 
     showModalBottomSheet(
       context: context,
@@ -1474,11 +1583,65 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     ),
                     SizedBox(height: 20),
                     
+                    // Wallet Provider Dropdown (for Wallet only)
+                    if (type == "Wallet") ...[
+                      Text(
+                        "Wallet Provider",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: walletProvider,
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(LucideIcons.wallet, color: Color(0xFF3366FF)),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          items: ["JazzCash", "EasyPaisa"].map((provider) {
+                            return DropdownMenuItem(
+                              value: provider,
+                              child: Text(
+                                provider,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Color(0xFF333333),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setModalState(() {
+                              walletProvider = value!;
+                              // Update card name based on selection
+                              _cardNameController.text = value;
+                              
+                              // Update color based on selection
+                              if (value == "JazzCash") {
+                                colorCode = "0xFFC2554D"; // Red
+                              } else if (value == "EasyPaisa") {
+                                colorCode = "0xFF4CAF50"; // Green
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    
                     // Card display name
                     TextFormField(
                       controller: _cardNameController,
                       decoration: InputDecoration(
-                        labelText: type == "Wallet" ? "Wallet Name" : "Card Name",
+                        labelText: type == "Wallet" ? "Display Name" : "Card Name",
                         prefixIcon: Icon(type == "Wallet" ? LucideIcons.wallet : LucideIcons.creditCard),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1521,19 +1684,47 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        hintText: type == "Wallet" ? "03xxxxxxxxx" : "xxxx xxxx xxxx xxxx",
+                        // Show detected card type as suffix icon for card input
+                        suffixIcon: type == "Card" && _cardNumberController.text.isNotEmpty
+                          ? _buildCardTypeIcon(_detectCardType(_cardNumberController.text))
+                          : null,
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        // Limit input length and format
+                        if (type == "Wallet")
+                          // For mobile numbers (allow only 11 digits)
+                          LengthLimitingTextInputFormatter(11),
+                        if (type == "Card")
+                          // For credit cards (19 digits with spaces)
+                          LengthLimitingTextInputFormatter(23),
+                      ],
                       onChanged: (value) {
                         if (type == "Card") {
                           // Format card number with spaces
-                          if (value.length > 0 && value[value.length - 1] != ' ') {
-                            final trimmedValue = value.replaceAll(' ', '');
-                            if (trimmedValue.length > 0 && trimmedValue.length % 4 == 0 && trimmedValue.length < 16) {
-                              _cardNumberController.text = _formatCardNumber(trimmedValue);
+                          final trimmedValue = value.replaceAll(' ', '');
+                          if (value.isNotEmpty && trimmedValue.isNotEmpty) {
+                            // Format card number with spaces every 4 digits
+                            final formatted = _formatCardNumber(trimmedValue);
+                            if (formatted != value) {
+                              _cardNumberController.text = formatted;
+                              // Place cursor at the end
                               _cardNumberController.selection = TextSelection.fromPosition(
                                 TextPosition(offset: _cardNumberController.text.length),
                               );
                             }
+                          }
+                          // Force update to show card type icon
+                          setState(() {});
+                        } else if (type == "Wallet") {
+                          // Format wallet number (mobile number)
+                          final cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                          if (cleanValue != value) {
+                            _cardNumberController.text = cleanValue;
+                            _cardNumberController.selection = TextSelection.fromPosition(
+                              TextPosition(offset: cleanValue.length),
+                            );
                           }
                         }
                       },
@@ -1541,8 +1732,33 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         if (value == null || value.isEmpty) {
                           return type == "Wallet" ? 'Please enter mobile number' : 'Please enter card number';
                         }
-                        if (type == "Card" && value.replaceAll(' ', '').length != 16) {
-                          return 'Please enter a valid 16-digit card number';
+                        
+                        if (type == "Wallet") {
+                          // Validate mobile number pattern
+                          if (value.length != 11) {
+                            return 'Mobile number must be 11 digits';
+                          }
+                          if (!value.startsWith('03')) {
+                            return 'Mobile number must start with "03"';
+                          }
+                        } else if (type == "Card") {
+                          // Validate card number
+                          final cleanNumber = value.replaceAll(' ', '');
+                          
+                          // Check length (different card types have different valid lengths)
+                          if (cleanNumber.length < 13 || cleanNumber.length > 19) {
+                            return 'Invalid card number length';
+                          }
+                          
+                          // Check if digits only
+                          if (!RegExp(r'^\d+$').hasMatch(cleanNumber)) {
+                            return 'Card number must contain only digits';
+                          }
+                          
+                          // Check using Luhn algorithm
+                          if (!_isValidCardNumber(cleanNumber)) {
+                            return 'Invalid card number';
+                          }
                         }
                         return null;
                       },
@@ -1559,7 +1775,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          hintText: "MM/YY",
                         ),
+                        inputFormatters: [
+                          // Limit to 5 characters: MM/YY
+                          LengthLimitingTextInputFormatter(5),
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter expiry date';
@@ -1567,6 +1788,27 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
                             return 'Please use MM/YY format';
                           }
+                          
+                          // Validate month and year
+                          try {
+                            int month = int.parse(value.split('/')[0]);
+                            int year = int.parse(value.split('/')[1]);
+                            
+                            if (month < 1 || month > 12) {
+                              return 'Invalid month';
+                            }
+                            
+                            // Check if the card has expired
+                            final currentYear = DateTime.now().year % 100;
+                            final currentMonth = DateTime.now().month;
+                            
+                            if (year < currentYear || (year == currentYear && month < currentMonth)) {
+                              return 'Card has expired';
+                            }
+                          } catch (e) {
+                            return 'Invalid format';
+                          }
+                          
                           return null;
                         },
                         onChanged: (value) {
@@ -1589,15 +1831,22 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          hintText: "123",
                         ),
                         keyboardType: TextInputType.number,
                         obscureText: true,
+                        inputFormatters: [
+                          // Limit to 3-4 digits
+                          LengthLimitingTextInputFormatter(4),
+                          // Only allow digits
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter CVV';
                           }
-                          if (value.length != 3) {
-                            return 'CVV must be 3 digits';
+                          if (value.length < 3 || value.length > 4) {
+                            return 'CVV must be 3-4 digits';
                           }
                           return null;
                         },
@@ -1621,7 +1870,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             String cvv = type == "Card" ? _cvvController.text : '';
                             
                             // Choose a default color if none provided
-                            final defaultColor = type == "Wallet" ? "0xFFC2554D" : "0xFF3366FF";
+                            final defaultColor = type == "Wallet" 
+                                ? (walletProvider == "JazzCash" ? "0xFFC2554D" : "0xFF4CAF50")
+                                : "0xFF3366FF";
                             
                             // Prepare card data
                             Map<String, dynamic> cardData = {
@@ -1632,6 +1883,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               'expiry': expiry,
                             };
                             
+                            // For wallets, store the provider
+                            if (type == "Wallet") {
+                              cardData['provider'] = walletProvider;
+                            }
+                            
                             // Format and store card number
                             if (type == "Card") {
                               final cleanNumber = number.replaceAll(' ', '');
@@ -1639,7 +1895,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               cardData['number'] = '•••• •••• •••• ${cleanNumber.substring(cleanNumber.length - 4)}';
                               // Don't store full card number for security, but you could encrypt it if needed
                             } else {
-                              cardData['number'] = number;
+                              // For wallet, store a partially masked number
+                              cardData['number'] = '****${number.substring(number.length - 5)}';
+                              cardData['fullNumber'] = number; // Store for internal use only
                             }
                             
                             // Add the payment method
@@ -1721,15 +1979,110 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   
   // Helper method to format card number as user types (e.g. "1234 5678 9012 3456")
   String _formatCardNumber(String cardNumber) {
-    // Add a space after every 4 characters
-    StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < cardNumber.length; i++) {
-      if (i > 0 && i % 4 == 0) {
-        buffer.write(" ");
+    // Remove any non-digit characters first
+    cardNumber = cardNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // Different card types have different formats
+    // AMEX: XXXX XXXXXX XXXXX (4-6-5)
+    // Visa/MC/Others: XXXX XXXX XXXX XXXX (4-4-4-4)
+    
+    if (_isAmexCard(cardNumber)) {
+      // Format as XXXX XXXXXX XXXXX
+      StringBuffer buffer = StringBuffer();
+      for (int i = 0; i < cardNumber.length; i++) {
+        if (i == 4 || i == 10) {
+          buffer.write(" ");
+        }
+        buffer.write(cardNumber[i]);
       }
-      buffer.write(cardNumber[i]);
+      return buffer.toString();
+    } else {
+      // Standard format XXXX XXXX XXXX XXXX
+      StringBuffer buffer = StringBuffer();
+      for (int i = 0; i < cardNumber.length; i++) {
+        if (i > 0 && i % 4 == 0) {
+          buffer.write(" ");
+        }
+        buffer.write(cardNumber[i]);
+      }
+      return buffer.toString();
     }
-    return buffer.toString();
+  }
+  
+  // Check if a card is American Express (starts with 34 or 37)
+  bool _isAmexCard(String cardNumber) {
+    if (cardNumber.length < 2) return false;
+    final prefix = cardNumber.substring(0, 2);
+    return prefix == '34' || prefix == '37';
+  }
+  
+  // Detects the card type based on the card number
+  String _detectCardType(String cardNumber) {
+    // Remove any non-digit characters
+    cardNumber = cardNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    if (cardNumber.isEmpty) return '';
+    
+    // Visa: Starts with 4
+    if (cardNumber.startsWith('4')) {
+      return 'Visa';
+    }
+    
+    // Mastercard: Starts with 51-55 or 2221-2720
+    if ((cardNumber.startsWith(RegExp(r'5[1-5]'))) || 
+        (cardNumber.length >= 4 && 
+         int.tryParse(cardNumber.substring(0, 4))! >= 2221 && 
+         int.tryParse(cardNumber.substring(0, 4))! <= 2720)) {
+      return 'Mastercard';
+    }
+    
+    // American Express: Starts with 34 or 37
+    if (cardNumber.startsWith('34') || cardNumber.startsWith('37')) {
+      return 'American Express';
+    }
+    
+    // Discover: Starts with 6011, 644-649, 65
+    if (cardNumber.startsWith('6011') || 
+        (cardNumber.startsWith(RegExp(r'64[4-9]'))) || 
+        cardNumber.startsWith('65')) {
+      return 'Discover';
+    }
+    
+    // JCB: Starts with 35
+    if (cardNumber.startsWith('35')) {
+      return 'JCB';
+    }
+    
+    // Diners Club: Starts with 300-305, 36, 38-39
+    if (cardNumber.startsWith(RegExp(r'3[0,6,8-9]'))) {
+      return 'Diners Club';
+    }
+    
+    return 'Unknown';
+  }
+  
+  bool _isValidCardNumber(String cardNumber) {
+    // Remove any non-digit characters
+    cardNumber = cardNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // Check if the card number is too short
+    if (cardNumber.length < 13) return false;
+    
+    // Implement Luhn algorithm (checksum)
+    int sum = 0;
+    bool alternate = false;
+    for (int i = cardNumber.length - 1; i >= 0; i--) {
+      int n = int.parse(cardNumber[i]);
+      if (alternate) {
+        n *= 2;
+        if (n > 9) {
+          n -= 9;
+        }
+      }
+      sum += n;
+      alternate = !alternate;
+    }
+    return sum % 10 == 0;
   }
 
   void _showEditPaymentBottomSheet(Map<String, dynamic> payment) {
@@ -1744,6 +2097,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     final bool isBank = type == 'Bank';
     final bool isCard = type == 'Card';
     final bool isWallet = type == 'Wallet';
+    
+    // Get wallet provider if applicable
+    String walletProvider = payment['provider'] ?? (isWallet ? "JazzCash" : "");
 
     showModalBottomSheet(
       context: context,
@@ -1785,11 +2141,60 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     ),
                     SizedBox(height: 20),
                     
+                    // Wallet Provider Dropdown (for Wallet only)
+                    if (isWallet) ...[
+                      Text(
+                        "Wallet Provider",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: walletProvider.isEmpty ? "JazzCash" : walletProvider,
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(LucideIcons.wallet, color: Color(0xFF3366FF)),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          items: ["JazzCash", "EasyPaisa"].map((provider) {
+                            return DropdownMenuItem(
+                              value: provider,
+                              child: Text(
+                                provider,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Color(0xFF333333),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setModalState(() {
+                              walletProvider = value!;
+                              
+                              // Update color based on selection
+                              String newColor = walletProvider == "JazzCash" ? "0xFFC2554D" : "0xFF4CAF50";
+                              payment['color'] = newColor;
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    
                     // Name field
                     TextFormField(
                       controller: _cardNameController,
                       decoration: InputDecoration(
-                        labelText: isBank ? "Bank Name" : isWallet ? "Wallet Name" : "Card Name",
+                        labelText: isBank ? "Bank Name" : isWallet ? "Display Name" : "Card Name",
                         prefixIcon: Icon(
                           isBank ? Icons.account_balance : 
                           isWallet ? LucideIcons.wallet : 
@@ -1843,12 +2248,76 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         helperText: "Leave blank to keep existing number",
+                        hintText: isWallet ? "03xxxxxxxxx" : isCard ? "xxxx xxxx xxxx xxxx" : null,
+                        // Show detected card type as suffix icon for cards
+                        suffixIcon: isCard && _cardNumberController.text.isNotEmpty
+                          ? _buildCardTypeIcon(_detectCardType(_cardNumberController.text))
+                          : null,
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        // Add appropriate formatters based on type
+                        if (isWallet)
+                          LengthLimitingTextInputFormatter(11),
+                        if (isCard)
+                          LengthLimitingTextInputFormatter(23),
+                      ],
+                      onChanged: (value) {
+                        if (isCard) {
+                          // Format card number with spaces
+                          final trimmedValue = value.replaceAll(' ', '');
+                          if (value.isNotEmpty && trimmedValue.isNotEmpty) {
+                            // Format card number with spaces every 4 digits
+                            final formatted = _formatCardNumber(trimmedValue);
+                            if (formatted != value) {
+                              _cardNumberController.text = formatted;
+                              // Place cursor at the end
+                              _cardNumberController.selection = TextSelection.fromPosition(
+                                TextPosition(offset: _cardNumberController.text.length),
+                              );
+                            }
+                          }
+                          // Force update to show card type icon
+                          setModalState(() {});
+                        } else if (isWallet) {
+                          // Format wallet number (mobile number)
+                          final cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                          if (cleanValue != value) {
+                            _cardNumberController.text = cleanValue;
+                            _cardNumberController.selection = TextSelection.fromPosition(
+                              TextPosition(offset: cleanValue.length),
+                            );
+                          }
+                        }
+                      },
                       validator: (value) {
                         if (value != null && value.isNotEmpty) {
-                          if (isCard && value.replaceAll(' ', '').length != 16) {
-                            return 'Please enter a valid 16-digit card number';
+                          if (isWallet) {
+                            // Validate mobile number
+                            if (value.length != 11) {
+                              return 'Mobile number must be 11 digits';
+                            }
+                            if (!value.startsWith('03')) {
+                              return 'Mobile number must start with "03"';
+                            }
+                          } else if (isCard) {
+                            // Validate card number
+                            final cleanNumber = value.replaceAll(' ', '');
+                            
+                            // Check length (different card types have different valid lengths)
+                            if (cleanNumber.length < 13 || cleanNumber.length > 19) {
+                              return 'Invalid card number length';
+                            }
+                            
+                            // Check if digits only
+                            if (!RegExp(r'^\d+$').hasMatch(cleanNumber)) {
+                              return 'Card number must contain only digits';
+                            }
+                            
+                            // Check using Luhn algorithm
+                            if (!_isValidCardNumber(cleanNumber)) {
+                              return 'Invalid card number';
+                            }
                           }
                         }
                         return null;
@@ -1866,7 +2335,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          hintText: "MM/YY",
                         ),
+                        inputFormatters: [
+                          // Limit to 5 characters (MM/YY)
+                          LengthLimitingTextInputFormatter(5),
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter expiry date';
@@ -1874,6 +2348,27 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
                             return 'Please use MM/YY format';
                           }
+                          
+                          // Validate month and year
+                          try {
+                            int month = int.parse(value.split('/')[0]);
+                            int year = int.parse(value.split('/')[1]);
+                            
+                            if (month < 1 || month > 12) {
+                              return 'Invalid month';
+                            }
+                            
+                            // Check if card has expired
+                            final currentYear = DateTime.now().year % 100;
+                            final currentMonth = DateTime.now().month;
+                            
+                            if (year < currentYear || (year == currentYear && month < currentMonth)) {
+                              return 'Card has expired';
+                            }
+                          } catch (e) {
+                            return 'Invalid date format';
+                          }
+                          
                           return null;
                         },
                         onChanged: (value) {
@@ -1899,20 +2394,27 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           helperText: "Leave blank to keep existing CVV",
+                          hintText: "123",
                         ),
                         keyboardType: TextInputType.number,
                         obscureText: true,
+                        inputFormatters: [
+                          // Limit to 3-4 digits
+                          LengthLimitingTextInputFormatter(4),
+                          // Only allow digits
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         validator: (value) {
                           if (value != null && value.isNotEmpty) {
-                            if (value.length != 3) {
-                              return 'CVV must be 3 digits';
+                            if (value.length < 3 || value.length > 4) {
+                              return 'CVV must be 3-4 digits';
                             }
                           }
                           return null;
                         },
                       ),
                     ],
-
+                  
                     // Additional fields for bank accounts
                     if (isBank) ...[
                       SizedBox(height: 16),
@@ -1966,14 +2468,24 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               'updatedAt': FieldValue.serverTimestamp(),
                             };
                             
+                            // For wallets, update the provider
+                            if (isWallet) {
+                              updateData['provider'] = walletProvider;
+                              updateData['color'] = walletProvider == "JazzCash" ? "0xFFC2554D" : "0xFF4CAF50";
+                            }
+                            
                             // Handle card/account number update
                             if (_cardNumberController.text.isNotEmpty) {
                               if (isCard) {
                                 // For card, only store last 4 digits for display
                                 final cleanNumber = _cardNumberController.text.replaceAll(' ', '');
                                 updateData['number'] = '•••• •••• •••• ${cleanNumber.substring(cleanNumber.length - 4)}';
+                              } else if (isWallet) {
+                                // For wallet, store a partially masked number for display
+                                updateData['number'] = '****${_cardNumberController.text.substring(_cardNumberController.text.length - 5)}';
+                                updateData['fullNumber'] = _cardNumberController.text; // Store for internal use
                               } else {
-                                // For wallet/bank, store full number
+                                // For bank account, store full number
                                 updateData['number'] = _cardNumberController.text;
                               }
                             }
@@ -2155,6 +2667,68 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardTypeIcon(String cardType) {
+    IconData icon;
+    Color color;
+    
+    // Set icon and color based on card type
+    switch (cardType) {
+      case 'Visa':
+        icon = Icons.credit_card;
+        color = Color(0xFF1A1F71); // Visa blue
+        break;
+      case 'Mastercard':
+        icon = Icons.credit_card;
+        color = Color(0xFFFF5F00); // Mastercard orange
+        break;
+      case 'American Express':
+        icon = Icons.credit_card;
+        color = Color(0xFF006FCF); // Amex blue
+        break;
+      case 'Discover':
+        icon = Icons.credit_card;
+        color = Color(0xFFFF6000); // Discover orange
+        break;
+      case 'JCB':
+        icon = Icons.credit_card;
+        color = Color(0xFF0B4EA2); // JCB blue
+        break;
+      case 'Diners Club':
+        icon = Icons.credit_card;
+        color = Color(0xFF0079BE); // Diners Club blue
+        break;
+      default:
+        icon = Icons.credit_card;
+        color = Colors.grey;
+        break;
+    }
+    
+    // Return the card type icon with text label
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (cardType != 'Unknown') 
+            Text(
+              cardType,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          SizedBox(width: 4),
+          Icon(
+            icon,
+            color: color,
+            size: 20,
           ),
         ],
       ),
