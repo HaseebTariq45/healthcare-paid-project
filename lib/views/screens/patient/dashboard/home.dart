@@ -10,6 +10,7 @@ import 'package:healthcare/views/screens/patient/complete_profile/profile_page1.
 import 'package:healthcare/views/screens/patient/appointment/payment_options.dart';
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
+import 'package:healthcare/views/screens/patient/appointment/phone_booking.dart';
 import 'package:healthcare/views/screens/menu/faqs.dart';
 import 'package:healthcare/views/screens/patient/signup/patient_signup.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -1192,65 +1193,114 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   ),
                 ),
                 SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AppointmentBookingFlow(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Color(0xFF3366CC),
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          "Book Appointment",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    if (profileStatus != "complete")
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CompleteProfilePatient1Screen(),
+                // Button Section
+                Container(
+                  margin: EdgeInsets.only(top: 5),
+                  child: Column(
+                    children: [
+                      // First row of buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AppointmentBookingFlow(),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.calendar_today, size: 16),
+                              label: Text(
+                                "Book Online",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF3366CC).withOpacity(0.1),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Color(0xFF3366CC),
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                                shadowColor: Colors.black.withOpacity(0.1),
+                              ),
                             ),
                           ),
-                          child: Text(
-                            "Complete Profile",
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PhoneBookingScreen(),
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.phone, size: 16),
+                              label: Text(
+                                "Book via Call",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF204899),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                                shadowColor: Color(0xFF3366CC).withOpacity(0.3),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      // Complete Profile button (conditional)
+                      if (profileStatus != "complete") ...[
+                        SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CompleteProfilePatient1Screen(),
+                                ),
+                              );
+                            },
+                            icon: Icon(Icons.person_add, size: 16),
+                            label: Text(
+                              "Complete Your Profile",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF3366CC).withOpacity(0.15),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),

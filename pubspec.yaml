@@ -61,6 +61,7 @@ dependencies:
   firebase_auth: ^4.9.0
   material_design_icons_flutter: ^7.0.7296
   firebase_storage: ^11.6.5
+  url_launcher: ^6.3.1
   
 dev_dependencies:
   flutter_test:

@@ -20,15 +20,48 @@ class SignIN extends StatefulWidget {
   State<SignIN> createState() => _SignINState();
 }
 
-class _SignINState extends State<SignIN> {
+class _SignINState extends State<SignIN> with SingleTickerProviderStateMixin {
   final TextEditingController _phoneController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 1000),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    
+    _slideAnimation = Tween<Offset>(begin: Offset(0, 0.1), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Interval(0.1, 0.8, curve: Curves.easeOut),
+      ),
+    );
+    
+    // Start animation after frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animationController.forward();
+    });
+  }
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
   
@@ -210,172 +243,433 @@ class _SignINState extends State<SignIN> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    
     return Scaffold(
-      appBar: AppBarOnboarding(isBackButtonVisible: true, text: ''),
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Logo and Welcome Text
-                Container(
-                  margin: EdgeInsets.only(top: 10, bottom: 20),
-                  child: Column(
-                    children: [
-                      Center(child: Image.asset("assets/images/logo.png", height: 100)),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Welcome Back',
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF3366CC),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Sign in to your account',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Input Fields Card
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 30),
-                  padding: const EdgeInsets.all(24),
+      body: Container(
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFEEF5FF),
+              Colors.white,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // Decorative elements
+              Positioned(
+                top: -50,
+                right: -50,
+                child: Container(
+                  width: 200,
+                  height: 200,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Phone Number',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: TextField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-                            hintText: "0300 1234567",
-                            prefixIcon: Icon(LucideIcons.phone),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey.shade300),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Color(0xFF3366CC), width: 1.5),
-                            ),
-                          ),
-                          keyboardType: TextInputType.phone,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'We\'ll send a verification code to this number',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      
-                      if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Text(
-                            _errorMessage!,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                
-                // Send OTP Button
-                Container(
-                  margin: EdgeInsets.symmetric(vertical: 24),
-                  child: InkWell(
-                    onTap: _isLoading ? null : _sendOTP,
-                    child: _isLoading
-                        ? Center(
-                            child: CircularProgressIndicator(
-                              color: const Color(0xFF3366CC),
-                            ),
-                          )
-                        : ProceedButton(
-                            isEnabled: true,
-                            text: 'Send OTP',
-                          ),
-                  ),
-                ),
-                
-                // Sign Up Link
-                Container(
-                  margin: EdgeInsets.only(bottom: 40),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => SignUp(type: "Patient")),
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Don\'t have an account?',
-                          style: GoogleFonts.poppins(
-                            color: Colors.grey.shade600,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Sign Up',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF3366CC),
-                            fontSize: 14,
-                          ),
-                        ),
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Color(0x20477CDB),
+                        Color(0x05477CDB),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              Positioned(
+                bottom: -80,
+                left: -60,
+                child: Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Color(0x154F80E1),
+                        Color(0x054F80E1),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Medical icons
+              Positioned(
+                top: size.height * 0.18,
+                left: size.width * 0.1,
+                child: Opacity(
+                  opacity: 0.3,
+                  child: Image.asset('assets/images/capsules.png', width: 32),
+                ),
+              ),
+              Positioned(
+                top: size.height * 0.25,
+                right: size.width * 0.15,
+                child: Opacity(
+                  opacity: 0.3,
+                  child: Image.asset('assets/images/tablets.png', width: 32),
+                ),
+              ),
+              Positioned(
+                bottom: size.height * 0.1,
+                right: size.width * 0.2,
+                child: Opacity(
+                  opacity: 0.3,
+                  child: Image.asset('assets/images/bandage.png', width: 32),
+                ),
+              ),
+              
+              // Main content
+              SingleChildScrollView(
+                physics: BouncingScrollPhysics(),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  child: AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (context, child) {
+                      return FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Back button
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: _buildBackButton(),
+                        ),
+                        
+                        // Logo and header
+                        SizedBox(height: 30),
+                        _buildHeader(),
+                        SizedBox(height: 40),
+                        
+                        // Sign in form
+                        _buildSignInForm(),
+                        SizedBox(height: 40),
+                        
+                        // Sign in button
+                        _buildSignInButton(),
+                        SizedBox(height: 24),
+                        
+                        // Sign up link
+                        _buildSignUpLink(),
+                        SizedBox(height: 30),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+  
+  Widget _buildBackButton() {
+    return InkWell(
+      onTap: () => Navigator.pop(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(
+            Icons.arrow_back_ios_rounded,
+            size: 18,
+            color: Color(0xFF3366CC),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        // Logo
+        Container(
+          width: 110,
+          height: 110,
+          padding: EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x20477CDB),
+                blurRadius: 25,
+                spreadRadius: 3,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Image.asset(
+            "assets/images/logo.png",
+          ),
+        ),
+        SizedBox(height: 30),
+        
+        // Title and subtitle
+        Text(
+          "Welcome Back",
+          style: GoogleFonts.poppins(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF223A6A),
+          ),
+        ),
+        SizedBox(height: 12),
+        Text(
+          "Sign in to continue to your account",
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildSignInForm() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Phone label
+          Row(
+            children: [
+              Icon(
+                LucideIcons.phone,
+                size: 20,
+                color: Color(0xFF3366CC),
+              ),
+              SizedBox(width: 10),
+              Text(
+                "Phone Number",
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF223A6A),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          
+          // Phone input
+          Container(
+            decoration: BoxDecoration(
+              color: Color(0xFFF8FAFF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Color(0xFFE1EDFF),
+                width: 1.5,
+              ),
+            ),
+            child: TextField(
+              controller: _phoneController,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: Color(0xFF223A6A),
+              ),
+              decoration: InputDecoration(
+                hintText: "Enter your phone number",
+                hintStyle: GoogleFonts.poppins(
+                  fontSize: 15,
+                  color: Colors.grey.shade400,
+                ),
+                prefixIcon: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "+92",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3366CC),
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                border: InputBorder.none,
+              ),
+              keyboardType: TextInputType.phone,
+            ),
+          ),
+          SizedBox(height: 12),
+          
+          // Helper text
+          Row(
+            children: [
+              Icon(
+                LucideIcons.info,
+                size: 14,
+                color: Colors.grey.shade600,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "We'll send a verification code to this number",
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // Error message if any
+          if (_errorMessage != null) ...[
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildSignInButton() {
+    return InkWell(
+      onTap: _isLoading ? null : _sendOTP,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        height: 60,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF3366CC), Color(0xFF4F80E1)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF3366CC).withOpacity(0.3),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: _isLoading 
+              ? SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Send OTP",
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildSignUpLink() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => SignUp(type: "Patient")),
+        );
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Don't have an account? ",
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          Text(
+            "Sign Up",
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF3366CC),
+            ),
+          ),
+        ],
       ),
     );
   }
