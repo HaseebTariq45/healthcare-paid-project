@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/appointment/all_appoinments.dart';
 import 'package:healthcare/views/screens/appointment/appointment_detail.dart';
@@ -157,23 +158,23 @@ class _HomeScreenState extends State<HomeScreen> {
         
         // Calculate average rating if there are reviews
         double averageRating = reviewCount > 0 ? totalRating / reviewCount : 0.0;
-        
-        if (mounted) {
-          setState(() {
-            // Set doctor profile info
-            _userName = doctorProfile['fullName'] ?? "Doctor";
-            _specialty = doctorProfile['specialty'] ?? "";
-            _profileImageUrl = doctorProfile['profileImageUrl'];
+      
+      if (mounted) {
+        setState(() {
+          // Set doctor profile info
+          _userName = doctorProfile['fullName'] ?? "Doctor";
+          _specialty = doctorProfile['specialty'] ?? "";
+          _profileImageUrl = doctorProfile['profileImageUrl'];
             
             // Use the calculated rating from reviews instead of profile rating
             _overallRating = averageRating;
-            
-            // Set statistics
-            if (doctorStats['success'] == true) {
-              _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
+          
+          // Set statistics
+          if (doctorStats['success'] == true) {
+            _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
               _reviewCount = reviewCount; // Use actual count from reviews query
-            }
-          });
+          }
+        });
         }
       }
     } catch (e) {
@@ -557,4 +558,105 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+Future<bool> showExitDialog(BuildContext context) async {
+  return await showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEB),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.exit_to_app,
+                  color: Color(0xFFFF5252),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Exit App",
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Are you sure you want to exit the app?",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 25),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey.shade800,
+                        backgroundColor: Colors.grey.shade100,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(true);
+                        SystemNavigator.pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5252),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        "Exit",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  ) ?? false;
 }

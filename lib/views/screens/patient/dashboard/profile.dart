@@ -262,23 +262,46 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.of(context).pop();
+        // Navigate to the bottom navigation bar with PatientHomeScreen as initial tab
+        Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
         return false;
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF),
-      body: SafeArea(
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  // Use the same navigation approach for consistency
+                  Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
+                },
+                child: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
+              const Text(
+                'Profile',
+                style: TextStyle(color: Colors.white),
+              ),
+              const SizedBox(width: 24),
+            ],
+          ),
+        ),
+        backgroundColor: const Color(0xFFF8FAFF),
+        body: SafeArea(
           child: Stack(
-                children: [
-                  RefreshIndicator(
-                    onRefresh: _refreshData,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                        Container(
+            children: [
+              RefreshIndicator(
+                onRefresh: _refreshData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                    Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(

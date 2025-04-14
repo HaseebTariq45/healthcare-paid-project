@@ -14,6 +14,7 @@ import 'package:healthcare/views/screens/menu/payment_method.dart';
 import 'package:healthcare/views/screens/menu/profile_update.dart';
 import 'package:healthcare/views/screens/dashboard/menu.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:healthcare/views/screens/patient/dashboard/home.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +39,12 @@ class MyApp extends StatelessWidget {
         '/appointments/history': (context) => const AppointmentHistoryScreen(),
         '/payment/methods': (context) => PaymentMethodsScreen(userType: UserType.doctor),
         '/faqs': (context) => const FAQScreen(),
+        '/bottom_navigation': (context) => const BottomNavigationBarScreen(profileStatus: "complete"),
+        '/patient/home': (context) => const PatientHomeScreen(profileStatus: "complete"),
+        '/patient/bottom_navigation': (context) => const BottomNavigationBarPatientScreen(
+          profileStatus: "complete",
+          profileCompletionPercentage: 100.0,
+        ),
         '/help': (context) => Scaffold(
           appBar: AppBar(title: const Text("Help Center")),
           body: const Center(child: Text("Help Center Coming Soon")),

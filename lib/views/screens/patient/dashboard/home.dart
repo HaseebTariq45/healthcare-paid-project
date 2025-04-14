@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:healthcare/views/screens/patient/appointment/available_doctors.dart';
 import 'package:healthcare/views/screens/patient/appointment/appointment_booking_flow.dart';
@@ -746,81 +747,86 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: isLoading && userData.isEmpty
-            ? Center(
-                child: CircularProgressIndicator(
-                  color: const Color(0xFF3366CC),
-                ),
-              )
-            : Stack(
-                children: [
-                  RefreshIndicator(
-                    onRefresh: _refreshData,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildHeader(),
-                          _buildBanner(),
-                          _buildDiseaseCategories(),
-                          _buildAppointmentsSection(),
-                          SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitConfirmationDialog(context);
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: isLoading && userData.isEmpty
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: const Color(0xFF3366CC),
                   ),
-                  
-                  // Refresh indicator at bottom
-                  if (isRefreshing)
-                    Positioned(
-                      bottom: 16,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    const Color(0xFF3366CC),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                "Refreshing...",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
+                )
+              : Stack(
+                  children: [
+                    RefreshIndicator(
+                      onRefresh: _refreshData,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
+                            _buildBanner(),
+                            _buildDiseaseCategories(),
+                            _buildAppointmentsSection(),
+                            SizedBox(height: 20),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              ),
+                    
+                    // Refresh indicator at bottom
+                    if (isRefreshing)
+                      Positioned(
+                        bottom: 16,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      const Color(0xFF3366CC),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Refreshing...",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -1719,6 +1725,108 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         ],
       ),
     );
+  }
+
+  // Add exit confirmation dialog
+  Future<bool> _showExitConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEBEB),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.exit_to_app,
+                    color: Color(0xFFFF5252),
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Exit App",
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Are you sure you want to exit the app?",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 25),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade800,
+                          backgroundColor: Colors.grey.shade100,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(true);
+                          SystemNavigator.pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF5252),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          "Exit",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ) ?? false;
   }
 }
 

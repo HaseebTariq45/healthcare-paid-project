@@ -188,67 +188,95 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _buildHeader(),
-                _buildFinancialSummary(),
-                _buildTabBar(),
-                Expanded(
-                  child: _buildTransactionsList(),
-                ),
-              ],
-            ),
-            // Refresh indicator at bottom
-            if (_isRefreshing)
-              Positioned(
-                bottom: 16,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              const Color(0xFF0167FF),
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitConfirmationDialog(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.blue,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  if (await _showExitConfirmationDialog(context)) {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
+                  }
+                },
+                child: const Icon(Icons.arrow_back, color: Colors.white),
+              ),
+              const Text(
+                'Finance',
+                style: TextStyle(color: Colors.white),
+              ),
+              const SizedBox(width: 24),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _buildHeader(),
+                  _buildFinancialSummary(),
+                  _buildTabBar(),
+                  Expanded(
+                    child: _buildTransactionsList(),
+                  ),
+                ],
+              ),
+              // Refresh indicator at bottom
+              if (_isRefreshing)
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                const Color(0xFF0167FF),
+                              ),
                             ),
                           ),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          "Refreshing...",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
+                          SizedBox(width: 8),
+                          Text(
+                            "Refreshing...",
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -597,6 +625,56 @@ class _PatientFinancesScreenState extends State<PatientFinancesScreen> with Sing
         ],
       ),
     );
+  }
+
+  // Add exit confirmation dialog
+  Future<bool> _showExitConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Exit Finance Screen',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to exit?',
+            style: GoogleFonts.poppins(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                'Yes, Exit',
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
   }
 }
 
