@@ -32,14 +32,13 @@ class OTPVerificationScreen extends StatefulWidget {
   State<OTPVerificationScreen> createState() => _OTPVerificationScreenState();
 }
 
-class _OTPVerificationScreenState extends State<OTPVerificationScreen> with SingleTickerProviderStateMixin {
+class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   late String text;
   late String verificationId;
   final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
   bool _isVerificationSuccessful = false;
-  late AnimationController _animationController;
 
   Timer? _timer;
   int _start = 60;
@@ -65,13 +64,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
     verificationId = widget.verificationId;
     startTimer();
     
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    
     // Listen to changes in the OTP controller
     _otpController.addListener(_onOtpChanged);
+    
+    // Auto-focus the OTP input field
+    Future.delayed(Duration(milliseconds: 500), () {
+      _otpFocusNode.requestFocus();
+    });
   }
   
   void _onOtpChanged() {
@@ -122,7 +121,6 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
     _otpController.removeListener(_onOtpChanged);
     _otpController.dispose();
     _otpFocusNode.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -149,6 +147,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
         for (final controller in _controllers) {
           controller.clear();
         }
+        // Clear main controller too
+        _otpController.clear();
         // Restart timer
         startTimer();
         
@@ -331,7 +331,20 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
     return Scaffold(
-      appBar: AppBarOnboarding(text: text, isBackButtonVisible: true),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Color(0xFF223A6A)),
+        title: Text(
+          text,
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF223A6A),
+          ),
+        ),
+        centerTitle: true,
+      ),
       backgroundColor: Colors.white,
       body: Container(
         decoration: BoxDecoration(
@@ -347,77 +360,47 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
           ),
         ),
         child: SingleChildScrollView(
+          physics: ClampingScrollPhysics(),
           child: SafeArea(
             child: Column(
               children: [
-                // Top animation
+                // Icon header
                 Container(
-                  height: 150,
-                  margin: EdgeInsets.only(bottom: 20),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Background decorative elements
-                      Positioned(
-                        top: 30,
-                        right: 20,
-                        child: Container(
-                          width: 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            color: Color(0x104F80E1),
-                            shape: BoxShape.circle,
+                  margin: EdgeInsets.only(top: 30, bottom: 30),
+                  child: Center(
+                    child: Container(
+                      padding: EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x304F80E1),
+                            blurRadius: 20,
+                            spreadRadius: 2,
                           ),
-                        ),
+                        ],
                       ),
-                      Positioned(
-                        bottom: 10,
-                        left: 30,
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Color(0x103366CC),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                      child: Icon(
+                        Icons.sms_outlined,
+                        size: 44,
+                        color: Color(0xFF3366CC),
                       ),
-                      
-                      // OTP icon
-                      Container(
-                        padding: EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x304F80E1),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.sms_outlined,
-                          size: 40,
-                          color: Color(0xFF3366CC),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
                 
                 // Content area with white card effect
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16),
-                  padding: EdgeInsets.all(20),
+                  margin: EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 15,
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 20,
                         offset: Offset(0, 5),
                       ),
                     ],
@@ -427,33 +410,46 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
                       Text(
                         'Verification Code',
                         style: GoogleFonts.poppins(
-                          fontSize: 22,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF223A6A),
                         ),
                       ),
                       SizedBox(height: 12),
-                      Text(
-                        'Enter the OTP sent to ${widget.phoneNumber}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.grey[700],
-                        ),
+                      RichText(
                         textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                          children: [
+                            TextSpan(text: 'Enter the 6-digit code sent to '),
+                            TextSpan(
+                              text: widget.phoneNumber,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF3366CC),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 30),
+                      SizedBox(height: 36),
                       
                       // Hidden OTP input for actual typing
-                      Opacity(
-                        opacity: 0,
-                        child: TextField(
-                          controller: _otpController,
-                          focusNode: _otpFocusNode,
-                          keyboardType: TextInputType.number,
-                          maxLength: 6,
-                          decoration: InputDecoration(
-                            counterText: "",
+                      SizedBox(
+                        height: 0,
+                        child: Opacity(
+                          opacity: 0,
+                          child: TextField(
+                            controller: _otpController,
+                            focusNode: _otpFocusNode,
+                            keyboardType: TextInputType.number,
+                            maxLength: 6,
+                            decoration: InputDecoration(
+                              counterText: "",
+                            ),
                           ),
                         ),
                       ),
@@ -467,99 +463,161 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: List.generate(6, (index) {
+                            bool isFilled = _controllers[index].text.isNotEmpty;
+                            bool isFocused = _focusedIndex == index;
+                            
                             return SizedBox(
-                              width: size.width * 0.12,
+                              width: size.width * 0.11,
                               child: Container(
-                                height: 60,
+                                height: 64,
                                 decoration: BoxDecoration(
-                                  color: _focusedIndex == index 
+                                  color: isFilled 
                                       ? Color(0xFFE1EDFF) 
-                                      : Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(12),
+                                      : (isFocused ? Color(0xFFF0F7FF) : Colors.grey[50]),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: isFocused 
+                                      ? [
+                                          BoxShadow(
+                                            color: Color(0x204F80E1),
+                                            blurRadius: 8,
+                                            spreadRadius: 0,
+                                          ),
+                                        ] 
+                                      : null,
                                   border: Border.all(
                                     width: 1.5,
-                                    color: _controllers[index].text.isNotEmpty 
-                                        ? Color(0xFF3366CC).withOpacity(0.3) 
-                                        : Colors.transparent,
+                                    color: isFilled 
+                                        ? Color(0xFF3366CC) 
+                                        : (isFocused ? Color(0xFF3366CC).withOpacity(0.3) : Colors.grey.withOpacity(0.2)),
                                   ),
                                 ),
                                 alignment: Alignment.center,
-                                child: Text(
-                                  _controllers[index].text,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 18,
-                                    color: Color(0xFF223A6A),
-                                  ),
-                                ),
+                                child: isFilled 
+                                    ? Text(
+                                        _controllers[index].text,
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 22,
+                                          color: Color(0xFF223A6A),
+                                        ),
+                                      )
+                                    : isFocused 
+                                        ? Container(
+                                            width: 14,
+                                            height: 14,
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFF3366CC).withOpacity(0.6),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                          )
+                                        : null,
                               ),
                             );
                           }),
                         ),
                       ),
                       
-                      SizedBox(height: 16),
-                      if (_errorMessage != null)
-                        Container(
-                          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline, color: Colors.red, size: 16),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    color: Colors.red,
-                                  ),
+                      SizedBox(height: 24),
+                      
+                      // Error message
+                      AnimatedContainer(
+                        duration: Duration(milliseconds: 300),
+                        height: _errorMessage != null ? 60 : 0,
+                        curve: Curves.easeInOut,
+                        child: _errorMessage != null
+                          ? Container(
+                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.2),
+                                  width: 1,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        color: Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : SizedBox.shrink(),
+                      ),
                       
-                      SizedBox(height: 30),
+                      SizedBox(height: 36),
                       
                       // Timer and resend button
                       _start > 0
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.timer,
-                                  size: 18,
-                                  color: Color(0xFF3366CC),
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Resend OTP in $formattedTime",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.normal,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : TextButton(
-                              onPressed: _isLoading ? null : _resendOTP,
-                              style: TextButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                          ? Container(
+                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF0F7FF),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: Color(0x204F80E1),
+                                  width: 1,
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.refresh,
-                                    size: 16,
+                                    Icons.timer_outlined,
+                                    size: 18,
+                                    color: Color(0xFF3366CC),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "Resend OTP in $formattedTime",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF3366CC),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : TextButton(
+                              onPressed: _isLoading ? null : _resendOTP,
+                              style: TextButton.styleFrom(
+                                backgroundColor: Color(0xFFF0F7FF),
+                                padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                  side: BorderSide(
+                                    color: Color(0xFF3366CC).withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
                                     color: Color(0xFF3366CC),
                                   ),
                                   SizedBox(width: 8),
@@ -575,67 +633,105 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
                               ),
                             ),
                       
-                      SizedBox(height: 30),
+                      SizedBox(height: 36),
                       
                       // Confirm OTP button
                       Container(
                         width: double.infinity,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x404F80E1),
+                              blurRadius: 12,
+                              offset: Offset(0, 6),
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
                         child: _isLoading
                           ? ElevatedButton(
                               onPressed: null,
                               style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(vertical: 16),
                                 backgroundColor: Color(0xFF3366CC),
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor: Color(0xFF3366CC).withOpacity(0.6),
+                                disabledBackgroundColor: Color(0xFF3366CC).withOpacity(0.7),
                                 disabledForegroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
                                   ),
-                                ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    "Verifying...",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             )
-                          : InkWell(
-                              onTap: _isVerificationSuccessful ? null : _verifyOTP,
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                height: 56,
+                          : ElevatedButton(
+                              onPressed: _isVerificationSuccessful ? null : _verifyOTP,
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.transparent,
+                                disabledForegroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: Ink(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: _isVerificationSuccessful 
-                                      ? [Color(0xFF3366CC).withOpacity(0.6), Color(0xFF4F80E1).withOpacity(0.6)]
+                                      ? [Color(0xFF3366CC).withOpacity(0.7), Color(0xFF4F80E1).withOpacity(0.7)]
                                       : [Color(0xFF3366CC), Color(0xFF4F80E1)],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
                                   ),
                                   borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0xFF3366CC).withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    "Verify & Proceed",
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
+                                child: Container(
+                                  height: 56,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _isVerificationSuccessful 
+                                          ? Icons.check_circle_outline_rounded
+                                          : Icons.lock_outlined,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        _isVerificationSuccessful 
+                                          ? "Verified!"
+                                          : "Verify & Proceed",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -645,30 +741,48 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> with Sing
                   ),
                 ),
                 
-                // Illustration at bottom
+                // Security message
                 Container(
-                  margin: EdgeInsets.only(top: 30),
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.privacy_tip_outlined,
-                        color: Color(0xFF3366CC).withOpacity(0.7),
-                        size: 16,
+                  margin: EdgeInsets.only(top: 30, bottom: 20),
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(40),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 10,
+                        spreadRadius: 0,
                       ),
-                      SizedBox(width: 8),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0x103366CC),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.shield_outlined,
+                          color: Color(0xFF3366CC),
+                          size: 16,
+                        ),
+                      ),
+                      SizedBox(width: 10),
                       Text(
                         "Your verification is secure and encrypted",
                         style: GoogleFonts.poppins(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: 20),
               ],
             ),
           ),
