@@ -1,0 +1,266 @@
+  void _showEditPaymentBottomSheet(Map<String, dynamic> payment) {
+    _cardNameController.text = payment['name'] ?? '';
+    _cardHolderController.text = payment['holder'] ?? '';
+    _cardNumberController.text = '';  // Don't show full number for security
+    _expiryController.text = payment['expiry'] ?? '';
+    _cvvController.text = '';  // Don't show CVV for security
+
+    // Determine if this is a bank account, card, or wallet
+    final type = payment['type'] ?? 'Card';
+    final bool isBank = type == 'Bank';
+    final bool isCard = type == 'Card';
+    final bool isWallet = type == 'Wallet';
+    
+    // Get wallet provider if applicable
+    String walletProvider = payment['provider'] ?? (isWallet ? "JazzCash" : "");
+    
+    // Get card color
+    String colorCode = payment['color'] ?? "0xFF3366FF";
+    Color cardColor = Color(int.parse(colorCode));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle indicator
+              Container(
+                margin: EdgeInsets.only(top: 12),
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              
+              // Header with close button
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Edit ${isBank ? 'Bank Account' : isWallet ? 'Wallet' : 'Card'}",
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Card preview
+              Container(
+                margin: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cardColor,
+                      cardColor.withOpacity(0.7),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cardColor.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    // Background pattern
+                    Positioned(
+                      top: -20,
+                      right: -20,
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -50,
+                      left: -30,
+                      child: Container(
+                        width: 150,
+                        height: 150,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    
+                    // Card content
+                    Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Card type icon
+                              Icon(
+                                isBank ? Icons.account_balance :
+                                isWallet ? Icons.account_balance_wallet :
+                                Icons.credit_card,
+                                color: Colors.white,
+                                size: 32,
+                              ),
+                              // Default indicator if applicable
+                              if (payment['isDefault'] == true)
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white, width: 1),
+                                  ),
+                                  child: Text(
+                                    "DEFAULT",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: 20),
+                          
+                          // Card number
+                          Text(
+                            payment['number'] ?? "•••• •••• •••• ••••",
+                            style: GoogleFonts.spaceGrotesk(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          
+                          Spacer(),
+                          
+                          // Card holder info and expiry
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isCard ? "CARD HOLDER" : "ACCOUNT HOLDER",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white.withOpacity(0.7),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    _cardHolderController.text.isNotEmpty 
+                                        ? _cardHolderController.text 
+                                        : payment['holder'] ?? "Card Holder",
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isCard) 
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      "EXPIRES",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      _expiryController.text.isNotEmpty 
+                                          ? _expiryController.text 
+                                          : payment['expiry'] ?? "MM/YY",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Form fields
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(20),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Wallet Provider Dropdown (for Wallet only)
+                        if (isWallet) ...[
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  } 
