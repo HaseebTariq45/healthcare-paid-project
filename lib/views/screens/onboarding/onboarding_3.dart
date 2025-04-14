@@ -23,28 +23,28 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
+      duration: const Duration(milliseconds: 2000),
+    );
     
-    // Create sequenced animations with different curve intervals instead of delays
+    // Create sequenced animations with different curve intervals
     _fadeAnimation1 = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
       ),
     );
     
     _fadeAnimation2 = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.15, 0.45, curve: Curves.easeOut),
+        curve: const Interval(0.2, 0.7, curve: Curves.easeOut),
       ),
     );
     
     _fadeAnimation3 = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.3, 0.6, curve: Curves.easeOut),
+        curve: const Interval(0.4, 0.9, curve: Curves.easeOut),
       ),
     );
     
@@ -260,7 +260,7 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
           animation: _animationController,
           builder: (context, child) {
             return Transform.rotate(
-              angle: _animationController.value * 2 * math.pi,
+              angle: _animationController.value * math.pi / 2,
               child: child,
             );
           },
@@ -290,8 +290,8 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
           builder: (context, child) {
             return Transform.translate(
               offset: Offset(
-                10 * math.sin(_animationController.value * 2 * math.pi), 
-                10 * math.cos(_animationController.value * 2 * math.pi)
+                5 * math.sin(_animationController.value * math.pi), 
+                5 * math.cos(_animationController.value * math.pi)
               ),
               child: child,
             );
@@ -321,7 +321,7 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
           animation: _animationController,
           builder: (context, child) {
             return Transform.scale(
-              scale: 1 + 0.1 * math.sin(_animationController.value * 2 * math.pi),
+              scale: 1 + 0.05 * math.sin(_animationController.value * math.pi),
               child: child,
             );
           },
@@ -389,13 +389,13 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
         child: AnimatedBuilder(
           animation: _animationController,
           builder: (context, child) {
-            final double offset = 10.0;
+            final double offset = 5.0;
             final double phase = icon['phase'];
             
             return Transform.translate(
               offset: Offset(
-                offset * math.sin((_animationController.value + phase) * 2 * math.pi),
-                offset * math.cos((_animationController.value + phase) * 2 * math.pi),
+                offset * math.sin((_animationController.value * 1.5 + phase) * math.pi),
+                offset * math.cos((_animationController.value * 1.5 + phase) * math.pi),
               ),
               child: Opacity(
                 opacity: 0.7,
@@ -454,7 +454,7 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
             builder: (context, child) {
               return Positioned.fill(
                 child: Transform.rotate(
-                  angle: _animationController.value * 2 * math.pi,
+                  angle: _animationController.value * math.pi / 2,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: SweepGradient(
