@@ -422,24 +422,7 @@ class _PatientDetailProfileScreenState extends State<PatientDetailProfileScreen>
                   color: Colors.white,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  // Show edit options dialog instead of directly navigating to profile completion
-                  _showEditOptionsDialog();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    LucideIcons.settings,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
+              const SizedBox(width: 40), // Add spacer to maintain center alignment
             ],
           ),
           const SizedBox(height: 20),

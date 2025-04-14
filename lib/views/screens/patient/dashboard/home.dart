@@ -426,6 +426,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   // Quick access doctors list
   List<Map<String, dynamic>> _quickAccessDoctors = [];
 
+  // Add this at the top with other class variables
+  Map<String, List<Map<String, dynamic>>> _cachedDoctors = {};
+
+  // Add this method to format rating
+  String _formatRating(double rating) {
+    return rating.toStringAsFixed(1); // This will show only one decimal place
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1184,30 +1192,65 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   ),
                 ),
                 SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => profileStatus == "complete" ? 
-                        AppointmentBookingFlow() : 
-                        CompleteProfilePatient1Screen()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Color(0xFF3366CC),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AppointmentBookingFlow(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Color(0xFF3366CC),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          "Book Appointment",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    profileStatus == "complete" ? "Book Now" : "Complete Profile",
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
+                    SizedBox(width: 10),
+                    if (profileStatus != "complete")
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CompleteProfilePatient1Screen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF3366CC).withOpacity(0.1),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            "Complete Profile",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -1268,17 +1311,94 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 
   Widget _buildDiseaseCategoryCard(DiseaseCategory category) {
     return InkWell(
-      onTap: () {
-        // Navigate to doctors screen with the selected specialty
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DoctorsScreen(
-              specialty: category.name,
-              doctors: _doctorsBySpecialty[category.name] ?? [],
-            ),
-          ),
-        );
+      onTap: () async {
+        try {
+          // Check if we have cached data
+          if (_cachedDoctors.containsKey(category.name)) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DoctorsScreen(
+                  specialty: category.name,
+                  doctors: _cachedDoctors[category.name]!,
+                ),
+              ),
+            );
+            // Fetch fresh data in background
+            _fetchDoctorsData(category.name, showLoading: false);
+            return;
+          }
+
+          // Show loading dialog only for first load
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return Center(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3366CC)),
+                      ),
+                      SizedBox(height: 15),
+                      Text(
+                        "Loading doctors...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+
+          await _fetchDoctorsData(category.name, showLoading: true);
+
+        } catch (e) {
+          if (context.mounted) {
+            Navigator.pop(context); // Pop loading dialog if showing
+            
+            // Show error dialog
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text(
+                    "Error",
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  content: Text(
+                    "Failed to load doctors. Please try again later.",
+                    style: GoogleFonts.poppins(),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        "OK",
+                        style: GoogleFonts.poppins(
+                          color: Color(0xFF3366CC),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        }
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -1338,6 +1458,95 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         ),
       ),
     );
+  }
+
+  // Add this new method for fetching doctors data
+  Future<void> _fetchDoctorsData(String specialty, {required bool showLoading}) async {
+    try {
+      // Fetch doctors from Firestore based on specialty
+      final QuerySnapshot doctorsSnapshot = await FirebaseFirestore.instance
+          .collection('doctors')
+          .where('specialty', isEqualTo: specialty)
+          .where('isApproved', isEqualTo: true)
+          .get();
+
+      List<Map<String, dynamic>> doctors = [];
+      
+      for (var doc in doctorsSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Get doctor's rating from reviews
+        final QuerySnapshot reviewsSnapshot = await FirebaseFirestore.instance
+            .collection('doctor_reviews')
+            .where('doctorId', isEqualTo: doc.id)
+            .get();
+        
+        double averageRating = 0.0;
+        if (reviewsSnapshot.docs.isNotEmpty) {
+          double totalRating = 0;
+          for (var review in reviewsSnapshot.docs) {
+            totalRating += (review.data() as Map<String, dynamic>)['rating'] ?? 0;
+          }
+          averageRating = (totalRating / reviewsSnapshot.docs.length);
+        }
+
+        // Get doctor's hospital affiliations
+        List<String> hospitals = [];
+        if (data['hospitalIds'] != null) {
+          for (String hospitalId in List<String>.from(data['hospitalIds'])) {
+            final hospitalDoc = await FirebaseFirestore.instance
+                .collection('hospitals')
+                .doc(hospitalId)
+                .get();
+            if (hospitalDoc.exists) {
+              hospitals.add(hospitalDoc.get('name'));
+            }
+          }
+        }
+
+        doctors.add({
+          'id': doc.id,
+          'name': data['fullName'] ?? 'Dr. Unknown',
+          'specialty': data['specialty'] ?? specialty,
+          'rating': averageRating.toStringAsFixed(1),
+          'experience': data['experience'] ?? '0 years',
+          'fee': data['consultationFee']?.toString() ?? 'Not specified',
+          'location': hospitals.isNotEmpty ? hospitals.first : 'Location not specified',
+          'image': data['profileImageUrl'] ?? 'assets/images/User.png',
+          'available': data['isAvailable'] ?? true,
+          'hospitals': hospitals,
+          'education': data['education'] ?? [],
+          'about': data['about'] ?? 'No information available',
+          'languages': data['languages'] ?? ['English'],
+          'services': data['services'] ?? [],
+        });
+      }
+
+      // Update cache
+      _cachedDoctors[specialty] = doctors;
+
+      if (showLoading) {
+        // Pop loading dialog if it was shown
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
+
+        // Navigate to doctors screen with fetched data
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DoctorsScreen(
+                specialty: specialty,
+                doctors: doctors,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      rethrow; // Let the calling method handle the error
+    }
   }
 
   Widget _buildAppointmentsSection() {

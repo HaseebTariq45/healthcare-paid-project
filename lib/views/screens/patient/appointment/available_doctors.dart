@@ -47,17 +47,16 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     
     // Initialize filters
     filteredDoctors = [];
-      
-    if (widget.specialty != null && !_categories.contains(widget.specialty)) {
-      // Add the specialty to the categories list if it's not already there
-      _categories.add(widget.specialty!);
-    }
     
-    if (widget.specialty != null) {
-      // Find the index of the specialty in the categories list
+    // If a specific specialty is provided, set the category index accordingly
+    if (widget.specialty != null && widget.specialty != "All") {
+      // If specialty is provided directly from home screen, 
+      // we'll fetch only those doctors and won't show the category tabs
       _selectedCategoryIndex = _categories.indexOf(widget.specialty!);
       if (_selectedCategoryIndex == -1) {
-        _selectedCategoryIndex = 0; // Set to "All" if not found
+        // If specialty is not in our predefined list, add it
+        _categories.add(widget.specialty!);
+        _selectedCategoryIndex = _categories.indexOf(widget.specialty!);
       }
     }
     
@@ -87,13 +86,26 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     });
     
     try {
+      // If we already have doctors from the widget parameter and a specialty is specified,
+      // just use those directly instead of fetching from Firestore
+      if (widget.doctors.isNotEmpty && widget.specialty != null && widget.specialty != "All") {
+        if (mounted) {
+          setState(() {
+            filteredDoctors = List.from(widget.doctors);
+            _isLoading = false;
+            _applyFilters();
+          });
+        }
+        return;
+      }
+      
       final List<Map<String, dynamic>> doctorsList = [];
       
       // Query doctors collection
       Query doctorsQuery = _firestore.collection('doctors');
       
       // Apply specialty filter if specified
-      if (widget.specialty != null && widget.specialty != 'All') {
+      if (widget.specialty != null && widget.specialty != "All") {
         doctorsQuery = doctorsQuery.where('specialty', isEqualTo: widget.specialty);
       }
       
@@ -153,9 +165,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           'id': doctorId,
           'name': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
           'specialty': doctorData['specialty'] ?? 'General Practitioner',
-          'rating': doctorData['rating']?.toString() ?? "4.5",
-          'experience': doctorData['experience']?.toString() ?? "5 years",
-          'fee': 'Rs ${doctorData['fee']?.toString() ?? "1500"}',
+          'rating': doctorData['rating']?.toString() ?? "0.0",
+          'experience': doctorData['experience']?.toString() ?? "0 years",
+          'fee': 'Rs ${doctorData['fee']?.toString() ?? "0"}',
           'location': hospitalsList.isNotEmpty ? hospitalsList.first['hospitalName'] : 'Multiple Hospitals',
           'image': doctorData['profileImageUrl'] ?? "assets/images/User.png",
           'available': isAvailableToday,
@@ -165,12 +177,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       
       if (mounted) {
         setState(() {
-          // If no doctors from Firestore, use default ones
-          if (doctorsList.isEmpty && widget.doctors.isEmpty) {
-            filteredDoctors = _getDefaultDoctors();
-          } else if (doctorsList.isEmpty) {
+          if (doctorsList.isEmpty && widget.doctors.isNotEmpty) {
+            // If no doctors from Firestore but we have doctors from widget
             filteredDoctors = List.from(widget.doctors);
           } else {
+            // Use doctors from Firestore
             filteredDoctors = doctorsList;
           }
           _isLoading = false;
@@ -184,13 +195,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           _errorMessage = 'Error loading doctors: $e';
           _isLoading = false;
           
-          // Fall back to default doctors
+          // If we have doctors from widget parameter, use those
           if (widget.doctors.isNotEmpty) {
             filteredDoctors = List.from(widget.doctors);
+            _applyFilters();
           } else {
-            filteredDoctors = _getDefaultDoctors();
+            filteredDoctors = [];
           }
-          _applyFilters();
         });
       }
       debugPrint('Error fetching doctors: $e');
@@ -211,8 +222,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       }).toList();
     }
     
-    // Apply category filter
-    if (_selectedCategoryIndex > 0) { // 0 is "All"
+    // Apply category filter only if not already filtered by specialty from widget parameter
+    if (_selectedCategoryIndex > 0 && (widget.specialty == null || widget.specialty == "All")) { 
       final selectedCategory = _categories[_selectedCategoryIndex];
       result = result.where((doctor) {
         return doctor['specialty'].toString() == selectedCategory;
@@ -221,9 +232,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     
     // Apply rating filter
     if (selectedRating != null) {
-      final minRating = double.parse(selectedRating!);
+      final minRating = double.parse(selectedRating!.replaceAll('+', ''));
       result = result.where((doctor) {
-        return double.parse(doctor['rating'].toString()) >= minRating;
+        double rating;
+        try {
+          rating = double.parse(doctor['rating'].toString());
+        } catch (e) {
+          rating = 0.0;
+        }
+        return rating >= minRating;
       }).toList();
     }
     
@@ -248,15 +265,27 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     if (sortByPriceLowToHigh) {
       result.sort((a, b) {
         // Extract fee as numeric value (remove "Rs " and parse)
-        final aFee = double.parse(a['fee'].toString().replaceAll('Rs ', ''));
-        final bFee = double.parse(b['fee'].toString().replaceAll('Rs ', ''));
+        double aFee = 0.0;
+        double bFee = 0.0;
+        try {
+          aFee = double.parse(a['fee'].toString().replaceAll('Rs ', ''));
+          bFee = double.parse(b['fee'].toString().replaceAll('Rs ', ''));
+        } catch (e) {
+          // Handle parsing error
+        }
         return aFee.compareTo(bFee);
       });
     } else {
       // Sort by rating (highest first)
       result.sort((a, b) {
-        final aRating = double.parse(a['rating'].toString());
-        final bRating = double.parse(b['rating'].toString());
+        double aRating = 0.0;
+        double bRating = 0.0;
+        try {
+          aRating = double.parse(a['rating'].toString());
+          bRating = double.parse(b['rating'].toString());
+        } catch (e) {
+          // Handle parsing error
+        }
         return bRating.compareTo(aRating);
       });
     }
@@ -268,6 +297,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if we're viewing a specific specialty
+    final bool viewingSpecificSpecialty = widget.specialty != null && widget.specialty != "All";
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
@@ -276,7 +308,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           children: [
             _buildHeader(),
             _buildSearchBar(),
-                  _buildCategoryTabs(),
+            // Only show category tabs if not viewing a specific specialty
+            if (!viewingSpecificSpecialty)
+              _buildCategoryTabs(),
             // Show loading indicator, error message, or doctor list
             _isLoading 
             ? Expanded(
@@ -362,7 +396,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           ),
                           SizedBox(height: 16),
                           Text(
-                            "No doctors found",
+                            viewingSpecificSpecialty ? 
+                              "No ${widget.specialty} specialists found" : 
+                              "No doctors found",
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -371,7 +407,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            "Try changing your filters or search criteria",
+                            "Try changing your search criteria",
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               color: Colors.grey.shade600,
@@ -391,6 +427,12 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   Widget _buildHeader() {
+    // Create a more descriptive title based on specialty
+    String headerTitle = "Available Doctors";
+    if (widget.specialty != null && widget.specialty != "All") {
+      headerTitle = "${widget.specialty} Specialists";
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
       decoration: BoxDecoration(
@@ -416,7 +458,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           const SizedBox(width: 15),
           Expanded(
             child: Text(
-              widget.specialty != null ? "${widget.specialty} Specialists" : "Available Doctors",
+              headerTitle,
             style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -673,20 +715,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                       const SizedBox(height: 8),
                         Row(
                           children: [
-                          Icon(
-                              LucideIcons.star,
-                            color: Colors.amber,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            ratingStr,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
-                            ),
-                            ),
+                          _buildRatingBar(ratingStr),
                           const SizedBox(width: 16),
                           Icon(
                               LucideIcons.briefcase,
@@ -748,6 +777,38 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRatingBar(String ratingStr) {
+    double rating = 0.0;
+    try {
+      rating = double.parse(ratingStr);
+    } catch (e) {
+      // Handle parsing error
+      rating = 0.0;
+    }
+    
+    // Format to one decimal place for display
+    String displayRating = rating.toStringAsFixed(1);
+    
+    return Row(
+      children: [
+        Text(
+          displayRating,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.amber.shade800,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Icon(
+          Icons.star,
+          color: Colors.amber,
+          size: 16,
+        ),
+      ],
     );
   }
 
@@ -924,56 +985,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
         ),
       ),
     );
-  }
-
-  List<Map<String, dynamic>> _getDefaultDoctors() {
-    // Default list of doctors if none provided
-    return [
-      {
-        "id": "default1",
-        "name": "Dr. Rizwan Ahmed",
-        "specialty": "Cardiology",
-        "rating": "4.7",
-        "experience": "8 years",
-        "fee": "Rs 1500",
-        "location": "CMH Rawalpindi",
-        "image": "assets/images/User.png",
-        "available": true
-      },
-      {
-        "id": "default2",
-        "name": "Dr. Fatima Khan",
-        "specialty": "Dentist",
-        "rating": "4.9",
-        "experience": "12 years",
-        "fee": "Rs 2000",
-        "location": "PAF Hospital Unit-2",
-        "image": "assets/images/User.png",
-        "available": true
-      },
-      {
-        "id": "default3",
-        "name": "Dr. Asmara Malik",
-        "specialty": "Orthopedics",
-        "rating": "4.8",
-        "experience": "10 years",
-        "fee": "Rs 1800",
-        "location": "KRL Hospital G9, Islamabad",
-        "image": "assets/images/User.png",
-        "available": false
-      },
-      {
-        "id": "default4",
-        "name": "Dr. Tariq Mehmood",
-        "specialty": "Cardiology",
-        "rating": "4.6",
-        "experience": "15 years",
-        "fee": "Rs 2500",
-        "location": "Maaroof International Hospital",
-        "image": "assets/images/User.png",
-        "available": true
-      }
-    ];
   }
 }
 
