@@ -566,29 +566,106 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF3366CC)),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: widget.isEditing ? null : [
-          TextButton(
+        actions: [
+          TextButton.icon(
             onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => BottomNavigationBarPatientScreen(
-                    profileStatus: "incomplete",
-                    suppressProfilePrompt: true,
-                    profileCompletionPercentage: _completionPercentage,
-                  ),
-                ),
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: Text(
+                      "Skip Profile Setup?",
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF3366CC),
+                      ),
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3366CC).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            LucideIcons.info,
+                            color: const Color(0xFF3366CC),
+                            size: 40,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "You can complete your profile later, but some features may be limited until you do.",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          "Continue Setup",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF3366CC),
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3366CC),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BottomNavigationBarPatientScreen(
+                                profileStatus: "incomplete",
+                                suppressProfilePrompt: true,
+                                profileCompletionPercentage: _completionPercentage,
+                              ),
+                            ),
+                            (route) => false,
+                          );
+                        },
+                        child: Text(
+                          "Skip Setup",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               );
             },
-            child: Text(
+            icon: const Icon(LucideIcons.skipForward, size: 18),
+            label: Text(
               "Skip",
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF3366CC),
               ),
             ),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF3366CC),
+            ),
           ),
+          const SizedBox(width: 8),
         ],
         backgroundColor: Colors.white,
         elevation: 0,
