@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Rating data
   double _overallRating = 0.0;
   int _reviewCount = 0;
-  
+
   @override
   void initState() {
     super.initState();

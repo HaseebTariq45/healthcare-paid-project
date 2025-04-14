@@ -2077,7 +2077,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                                         ),
                                         SizedBox(width: 4),
                                         Text(
-                                          doctor['rating'].toString(),
+                                          double.parse(doctor['rating'].toString()).toStringAsFixed(1),
                                           style: GoogleFonts.poppins(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,

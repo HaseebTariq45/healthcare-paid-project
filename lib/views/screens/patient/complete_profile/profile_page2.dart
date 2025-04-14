@@ -2003,6 +2003,299 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     _notesController.addListener(_handleNotesChange);
     
     // For multi-select fields, we'll update in their respective selection methods
+    
+    // Load existing data if editing
+    if (_profileData['isEditing'] == true) {
+      _fetchUserMedicalData();
+    }
+  }
+
+  // Fetch user's medical data from Firestore
+  Future<void> _fetchUserMedicalData() async {
+    try {
+      final auth = FirebaseAuth.instance;
+      final firestore = FirebaseFirestore.instance;
+      final userId = auth.currentUser?.uid;
+      
+      if (userId != null) {
+        // Get patient document from Firestore
+        final patientDoc = await firestore.collection('patients').doc(userId).get();
+        
+        if (patientDoc.exists) {
+          final data = patientDoc.data() as Map<String, dynamic>;
+          
+          setState(() {
+            // Set text controller values
+            _ageController.text = data['age']?.toString() ?? '';
+            _heightController.text = data['height']?.toString() ?? '';
+            _weightController.text = data['weight']?.toString() ?? '';
+            _notesController.text = data['notes']?.toString() ?? '';
+            
+            // Set blood group
+            selectedBloodGroup = data['bloodGroup'];
+            
+            // Set diseases and allergies
+            if (data['diseases'] != null) {
+              selectedDiseases = List<String>.from(data['diseases']);
+            }
+            if (data['allergies'] != null) {
+              selectedAllergies = List<String>.from(data['allergies']);
+            }
+            
+            // Update medical reports if they exist
+            if (data['medicalReport1Url'] != null) {
+              // Store the URL in the profile data
+              _profileData['medicalReport1Url'] = data['medicalReport1Url'];
+            }
+            if (data['medicalReport2Url'] != null) {
+              // Store the URL in the profile data
+              _profileData['medicalReport2Url'] = data['medicalReport2Url'];
+            }
+          });
+          
+          // Recalculate completion percentage after loading data
+          _calculateCompletionPercentage();
+        }
+      }
+    } catch (e) {
+      print('Error fetching medical data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading medical data: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Update the build method to show existing medical reports if available
+  Widget _buildMedicalReportSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Medical Reports",
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Medical Report 1
+          _buildMedicalReportUpload(
+            "Medical Report 1",
+            _medicalReport1,
+            _profileData['medicalReport1Url'],
+            (file) => setState(() => _medicalReport1 = file),
+          ),
+          const SizedBox(height: 12),
+          
+          // Medical Report 2
+          _buildMedicalReportUpload(
+            "Medical Report 2",
+            _medicalReport2,
+            _profileData['medicalReport2Url'],
+            (file) => setState(() => _medicalReport2 = file),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedicalReportUpload(
+    String label,
+    File? file,
+    String? existingUrl,
+    Function(File?) onFileSelected,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (file != null)
+            Stack(
+              children: [
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: FileImage(file),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => onFileSelected(null),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        LucideIcons.x,
+                        size: 16,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (existingUrl != null)
+            Stack(
+              children: [
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: NetworkImage(existingUrl),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (label == "Medical Report 1") {
+                          _profileData.remove('medicalReport1Url');
+                        } else {
+                          _profileData.remove('medicalReport2Url');
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        LucideIcons.x,
+                        size: 16,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            GestureDetector(
+              onTap: () async {
+                final pickedFile = await ImagePicker().pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 800,
+                  maxHeight: 800,
+                  imageQuality: 85,
+                );
+                if (pickedFile != null) {
+                  onFileSelected(File(pickedFile.path));
+                }
+              },
+              child: Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      LucideIcons.upload,
+                      color: const Color(0xFF3366CC),
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Upload Report",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: const Color(0xFF3366CC),
+                      ),
+                    ),
+                    Text(
+                      "PDF or Image",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
   
   @override
@@ -2157,7 +2450,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Complete Your Profile",
+          _profileData['isEditing'] == true ? "Edit Medical Details" : "Complete Your Profile",
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -2168,7 +2461,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF3366CC)),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
+        actions: _profileData['isEditing'] == true ? null : [
           TextButton(
             onPressed: () {
               Navigator.pushReplacement(
@@ -2395,8 +2688,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildUploadBox(label: "Medical Report 1", isFirstReport: true),
-                    _buildUploadBox(label: "Medical Report 2", isFirstReport: false),
+                    _buildMedicalReportSection(),
                     _buildTextArea(
                       hint: "Additional Notes",
                       icon: LucideIcons.fileText,
@@ -2436,7 +2728,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Complete Profile",
+                          _profileData['isEditing'] == true ? "Save Changes" : "Complete Profile",
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -2464,7 +2756,6 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     bool hasProfileImage = _profileData['hasProfileImage'] == true;
     
     // Set completion percentage based on actual calculated value
-    // Keep the existing calculation but remove hard-coding of 95%
     double finalPercentage = _completionPercentage;
     
     // If user has a profile image and all other fields, we can set to 100%
@@ -2478,20 +2769,6 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     setState(() {
       _completionPercentage = finalPercentage;
     });
-    
-    // Combine data from both screens
-    Map<String, dynamic> completeProfile = {
-      ..._profileData,
-      'age': _ageController.text,
-      'bloodGroup': selectedBloodGroup,
-      'allergies': selectedAllergies,
-      'diseases': selectedDiseases,
-      'height': _heightController.text,
-      'weight': _weightController.text,
-      'notes': _notesController.text,
-      'completionPercentage': finalPercentage,
-      'isProfileComplete': true,
-    };
     
     try {
       final auth = FirebaseAuth.instance;
@@ -2514,8 +2791,6 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
         });
         
         // Upload medical reports if available
-        List<String> medicalReportUrls = [];
-        
         if (_medicalReport1 != null) {
           final ref = firebase_storage.FirebaseStorage.instance
               .ref()
@@ -2524,9 +2799,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
               .child('medical_report_1.jpg');
           await ref.putFile(_medicalReport1!);
           String downloadUrl = await ref.getDownloadURL();
-          medicalReportUrls.add(downloadUrl);
           
-          // Update profile with report URL
           await firestore.collection('patients').doc(userId).update({
             'medicalReport1Url': downloadUrl,
           });
@@ -2540,9 +2813,7 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
               .child('medical_report_2.jpg');
           await ref.putFile(_medicalReport2!);
           String downloadUrl = await ref.getDownloadURL();
-          medicalReportUrls.add(downloadUrl);
           
-          // Update profile with report URL
           await firestore.collection('patients').doc(userId).update({
             'medicalReport2Url': downloadUrl,
           });
@@ -2555,103 +2826,111 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
           'updatedAt': FieldValue.serverTimestamp(),
         });
         
-        print("Profile saved to Firestore with completion: ${finalPercentage.toStringAsFixed(1)}%");
-      } else {
-        print("Error: User not authenticated");
-      }
-    } catch (e) {
-      print("Error saving profile to Firestore: $e");
-      // Consider showing an error message to the user
-    }
-    
-    // Show success popup
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        Timer(
-          const Duration(seconds: 3),
-          () => Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BottomNavigationBarPatientScreen(
-                profileStatus: "complete",
-                profileCompletionPercentage: finalPercentage,
-              ),
-            ),
-          ),
-        );
+        // Show success dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            Timer(
+              const Duration(seconds: 3),
+              () {
+                if (_profileData['isEditing'] == true) {
+                  // If editing, return to profile screen
+                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.of(context).pop(); // Close page 2
+                  Navigator.of(context).pop(); // Close page 1
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Profile updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  // If new profile, go to bottom navigation
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BottomNavigationBarPatientScreen(
+                        profileStatus: "complete",
+                        profileCompletionPercentage: finalPercentage,
+                      ),
+                    ),
+                  );
+                }
+              },
+            );
 
-        return Stack(
-          children: [
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-              child: Container(
-                color: const Color.fromARGB(30, 0, 0, 0),
-              ),
-            ),
-            AlertDialog(
-              backgroundColor: const Color(0xFF3366CC),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Padding(
-                padding: const EdgeInsets.only(top: 30, bottom: 20),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.2),
-                              Colors.white.withOpacity(0.3),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+            return Stack(
+              children: [
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: Container(
+                    color: const Color.fromARGB(30, 0, 0, 0),
+                  ),
+                ),
+                AlertDialog(
+                  backgroundColor: const Color(0xFF3366CC),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  title: Padding(
+                    padding: const EdgeInsets.only(top: 30, bottom: 20),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.2),
+                                  Colors.white.withOpacity(0.3),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              LucideIcons.check,
+                              size: 50,
+                              color: Colors.white,
+                            ),
                           ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          LucideIcons.check,
-                          size: 50,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        hasProfileImage 
-                            ? "Profile Completed Successfully" 
-                            : "Profile Almost Complete",
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (!hasProfileImage)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            "Add a profile photo later to reach 100%",
+                          const SizedBox(height: 20),
+                          Text(
+                            _profileData['isEditing'] == true
+                                ? "Profile Updated Successfully"
+                                : (hasProfileImage 
+                                    ? "Profile Completed Successfully" 
+                                    : "Profile Almost Complete"),
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                        ),
-                    ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
-      },
-    );
+      }
+    } catch (e) {
+      print('Error saving profile data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving profile: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

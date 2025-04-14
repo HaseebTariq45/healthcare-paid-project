@@ -292,10 +292,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        if (await _showExitConfirmationDialog(context)) {
-          print('***** BACK BUTTON PRESSED - NAVIGATING TO PATIENT BOTTOM NAVIGATION *****');
-          Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
-        }
+        print('***** BACK BUTTON PRESSED - NAVIGATING TO PATIENT BOTTOM NAVIGATION *****');
+        Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
         return false;
       },
       child: Scaffold(
@@ -305,11 +303,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () async {
-              if (await _showExitConfirmationDialog(context)) {
-                print('***** BACK BUTTON PRESSED - NAVIGATING TO PATIENT BOTTOM NAVIGATION *****');
-                Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
-              }
+            onPressed: () {
+              print('***** BACK BUTTON PRESSED - NAVIGATING TO PATIENT BOTTOM NAVIGATION *****');
+              Navigator.of(context).pushNamedAndRemoveUntil('/patient/bottom_navigation', (route) => false);
             },
           ),
           title: Text(
@@ -1305,55 +1301,5 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
       print('Error loading doctor image: $e');
       return null;
     }
-  }
-
-  // Add exit confirmation dialog
-  Future<bool> _showExitConfirmationDialog(BuildContext context) async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            'Exit Appointments Screen',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Text(
-            'Are you sure you want to exit?',
-            style: GoogleFonts.poppins(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Text(
-                'Yes, Exit',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    ) ?? false;
   }
 }

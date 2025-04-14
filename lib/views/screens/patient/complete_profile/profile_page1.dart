@@ -14,10 +14,12 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class CompleteProfilePatient1Screen extends StatefulWidget {
   final Map<String, dynamic>? profileData;
+  final bool isEditing;
   
   const CompleteProfilePatient1Screen({
-    super.key, 
+    super.key,
     this.profileData,
+    this.isEditing = false,
   });
 
   @override
@@ -553,7 +555,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Complete Your Profile",
+          widget.isEditing ? "Edit Profile" : "Complete Your Profile",
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -564,7 +566,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF3366CC)),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
+        actions: widget.isEditing ? null : [
           TextButton(
             onPressed: () {
               Navigator.pushReplacement(
@@ -998,6 +1000,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       'completionPercentage': _completionPercentage,
       'hasProfileImage': _image != null,
       'phoneNumber': _authPhoneNumber,
+      'isEditing': widget.isEditing, // Pass editing status to next screen
     };
     
     try {
@@ -1029,7 +1032,6 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           'address': _addressController.text,
           'city': _selectedCity,
           'profileComplete': false, // Will be set to true after page 2
-          'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
         
@@ -1052,19 +1054,25 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           profileData['profileImageUrl'] = downloadUrl;
         }
       }
+
+      // Always proceed to page 2
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CompleteProfilePatient2Screen(
+            profileData: profileData,
+          ),
+        ),
+      );
     } catch (e) {
       print('Error saving profile data: $e');
-      // Consider showing an error message to the user
-    }
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CompleteProfilePatient2Screen(
-          profileData: profileData,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving profile: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
-      ),
-    );
+      );
+    }
   }
 
   // New method to fetch user data from Firestore
