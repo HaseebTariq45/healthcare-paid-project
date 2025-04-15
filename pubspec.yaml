@@ -62,6 +62,7 @@ dependencies:
   material_design_icons_flutter: ^7.0.7296
   firebase_storage: ^11.6.5
   url_launcher: ^6.3.1
+  uuid: ^4.0.0  # For generating unique IDs
   
 dev_dependencies:
   flutter_test:

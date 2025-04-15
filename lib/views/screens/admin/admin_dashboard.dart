@@ -5,6 +5,7 @@ import 'package:healthcare/views/screens/admin/manage_patients.dart';
 import 'package:healthcare/views/screens/admin/system_settings.dart';
 import 'package:healthcare/views/screens/admin/analytics_dashboard.dart';
 import 'package:healthcare/views/screens/admin/appointment_management.dart';
+import 'package:healthcare/views/screens/admin/book_via_call_screen.dart';
 import 'package:healthcare/services/admin_service.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -24,6 +25,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const ManageDoctors(),
     const ManagePatients(),
     const SystemSettings(),
+    const BookViaCallScreen(),
   ];
 
   // Helper method to map bottom nav index to page index
@@ -326,6 +328,19 @@ class _AdminHomeState extends State<AdminHome> {
                     if (adminDashboardState != null) {
                       adminDashboardState.setState(() {
                         adminDashboardState._selectedIndex = 2;
+                      });
+                    }
+                  },
+                ),
+                _buildActionCard(
+                  'Book via Call',
+                  Icons.phone,
+                  Color(0xFF9C27B0),
+                  () {
+                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
+                    if (adminDashboardState != null) {
+                      adminDashboardState.setState(() {
+                        adminDashboardState._selectedIndex = 6;
                       });
                     }
                   },
