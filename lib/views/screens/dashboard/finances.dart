@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/services/auth_service.dart';
 import 'package:healthcare/services/financial_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 
 class FinancesScreen extends StatefulWidget {
   const FinancesScreen({Key? key}) : super(key: key);
@@ -538,322 +539,338 @@ class _FinancesScreenState extends State<FinancesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Custom app bar
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade100,
-                        spreadRadius: 1,
-                        blurRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        "Financial Overview",
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to the bottom navigation bar with home tab selected
+        // Since this is in the doctor flow, use the BottomNavigationBarScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BottomNavigationBarScreen(
+              profileStatus: "complete",
+              initialIndex: 0, // Home tab index
+            ),
+          ),
+        );
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Custom app bar
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.shade100,
+                          spreadRadius: 1,
+                          blurRadius: 1,
                         ),
-                      ),
-                      Spacer(),
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color.fromRGBO(64, 124, 226, 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          LucideIcons.wallet,
-                          color: Color.fromRGBO(64, 124, 226, 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Main financial summary
-                Container(
-                  margin: EdgeInsets.fromLTRB(20, 20, 20, 10),
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color.fromRGBO(64, 124, 226, 1),
-                        Color.fromRGBO(84, 144, 246, 1),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color.fromRGBO(64, 124, 226, 0.3),
-                        blurRadius: 10,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: _isLoading
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20.0),
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Financial Overview",
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
                           ),
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    LucideIcons.wallet,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  "Total Balance",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 15),
-                            Text(
-                              "Rs ${_totalBalance.toStringAsFixed(0)}",
-                              style: GoogleFonts.poppins(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
+                        ),
+                        Spacer(),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color.fromRGBO(64, 124, 226, 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            LucideIcons.wallet,
+                            color: Color.fromRGBO(64, 124, 226, 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Main financial summary
+                  Container(
+                    margin: EdgeInsets.fromLTRB(20, 20, 20, 10),
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color.fromRGBO(64, 124, 226, 1),
+                          Color.fromRGBO(84, 144, 246, 1),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color.fromRGBO(64, 124, 226, 0.3),
+                          blurRadius: 10,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: _isLoading
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20.0),
+                              child: CircularProgressIndicator(
                                 color: Colors.white,
+                                strokeWidth: 2,
                               ),
                             ),
-                            SizedBox(height: 20),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildBalanceItem(
-                                  "Income",
-                                  "Rs ${_totalIncome.toStringAsFixed(0)}",
-                                  LucideIcons.arrowDown,
-                                  Colors.greenAccent,
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      LucideIcons.wallet,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    "Total Balance",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 15),
+                              Text(
+                                "Rs ${_totalBalance.toStringAsFixed(0)}",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
-                                Container(
-                                  height: 40,
-                                  width: 1,
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                                _buildBalanceItem(
-                                  "Expenses",
-                                  "Rs ${_totalExpenses.toStringAsFixed(0)}",
-                                  LucideIcons.arrowUp,
-                                  Colors.redAccent,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                ),
-                
-                // Financial stats
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          "This Month",
-                          "Rs ${_currentMonthIncome.toStringAsFixed(0)}",
-                          Color(0xFFE8F5E9),
-                          LucideIcons.calendar,
-                          Color(0xFF4CAF50),
-                        ),
-                      ),
-                      SizedBox(width: 15),
-                      Expanded(
-                        child: _buildStatCard(
-                          "Pending",
-                          "Rs ${_pendingAmount.toStringAsFixed(0)}",
-                          Color(0xFFFFF3E0),
-                          LucideIcons.hourglass,
-                          Color(0xFFFF9800),
-                        ),
-                      ),
-                    ],
+                              ),
+                              SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildBalanceItem(
+                                    "Income",
+                                    "Rs ${_totalIncome.toStringAsFixed(0)}",
+                                    LucideIcons.arrowDown,
+                                    Colors.greenAccent,
+                                  ),
+                                  Container(
+                                    height: 40,
+                                    width: 1,
+                                    color: Colors.white.withOpacity(0.3),
+                                  ),
+                                  _buildBalanceItem(
+                                    "Expenses",
+                                    "Rs ${_totalExpenses.toStringAsFixed(0)}",
+                                    LucideIcons.arrowUp,
+                                    Colors.redAccent,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                   ),
-                ),
-                
-                // Recent transactions heading
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Recent Transactions",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                  
+                  // Financial stats
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            "This Month",
+                            "Rs ${_currentMonthIncome.toStringAsFixed(0)}",
+                            Color(0xFFE8F5E9),
+                            LucideIcons.calendar,
+                            Color(0xFF4CAF50),
+                          ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: _refreshData,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_isRefreshing)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Color.fromRGBO(64, 124, 226, 1),
+                        SizedBox(width: 15),
+                        Expanded(
+                          child: _buildStatCard(
+                            "Pending",
+                            "Rs ${_pendingAmount.toStringAsFixed(0)}",
+                            Color(0xFFFFF3E0),
+                            LucideIcons.hourglass,
+                            Color(0xFFFF9800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Recent transactions heading
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Recent Transactions",
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _refreshData,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_isRefreshing)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color.fromRGBO(64, 124, 226, 1),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            Text(
-                              _isRefreshing ? "Refreshing..." : "Refresh",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color.fromRGBO(64, 124, 226, 1),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Transactions list
-                Expanded(
-                  child: _transactions.isEmpty && !_isLoading
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                LucideIcons.database,
-                                size: 50,
-                                color: Colors.grey.shade300,
-                              ),
-                              SizedBox(height: 16),
                               Text(
-                                "No transactions found",
+                                _isRefreshing ? "Refreshing..." : "Refresh",
                                 style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade600,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color.fromRGBO(64, 124, 226, 1),
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: _transactions.length + (_hasMoreTransactions ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index == _transactions.length) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                child: Center(
-                                  child: SizedBox(
-                                    height: 30,
-                                    width: 30,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 3,
-                                      color: Color.fromRGBO(64, 124, 226, 1),
-                                    ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Transactions list
+                  Expanded(
+                    child: _transactions.isEmpty && !_isLoading
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  LucideIcons.database,
+                                  size: 50,
+                                  color: Colors.grey.shade300,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  "No transactions found",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade600,
                                   ),
                                 ),
-                              );
-                            }
-                            return _buildTransactionCard(_transactions[index]);
-                          },
-                        ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Bottom refresh indicator
-          if (_isRefreshing)
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: _transactions.length + (_hasMoreTransactions ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == _transactions.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Center(
+                                    child: SizedBox(
+                                      height: 30,
+                                      width: 30,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Color.fromRGBO(64, 124, 226, 1),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return _buildTransactionCard(_transactions[index]);
+                            },
+                          ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color.fromRGBO(64, 124, 226, 1),
+                ],
+              ),
+            ),
+            
+            // Bottom refresh indicator
+            if (_isRefreshing)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color.fromRGBO(64, 124, 226, 1),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Refreshing finances...",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
+                        SizedBox(width: 8),
+                        Text(
+                          "Refreshing finances...",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
