@@ -16,6 +16,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:healthcare/services/doctor_profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -242,258 +243,273 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Custom app bar with gradient
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade100,
-                        spreadRadius: 1,
-                        blurRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        "Analytics Dashboard",
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Spacer(),
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color.fromRGBO(64, 124, 226, 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          LucideIcons.activity,
-                          color: Color.fromRGBO(64, 124, 226, 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Summary stats row with loading state
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Container(
-                    padding: EdgeInsets.all(15),
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to the bottom navigation bar with home tab selected
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BottomNavigationBarScreen(
+              profileStatus: "complete",
+              initialIndex: 0, // Home tab index
+            ),
+          ),
+        );
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Custom app bar with gradient
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.fromRGBO(64, 124, 226, 1),
-                          Color.fromRGBO(84, 144, 246, 1),
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.shade100,
+                          spreadRadius: 1,
+                          blurRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Analytics Dashboard",
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Spacer(),
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color.fromRGBO(64, 124, 226, 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            LucideIcons.activity,
+                            color: Color.fromRGBO(64, 124, 226, 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Summary stats row with loading state
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Container(
+                      padding: EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color.fromRGBO(64, 124, 226, 1),
+                            Color.fromRGBO(84, 144, 246, 1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color.fromRGBO(64, 124, 226, 0.3),
+                            blurRadius: 10,
+                            offset: Offset(0, 5),
+                          ),
                         ],
                       ),
+                      child: _isLoading
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 20.0),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildSummaryItem("${_totalPatients}", "Patients"),
+                                Container(
+                                  height: 40,
+                                  width: 1,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                _buildSummaryItem("${_totalAppointments}", "Appointments"),
+                                Container(
+                                  height: 40,
+                                  width: 1,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                _buildSummaryItem(_formatCurrency(_totalEarnings), "Earnings"),
+                              ],
+                            ),
+                    ),
+                  ),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      "Analytics Categories",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  
+                  // Analytics cards
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.05,
+                        crossAxisSpacing: 15,
+                        mainAxisSpacing: 15,
+                        children: [
+                          _buildAnalyticsCard(
+                            icon: LucideIcons.activity,
+                            title: "Financial Analytics",
+                            description: "Revenue & expense reports",
+                            bgColor: Color(0xFFE1F5FE),
+                            iconColor: Color(0xFF03A9F4),
+                            onPressed: () {
+                              NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
+                            },
+                          ),
+                          _buildAnalyticsCard(
+                            icon: LucideIcons.clipboardCheck,
+                            title: "Appointments",
+                            description: "View appointment history",
+                            bgColor: Color(0xFFF0F4FF),
+                            iconColor: Color(0xFF3366CC),
+                            onPressed: () {
+                              NavigationHelper.navigateWithBottomBar(context, AppointmentHistoryScreen());
+                            },
+                          ),
+                          _buildAnalyticsCard(
+                            icon: LucideIcons.calendar,
+                            title: "Manage Availability",
+                            description: "Set your schedule & locations",
+                            bgColor: Color(0xFFE8EAF6),
+                            iconColor: Color(0xFF3F51B5),
+                            onPressed: () {
+                              NavigationHelper.navigateToCachedScreen(
+                                context, 
+                                "DoctorAvailabilityScreen", 
+                                () => DoctorAvailabilityScreen()
+                              );
+                            },
+                          ),
+                          _buildAnalyticsCard(
+                            icon: LucideIcons.users,
+                            title: "Patients",
+                            description: "Manage patient data",
+                            bgColor: Color(0xFFE8F5E9),
+                            iconColor: Color(0xFF4CAF50),
+                            onPressed: () {
+                              NavigationHelper.navigateWithBottomBar(context, PatientsScreen());
+                            },
+                          ),
+                          _buildAnalyticsCard(
+                            icon: LucideIcons.building2,
+                            title: "Hospital Selection",
+                            description: "Manage your practice locations",
+                            bgColor: Color(0xFFE0F2F1),
+                            iconColor: Color(0xFF009688),
+                            onPressed: () async {
+                              try {
+                                // Get current selected hospitals
+                                final doctorService = DoctorProfileService();
+                                final currentHospitals = await doctorService.getDoctorSelectedHospitals();
+                                
+                                // Navigate to hospital selection screen
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => HospitalSelectionScreen(
+                                      selectedHospitals: currentHospitals,
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Could not load hospital selection'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Bottom refresh indicator
+            if (_isRefreshing)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Color.fromRGBO(64, 124, 226, 0.3),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: _isLoading
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20.0),
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildSummaryItem("${_totalPatients}", "Patients"),
-                              Container(
-                                height: 40,
-                                width: 1,
-                                color: Colors.white.withOpacity(0.3),
-                              ),
-                              _buildSummaryItem("${_totalAppointments}", "Appointments"),
-                              Container(
-                                height: 40,
-                                width: 1,
-                                color: Colors.white.withOpacity(0.3),
-                              ),
-                              _buildSummaryItem(_formatCurrency(_totalEarnings), "Earnings"),
-                            ],
-                          ),
-                  ),
-                ),
-                
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    "Analytics Categories",
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                
-                // Analytics cards
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(15.0),
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.05,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildAnalyticsCard(
-                          icon: LucideIcons.activity,
-                          title: "Financial Analytics",
-                          description: "Revenue & expense reports",
-                          bgColor: Color(0xFFE1F5FE),
-                          iconColor: Color(0xFF03A9F4),
-                          onPressed: () {
-                            NavigationHelper.navigateWithBottomBar(context, FinancialAnalyticsScreen());
-                          },
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color.fromRGBO(64, 124, 226, 1),
+                            ),
+                          ),
                         ),
-                        _buildAnalyticsCard(
-                          icon: LucideIcons.clipboardCheck,
-                          title: "Appointments",
-                          description: "View appointment history",
-                          bgColor: Color(0xFFF0F4FF),
-                          iconColor: Color(0xFF3366CC),
-                          onPressed: () {
-                            NavigationHelper.navigateWithBottomBar(context, AppointmentHistoryScreen());
-                          },
-                        ),
-                        _buildAnalyticsCard(
-                          icon: LucideIcons.calendar,
-                          title: "Manage Availability",
-                          description: "Set your schedule & locations",
-                          bgColor: Color(0xFFE8EAF6),
-                          iconColor: Color(0xFF3F51B5),
-                          onPressed: () {
-                            NavigationHelper.navigateToCachedScreen(
-                              context, 
-                              "DoctorAvailabilityScreen", 
-                              () => DoctorAvailabilityScreen()
-                            );
-                          },
-                        ),
-                        _buildAnalyticsCard(
-                          icon: LucideIcons.users,
-                          title: "Patients",
-                          description: "Manage patient data",
-                          bgColor: Color(0xFFE8F5E9),
-                          iconColor: Color(0xFF4CAF50),
-                          onPressed: () {
-                            NavigationHelper.navigateWithBottomBar(context, PatientsScreen());
-                          },
-                        ),
-                        _buildAnalyticsCard(
-                          icon: LucideIcons.building2,
-                          title: "Hospital Selection",
-                          description: "Manage your practice locations",
-                          bgColor: Color(0xFFE0F2F1),
-                          iconColor: Color(0xFF009688),
-                          onPressed: () async {
-                            try {
-                              // Get current selected hospitals
-                              final doctorService = DoctorProfileService();
-                              final currentHospitals = await doctorService.getDoctorSelectedHospitals();
-                              
-                              // Navigate to hospital selection screen
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => HospitalSelectionScreen(
-                                    selectedHospitals: currentHospitals,
-                                  ),
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Could not load hospital selection'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
+                        SizedBox(width: 8),
+                        Text(
+                          "Refreshing analytics...",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Bottom refresh indicator
-          if (_isRefreshing)
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color.fromRGBO(64, 124, 226, 1),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Refreshing analytics...",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
