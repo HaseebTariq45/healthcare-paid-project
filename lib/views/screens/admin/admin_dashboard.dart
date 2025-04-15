@@ -26,6 +26,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const SystemSettings(),
   ];
 
+  // Helper method to map bottom nav index to page index
+  int _getPageIndex(int bottomNavIndex) {
+    switch (bottomNavIndex) {
+      case 0: return 0; // Home
+      case 1: return 3; // Doctors (index 3 in pages)
+      case 2: return 4; // Patients (index 4 in pages)
+      case 3: return 5; // Settings (index 5 in pages)
+      default: return 0;
+    }
+  }
+  
+  // Helper method to get the correct bottom nav index from page index
+  int _getBottomNavIndex(int pageIndex) {
+    switch (pageIndex) {
+      case 0: return 0; // Home
+      case 3: return 1; // Doctors -> bottom nav index 1
+      case 4: return 2; // Patients -> bottom nav index 2
+      case 5: return 3; // Settings -> bottom nav index 3
+      default: return 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,10 +103,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
         child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
+          currentIndex: _getBottomNavIndex(_selectedIndex),
           onTap: (index) {
             setState(() {
-              _selectedIndex = index;
+              _selectedIndex = _getPageIndex(index);
             });
           },
           type: BottomNavigationBarType.fixed,
@@ -103,14 +125,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             BottomNavigationBarItem(
               icon: Icon(Icons.dashboard),
               label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics),
-              label: 'Analytics',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today),
-              label: 'Appointments',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.medical_services),
@@ -312,32 +326,6 @@ class _AdminHomeState extends State<AdminHome> {
                     if (adminDashboardState != null) {
                       adminDashboardState.setState(() {
                         adminDashboardState._selectedIndex = 2;
-                      });
-                    }
-                  },
-                ),
-                _buildActionCard(
-                  'Manage Doctors',
-                  Icons.medical_services,
-                  Color(0xFFFF5722),
-                  () {
-                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
-                    if (adminDashboardState != null) {
-                      adminDashboardState.setState(() {
-                        adminDashboardState._selectedIndex = 3;
-                      });
-                    }
-                  },
-                ),
-                _buildActionCard(
-                  'Manage Patients',
-                  Icons.people,
-                  Color(0xFF9C27B0),
-                  () {
-                    final adminDashboardState = context.findAncestorStateOfType<_AdminDashboardState>();
-                    if (adminDashboardState != null) {
-                      adminDashboardState.setState(() {
-                        adminDashboardState._selectedIndex = 4;
                       });
                     }
                   },
