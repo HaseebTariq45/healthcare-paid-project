@@ -250,375 +250,381 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(
-                color: Color.fromRGBO(64, 124, 226, 1),
-              ),
-            )
-          else
-            SingleChildScrollView(
-              padding: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header with gradient
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.fromRGBO(64, 124, 226, 1),
-                          Color.fromRGBO(84, 144, 246, 1),
+    return WillPopScope(
+      onWillPop: () async {
+        // Show exit confirmation dialog
+        return await showExitDialog(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Stack(
+          children: [
+            if (_isLoading)
+              const Center(
+                child: CircularProgressIndicator(
+                  color: Color.fromRGBO(64, 124, 226, 1),
+                ),
+              )
+            else
+              SingleChildScrollView(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with gradient
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color.fromRGBO(64, 124, 226, 1),
+                            Color.fromRGBO(84, 144, 246, 1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(30),
+                          bottomRight: Radius.circular(30),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color.fromRGBO(64, 124, 226, 0.3),
+                            blurRadius: 10,
+                            offset: Offset(0, 5),
+                          ),
                         ],
                       ),
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(30),
-                        bottomRight: Radius.circular(30),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color.fromRGBO(64, 124, 226, 0.3),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    padding: EdgeInsets.fromLTRB(25, 70, 25, 30),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Welcome",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white.withOpacity(0.9),
+                      padding: EdgeInsets.fromLTRB(25, 70, 25, 30),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Welcome",
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                  Text(
+                                    _userName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Hero(
+                                    tag: 'profileImage',
+                                    child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                        ? CircleAvatar(
+                                            radius: 28,
+                                            backgroundImage: NetworkImage(_profileImageUrl!),
+                                          )
+                                        : CircleAvatar(
+                                            radius: 28,
+                                            backgroundImage: AssetImage("assets/images/User.png"),
+                                          ),
                                   ),
                                 ),
-                                Text(
-                                  _userName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w600,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 25),
+                          // Earnings info in header
+                          Container(
+                            padding: EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.paid_outlined,
+                                    color: Color.fromRGBO(64, 124, 226, 1),
+                                    size: 30,
+                                  ),
+                                ),
+                                SizedBox(width: 15),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Total Earning",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Rs ${_totalEarnings.toStringAsFixed(2)}",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Spacer(),
+                                IconButton(
+                                  onPressed: () {
+                                    NavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
+                                  },
+                                  icon: Icon(
+                                    LucideIcons.arrowRight,
                                     color: Colors.white,
                                   ),
                                 ),
                               ],
                             ),
-                            GestureDetector(
-                              onTap: () {
-                                NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 25),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 25),
+                          
+                          // Quick action buttons
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildQuickActionButton(
+                                icon: LucideIcons.building2,
+                                label: "Add Hospital",
+                                color: Color.fromRGBO(64, 124, 226, 1),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => HospitalSelectionScreen(
+                                        selectedHospitals: [],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildQuickActionButton(
+                                icon: LucideIcons.calendar,
+                                label: "Availability",
+                                color: Color(0xFF4CAF50),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => DoctorAvailabilityScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              _buildQuickActionButton(
+                                icon: Icons.bar_chart,
+                                label: "Reports",
+                                color: Color(0xFFF44336),
+                                onTap: () {
+                                  _onItemTapped(1); // Navigate to Analytics
+                                },
+                              ),
+                              _buildQuickActionButton(
+                                icon: LucideIcons.messageCircle,
+                                label: "Menu",
+                                color: Color(0xFFFF9800),
+                                onTap: () {
+                                  _onItemTapped(3); // Navigate to Menu
+                                },
+                              ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: 25),
+                          
+                          // Ratings Card with improved design
+                          Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color.fromRGBO(158, 158, 158, 0.2),
+                                  blurRadius: 15,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.grey.shade100,
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Color.fromRGBO(64, 124, 226, 0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        LucideIcons.thumbsUp,
+                                        color: Color.fromRGBO(64, 124, 226, 1),
+                                        size: 20,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      "Overall Ratings",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
-                                child: Hero(
-                                  tag: 'profileImage',
-                                  child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                                      ? CircleAvatar(
-                                          radius: 28,
-                                          backgroundImage: NetworkImage(_profileImageUrl!),
-                                        )
-                                      : CircleAvatar(
-                                          radius: 28,
-                                          backgroundImage: AssetImage("assets/images/User.png"),
-                                        ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 25),
-                        // Earnings info in header
-                        Container(
-                          padding: EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  Icons.paid_outlined,
-                                  color: Color.fromRGBO(64, 124, 226, 1),
-                                  size: 30,
-                                ),
-                              ),
-                              SizedBox(width: 15),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Total Earning",
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Rs ${_totalEarnings.toStringAsFixed(2)}",
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.white,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Spacer(),
-                              IconButton(
-                                onPressed: () {
-                                  NavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
-                                },
-                                icon: Icon(
-                                  LucideIcons.arrowRight,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 25),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: 25),
-                        
-                        // Quick action buttons
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildQuickActionButton(
-                              icon: LucideIcons.building2,
-                              label: "Add Hospital",
-                              color: Color.fromRGBO(64, 124, 226, 1),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => HospitalSelectionScreen(
-                                      selectedHospitals: [],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildQuickActionButton(
-                              icon: LucideIcons.calendar,
-                              label: "Availability",
-                              color: Color(0xFF4CAF50),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => DoctorAvailabilityScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildQuickActionButton(
-                              icon: Icons.bar_chart,
-                              label: "Reports",
-                              color: Color(0xFFF44336),
-                              onTap: () {
-                                _onItemTapped(1); // Navigate to Analytics
-                              },
-                            ),
-                            _buildQuickActionButton(
-                              icon: LucideIcons.messageCircle,
-                              label: "Menu",
-                              color: Color(0xFFFF9800),
-                              onTap: () {
-                                _onItemTapped(3); // Navigate to Menu
-                              },
-                            ),
-                          ],
-                        ),
-                        
-                        SizedBox(height: 25),
-                        
-                        // Ratings Card with improved design
-                        Container(
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color.fromRGBO(158, 158, 158, 0.2),
-                                blurRadius: 15,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                            border: Border.all(
-                              color: Colors.grey.shade100,
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Color.fromRGBO(64, 124, 226, 0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(
-                                      LucideIcons.thumbsUp,
-                                      color: Color.fromRGBO(64, 124, 226, 1),
-                                      size: 20,
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    "Overall Ratings",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 15),
-                              Row(
-                                children: [
-                                  Text(
-                                    _overallRating.toStringAsFixed(1),
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color.fromRGBO(64, 124, 226, 1),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          for (int i = 1; i <= 5; i++)
-                                            Icon(
-                                              i <= _overallRating
-                                                  ? Icons.star
-                                                  : i <= _overallRating + 0.5
-                                                      ? Icons.star_half
-                                                      : Icons.star_border,
-                                              color: Colors.amber,
-                                              size: 18,
-                                            ),
-                                        ],
+                                SizedBox(height: 15),
+                                Row(
+                                  children: [
+                                    Text(
+                                      _overallRating.toStringAsFixed(1),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color.fromRGBO(64, 124, 226, 1),
                                       ),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        "Based on $_reviewCount reviews",
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.grey,
-                                          fontSize: 12,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            for (int i = 1; i <= 5; i++)
+                                              Icon(
+                                                i <= _overallRating
+                                                    ? Icons.star
+                                                    : i <= _overallRating + 0.5
+                                                        ? Icons.star_half
+                                                        : Icons.star_border,
+                                                color: Colors.amber,
+                                                size: 18,
+                                              ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
+                                        SizedBox(height: 5),
+                                        Text(
+                                          "Based on $_reviewCount reviews",
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        
-                        SizedBox(height: 25),
+                          
+                          SizedBox(height: 25),
 
-                        // Add extra space at the bottom
-                        SizedBox(height: 25),
+                          // Add extra space at the bottom
+                          SizedBox(height: 25),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
+            // Bottom refresh indicator
+            if (_isRefreshing)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            
-          // Bottom refresh indicator
-          if (_isRefreshing)
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color.fromRGBO(64, 124, 226, 1),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color.fromRGBO(64, 124, 226, 1),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Refreshing...",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
+                        SizedBox(width: 8),
+                        Text(
+                          "Refreshing...",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

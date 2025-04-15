@@ -19,6 +19,7 @@ import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:healthcare/views/screens/dashboard/home.dart';
 
 enum UserType { doctor, patient }
 
@@ -90,7 +91,7 @@ class _MenuScreenState extends State<MenuScreen> {
         _isLoading = true;
       });
     }
-
+    
     // First try to load from cache
     await _loadFromCache();
 
@@ -121,19 +122,19 @@ class _MenuScreenState extends State<MenuScreen> {
     } catch (e) {
       debugPrint('Error loading from cache: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
     }
-  }
-
+      }
+      
   // Refresh data in background
   Future<void> _refreshDataInBackground() async {
     if (!mounted) return;
-
-    setState(() {
+      
+          setState(() {
       _isRefreshing = true;
     });
 
@@ -153,10 +154,10 @@ class _MenuScreenState extends State<MenuScreen> {
         await prefs.setString(_userDataCacheKey, json.encode(processedUserData));
         _updateUIWithUserData(userData);
       }
-
+      
       // Get user role
       final UserRole userRole = await _authService.getUserRole();
-
+      
       // Load doctor-specific data if user is a doctor
       if (userRole == UserRole.doctor) {
         final doctorProfile = await _doctorProfileService.getDoctorProfile();
@@ -179,12 +180,12 @@ class _MenuScreenState extends State<MenuScreen> {
     } catch (e) {
       debugPrint('Error refreshing data: $e');
     } finally {
-      if (mounted) {
-        setState(() {
+        if (mounted) {
+          setState(() {
           _isRefreshing = false;
-        });
+          });
+        }
       }
-    }
   }
 
   // Helper method to process data for caching
@@ -208,8 +209,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
   // Update UI with user data
   void _updateUIWithUserData(Map<String, dynamic> userData) {
-    if (mounted) {
-      setState(() {
+      if (mounted) {
+        setState(() {
         _userName = userData['fullName'] ?? userData['name'] ?? widget.name;
         _userRole = widget.userType == UserType.doctor ? _specialty : "Patient";
         _profileImageUrl = userData['profileImageUrl'];
@@ -219,8 +220,8 @@ class _MenuScreenState extends State<MenuScreen> {
 
   // Update UI with doctor profile
   void _updateUIWithDoctorProfile(Map<String, dynamic> profile) {
-    if (mounted) {
-      setState(() {
+      if (mounted) {
+        setState(() {
         _specialty = profile['specialty'] ?? "";
         _userRole = _specialty.isNotEmpty ? _specialty : widget.role;
         _rating = (profile['rating'] ?? 0.0).toDouble();
@@ -231,7 +232,7 @@ class _MenuScreenState extends State<MenuScreen> {
       });
     }
   }
-
+  
   void _initializeMenuItems() {
     if (widget.userType == UserType.doctor) {
       menuItems = [
@@ -429,113 +430,140 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to the bottom navigation bar with home tab selected
+        if (widget.userType == UserType.doctor) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BottomNavigationBarScreen(
+                profileStatus: "complete",
+                initialIndex: 0, // Home tab index
+              ),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BottomNavigationBarPatientScreen(
+                profileStatus: "complete",
+                initialIndex: 0, // Home tab index
+              ),
+            ),
+          );
+        }
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: _isLoading 
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF3366CC),
-                    ),
-                  )
-                : Column(
+        body: Stack(
+          children: [
+            SafeArea(
+        child: _isLoading 
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF3366CC),
+                ),
+              )
+            : Column(
+          children: [
+            _buildProfileHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildProfileHeader(),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 25),
-                                ..._groupedMenuItems.entries.map((entry) => 
-                                  _buildCategorySection(entry.key, entry.value)
-                                ).toList(),
-                                _buildLogoutButton(),
-                                const SizedBox(height: 25),
-                                Center(
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        "HealthCare App",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF3366CC),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Version 1.0.0",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                              ],
+                      const SizedBox(height: 25),
+                      ..._groupedMenuItems.entries.map((entry) => 
+                        _buildCategorySection(entry.key, entry.value)
+                      ).toList(),
+                      _buildLogoutButton(),
+                      const SizedBox(height: 25),
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              "HealthCare App",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF3366CC),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Version 1.0.0",
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-          ),
-          
-          // Bottom refresh indicator
-          if (_isRefreshing)
-            Positioned(
-              bottom: 16,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF3366CC),
+                      ],
+                    ),
+            ),
+            
+            // Bottom refresh indicator
+            if (_isRefreshing)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF3366CC),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Refreshing data...",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
+                        const SizedBox(width: 8),
+                        Text(
+                          "Refreshing data...",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -569,55 +597,8 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: () {
-                  // Debug info about Navigator
-                  debugPrint('Back button pressed, Navigator stack depth: ${Navigator.of(context).canPop()}');
-                  
-                  // Try to pop if possible, otherwise navigate to the appropriate home screen
-                  if (Navigator.of(context).canPop()) {
-                    debugPrint('Can pop - using Navigator.pop()');
-                    Navigator.of(context).pop();
-                  } else {
-                    // Navigate to the appropriate bottom navigation screen based on user type
-                    debugPrint('Cannot pop - using pushReplacement to bottom nav');
-                    if (widget.userType == UserType.doctor) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BottomNavigationBarScreen(
-                            profileStatus: "complete",
-                          ),
-                        ),
-                      );
-                    } else {
-                      // For patients, use the patient bottom navigation
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BottomNavigationBarPatientScreen(
-                            profileStatus: "complete",
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
               Text(
                 "My Profile",
                 style: GoogleFonts.poppins(

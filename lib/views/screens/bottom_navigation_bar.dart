@@ -7,6 +7,7 @@ import 'package:healthcare/views/screens/dashboard/menu.dart';
 class BottomNavigationBarScreen extends StatefulWidget {
   final String profileStatus;
   final String userType;
+  final int initialIndex;
   
   // Add static key to access navigator state
   static final GlobalKey<_BottomNavigationBarScreenState> navigatorKey = GlobalKey<_BottomNavigationBarScreenState>();
@@ -15,6 +16,7 @@ class BottomNavigationBarScreen extends StatefulWidget {
     super.key, 
     required this.profileStatus,
     this.userType = "Doctor", // Default to Doctor for backward compatibility
+    this.initialIndex = 0,
   });
 
   @override
@@ -32,6 +34,7 @@ class BottomNavigationBarScreen extends StatefulWidget {
           builder: (context) => BottomNavigationBarScreen(
             profileStatus: "complete",
             userType: "Doctor",
+            initialIndex: index,
           ),
         ),
       );
@@ -42,13 +45,14 @@ class BottomNavigationBarScreen extends StatefulWidget {
 class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
   late String profileStatus;
   late String userType;
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
     profileStatus = widget.profileStatus;
     userType = widget.userType;
+    _selectedIndex = widget.initialIndex;
     print('***** BOTTOM NAV BAR INITIALIZED WITH USER TYPE: $userType *****');
   }
 

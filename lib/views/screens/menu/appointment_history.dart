@@ -685,14 +685,14 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                   ),
                 ),
                 SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                         appointment.doctorName,
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
@@ -733,32 +733,32 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                     ),
                     SizedBox(height: 5),
                     // Patient profile button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PatientDetailProfileScreen(
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PatientDetailProfileScreen(
                               name: appointment.doctorName,
                               age: "N/A",
                               bloodGroup: "Not Available",
                               diseases: [appointment.diagnosis ?? 'Not specified'],
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF3366CC).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          color: Color(0xFF3366CC),
-                          size: 16,
                         ),
                       ),
+                    );
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: Color(0xFF3366CC).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                  ),
+                    child: Icon(
+                      Icons.person,
+                      color: Color(0xFF3366CC),
+                      size: 16,
+                    ),
+                  ),
                     ),
                   ],
                 ),
@@ -776,25 +776,25 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: [
-                      _buildInfoTag(
-                        Icons.calendar_today,
+                  children: [
+                    _buildInfoTag(
+                      Icons.calendar_today,
                         DateFormat('MMM dd, yyyy').format(appointment.date),
-                        Colors.blue.shade700,
-                      ),
-                      SizedBox(width: 10),
-                      _buildInfoTag(
-                        Icons.access_time,
+                      Colors.blue.shade700,
+                    ),
+                    SizedBox(width: 10),
+                    _buildInfoTag(
+                      Icons.access_time,
                         DateFormat('hh:mm a').format(appointment.date),
-                        Colors.orange.shade700,
-                      ),
-                      SizedBox(width: 10),
-                      _buildInfoTag(
+                      Colors.orange.shade700,
+                    ),
+                    SizedBox(width: 10),
+                    _buildInfoTag(
                         Icons.medical_services,
                         appointment.specialty,
                         Colors.green.shade700,
-                      ),
-                    ],
+                    ),
+                  ],
                   ),
                 ),
                 
@@ -817,12 +817,12 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                 if (appointment.diagnosis != null && appointment.diagnosis!.isNotEmpty)
                   Column(
                     children: [
-                      SizedBox(height: 10),
-                      _buildDetailRow(
-                        "Diagnosis",
+                SizedBox(height: 10),
+                _buildDetailRow(
+                  "Diagnosis",
                         appointment.diagnosis!,
-                        Icons.medical_services,
-                      ),
+                  Icons.medical_services,
+                ),
                     ],
                   ),
                 
@@ -830,14 +830,14 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                 if (appointment.prescription != null && appointment.prescription!.isNotEmpty)
                   Column(
                     children: [
-                      SizedBox(height: 10),
-                      _buildDetailRow(
-                        "Prescription",
+                SizedBox(height: 10),
+                _buildDetailRow(
+                  "Prescription",
                         appointment.prescription!,
-                        Icons.medication,
+                  Icons.medication,
                       ),
                     ],
-                  ),
+                ),
                 
                 SizedBox(height: 15),
                 
@@ -845,68 +845,68 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
                 if (appointment.notes != null && appointment.notes!.isNotEmpty)
                   Column(
                     children: [
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade200),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                      Text(
+                        "Clinical Notes",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Clinical Notes",
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                            SizedBox(height: 5),
-                            Text(
+                      ),
+                      SizedBox(height: 5),
+                      Text(
                               appointment.notes!,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ],
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey.shade800,
                         ),
+                          ),
+                  ],
+                ),
                       ),
                       SizedBox(height: 15),
                     ],
-                  ),
+                ),
                 
                 SizedBox(height: 15),
                 
                 // Bottom row: Fee
                 if (appointment.fee != null)
-                  Row(
+                Row(
+                  children: [
+                    Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Consultation Fee",
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          Text(
-                            "Rs ${appointment.fee!.toStringAsFixed(2)}",
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF3366CC),
-                            ),
-                          ),
-                        ],
+                        Text(
+                          "Consultation Fee",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                        color: Colors.grey.shade600,
                       ),
-                    ],
+                        ),
+                        Text(
+                            "Rs ${appointment.fee!.toStringAsFixed(2)}",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF3366CC),
+                          ),
+                        ),
+                      ],
                   ),
+                ],
+                ),
               ],
             ),
           ),
@@ -918,14 +918,14 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
   Widget _buildInfoTag(IconData icon, String text, Color color) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
+          decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: color.withOpacity(0.3),
           width: 1,
         ),
-      ),
+          ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -933,20 +933,20 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
             icon,
             size: 14,
             color: color,
-          ),
+        ),
           SizedBox(width: 5),
-          Text(
+              Text(
             text,
-            style: GoogleFonts.poppins(
+                style: GoogleFonts.poppins(
               fontSize: 12,
-              fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w500,
               color: color,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -955,41 +955,41 @@ class _AppointmentHistoryScreenState extends State<AppointmentHistoryScreen> wit
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
+        padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
             color: Color(0xFF3366CC).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
+        borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
             size: 16,
             color: Color(0xFF3366CC),
           ),
-        ),
+      ),
         SizedBox(width: 10),
         Expanded(
-          child: Column(
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+          children: [
+            Text(
                 label,
-                style: GoogleFonts.poppins(
+              style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: Colors.grey.shade600,
-                ),
               ),
-              Text(
+            ),
+            Text(
                 value,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Colors.black87,
-                ),
               ),
+            ),
             ],
-          ),
-        ),
-      ],
+              ),
+            ),
+          ],
     );
   }
 

@@ -8,6 +8,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
   final String profileStatus;
   final bool suppressProfilePrompt;
   final double profileCompletionPercentage;
+  final int initialIndex;
 
   // Singleton pattern for the key to prevent duplicates
   static final GlobalKey<_BottomNavigationBarPatientScreenState> _navigatorKey = 
@@ -21,6 +22,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
     required this.profileStatus,
     this.suppressProfilePrompt = false,
     this.profileCompletionPercentage = 0.0,
+    this.initialIndex = 0,
   }) : super(key: key);  // Use the passed key, not the static navigatorKey
 
   @override
@@ -38,6 +40,7 @@ class BottomNavigationBarPatientScreen extends StatefulWidget {
           builder: (context) => BottomNavigationBarPatientScreen(
             profileStatus: "complete",
             profileCompletionPercentage: 100.0,
+            initialIndex: index,
           ),
         ),
       );
@@ -49,7 +52,7 @@ class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPa
   late String profileStatus;
   late bool suppressProfilePrompt;
   late double profileCompletionPercentage;
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   @override
   void initState() {
@@ -57,6 +60,7 @@ class _BottomNavigationBarPatientScreenState extends State<BottomNavigationBarPa
     profileStatus = widget.profileStatus;
     suppressProfilePrompt = widget.suppressProfilePrompt;
     profileCompletionPercentage = widget.profileCompletionPercentage;
+    _selectedIndex = widget.initialIndex;
   }
 
   List<Widget> _widgetOptions() => <Widget>[
