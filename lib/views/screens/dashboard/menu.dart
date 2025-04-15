@@ -17,6 +17,8 @@ import 'package:healthcare/services/auth_service.dart';
 import 'package:healthcare/services/doctor_profile_service.dart';
 import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:healthcare/views/screens/patient/bottom_navigation_patient.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum UserType { doctor, patient }
 
@@ -61,6 +63,11 @@ class _MenuScreenState extends State<MenuScreen> {
   int _appointmentsCount = 0;
   double _totalEarnings = 0;
   
+  // Cache keys
+  static const String _userDataCacheKey = 'user_data_cache';
+  static const String _doctorProfileCacheKey = 'doctor_profile_cache';
+  bool _isRefreshing = false;
+  
   @override
   void initState() {
     super.initState();
@@ -73,74 +80,46 @@ class _MenuScreenState extends State<MenuScreen> {
     };
     
     _initializeMenuItems();
-    _fetchUserData();
+    _loadUserDataWithCache();
   }
   
-  // Fetch user data from Firestore
-  Future<void> _fetchUserData() async {
+  // Load user data with caching strategy
+  Future<void> _loadUserDataWithCache() async {
     if (mounted) {
       setState(() {
         _isLoading = true;
       });
     }
-    
+
+    // First try to load from cache
+    await _loadFromCache();
+
+    // Then start background refresh
+    _refreshDataInBackground();
+  }
+
+  // Load data from cache
+  Future<void> _loadFromCache() async {
     try {
-      // Get current user ID
-      final String? userId = _auth.currentUser?.uid;
+      final prefs = await SharedPreferences.getInstance();
       
-      if (userId == null) {
-        // User not logged in
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _userName = widget.name;
-            _userRole = widget.role;
-          });
-        }
-        return;
+      // Load user data from cache
+      final String? userDataJson = prefs.getString(_userDataCacheKey);
+      if (userDataJson != null) {
+        final userData = json.decode(userDataJson);
+        _updateUIWithUserData(userData);
       }
-      
-      // Get user data from Firestore
-      final userData = await _authService.getUserData();
-      
-      if (userData == null) {
-        // User data not found
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _userName = widget.name;
-            _userRole = widget.role;
-          });
-        }
-        return;
-      }
-      
-      // Get user role
-      final UserRole userRole = await _authService.getUserRole();
-      
-      // Load relevant data based on user role
-      if (userRole == UserRole.doctor) {
-        // For doctor, get profile data using doctor profile service
-        await _fetchDoctorProfileData();
-      } else {
-        // For other user types, use regular user data
-        if (mounted) {
-          setState(() {
-            _userName = userData['fullName'] ?? userData['name'] ?? widget.name;
-            _userRole = "Patient";
-            _profileImageUrl = userData['profileImageUrl'];
-          });
+
+      // Load doctor profile from cache if user is a doctor
+      if (widget.userType == UserType.doctor) {
+        final String? doctorProfileJson = prefs.getString(_doctorProfileCacheKey);
+        if (doctorProfileJson != null) {
+          final doctorProfile = json.decode(doctorProfileJson);
+          _updateUIWithDoctorProfile(doctorProfile);
         }
       }
     } catch (e) {
-      debugPrint('Error fetching user data: $e');
-      // Use default data in case of error
-      if (mounted) {
-        setState(() {
-          _userName = widget.name;
-          _userRole = widget.role;
-        });
-      }
+      debugPrint('Error loading from cache: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -149,44 +128,82 @@ class _MenuScreenState extends State<MenuScreen> {
       }
     }
   }
-  
-  // Fetch doctor profile data using the new service
-  Future<void> _fetchDoctorProfileData() async {
+
+  // Update UI with user data
+  void _updateUIWithUserData(Map<String, dynamic> userData) {
+    if (mounted) {
+      setState(() {
+        _userName = userData['fullName'] ?? userData['name'] ?? widget.name;
+        _userRole = widget.userType == UserType.doctor ? _specialty : "Patient";
+        _profileImageUrl = userData['profileImageUrl'];
+      });
+    }
+  }
+
+  // Update UI with doctor profile
+  void _updateUIWithDoctorProfile(Map<String, dynamic> profile) {
+    if (mounted) {
+      setState(() {
+        _specialty = profile['specialty'] ?? "";
+        _userRole = _specialty;
+        _rating = profile['rating']?.toDouble() ?? 0.0;
+        _experience = profile['experience'] != null ? "${profile['experience']} years" : "";
+        _consultationFee = profile['fee'] != null ? "Rs. ${profile['fee']}" : "";
+        _appointmentsCount = profile['totalAppointments'] ?? 0;
+        _totalEarnings = profile['totalEarnings']?.toDouble() ?? 0.0;
+      });
+    }
+  }
+
+  // Refresh data in background
+  Future<void> _refreshDataInBackground() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
     try {
-      // Get doctor profile
-      final doctorProfile = await _doctorProfileService.getDoctorProfile();
-      
-      // Get doctor stats - this now uses consistent earnings calculation
-      final doctorStats = await _doctorProfileService.getDoctorStats();
-      
-      if (mounted) {
-        setState(() {
-          // Set basic info
-          _userName = doctorProfile['fullName'] ?? "Doctor";
-          _specialty = doctorProfile['specialty'] ?? "";
-          _userRole = _specialty; // Use specialty as role for display
-          _profileImageUrl = doctorProfile['profileImageUrl'];
-          
-          // Set doctor-specific info
-          _rating = doctorProfile.containsKey('rating') 
-              ? (doctorProfile['rating'] as num).toDouble() 
-              : 0.0;
-          _experience = doctorProfile['experience'] != null 
-              ? "${doctorProfile['experience']} years" 
-              : "";
-          _consultationFee = doctorProfile['fee'] != null 
-              ? "Rs. ${doctorProfile['fee']}" 
-              : "";
-          
-          // Set statistics
-          if (doctorStats['success'] == true) {
-            _appointmentsCount = doctorStats['totalAppointments'] ?? 0;
-            _totalEarnings = doctorStats['totalEarnings'] ?? 0.0;
-          }
-        });
+      // Get current user ID
+      final String? userId = _auth.currentUser?.uid;
+      if (userId == null) return;
+
+      // Get user data from Firestore
+      final userData = await _authService.getUserData();
+      if (userData != null) {
+        // Cache user data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_userDataCacheKey, json.encode(userData));
+        _updateUIWithUserData(userData);
+      }
+
+      // Get user role
+      final UserRole userRole = await _authService.getUserRole();
+
+      // Load doctor-specific data if user is a doctor
+      if (userRole == UserRole.doctor) {
+        final doctorProfile = await _doctorProfileService.getDoctorProfile();
+        final doctorStats = await _doctorProfileService.getDoctorStats();
+
+        // Combine profile and stats
+        final Map<String, dynamic> fullDoctorProfile = {
+          ...doctorProfile,
+          ...doctorStats,
+        };
+
+        // Cache doctor profile
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_doctorProfileCacheKey, json.encode(fullDoctorProfile));
+        _updateUIWithDoctorProfile(fullDoctorProfile);
       }
     } catch (e) {
-      debugPrint('Error fetching doctor profile data: $e');
+      debugPrint('Error refreshing data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
   
@@ -389,66 +406,111 @@ class _MenuScreenState extends State<MenuScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
-      body: SafeArea(
-        child: _isLoading 
-            ? const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF3366CC),
-                ),
-              )
-            : Column(
-          children: [
-            _buildProfileHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _isLoading 
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF3366CC),
+                    ),
+                  )
+                : Column(
                     children: [
-                      const SizedBox(height: 25),
-                      // Build each category section
-                      ..._groupedMenuItems.entries.map((entry) => 
-                        _buildCategorySection(entry.key, entry.value)
-                      ).toList(),
-                      
-                      // Logout button at the bottom
-                      _buildLogoutButton(),
-                      
-                      const SizedBox(height: 25),
-                      
-                      // App version info
-                      Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              "HealthCare App",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3366CC),
-                              ),
+                      _buildProfileHeader(),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 25),
+                                ..._groupedMenuItems.entries.map((entry) => 
+                                  _buildCategorySection(entry.key, entry.value)
+                                ).toList(),
+                                _buildLogoutButton(),
+                                const SizedBox(height: 25),
+                                Center(
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        "HealthCare App",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF3366CC),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "Version 1.0.0",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Version 1.0.0",
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                    ],
+                  ),
+          ),
+          
+          // Bottom refresh indicator
+          if (_isRefreshing)
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF3366CC),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Refreshing data...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

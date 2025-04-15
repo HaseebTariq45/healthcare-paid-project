@@ -1,67 +1,72 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../../../models/transaction_model.dart';
+import 'package:intl/intl.dart';
+import 'package:healthcare/models/transaction_model.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/services/auth_service.dart';
 import 'package:healthcare/services/financial_repository.dart';
-import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FinancesScreen extends StatefulWidget {
-  const FinancesScreen({super.key});
+  const FinancesScreen({Key? key}) : super(key: key);
 
   @override
-  State<FinancesScreen> createState() => _FinancesScreenState();
+  _FinancesScreenState createState() => _FinancesScreenState();
 }
 
 class _FinancesScreenState extends State<FinancesScreen> {
-  // Firebase instances
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AuthService _authService = AuthService();
-  late final FinancialRepository _financialRepository;
+  // Loading states
+  bool _isLoading = false;
+  bool _isRefreshing = false;
+  bool _isLoadingMore = false;
   
   // Financial data
-  bool _isLoading = true;
+  List<TransactionItem> _transactions = [];
   double _totalBalance = 0.0;
   double _totalIncome = 0.0;
   double _totalExpenses = 0.0;
   double _currentMonthIncome = 0.0;
   double _pendingAmount = 0.0;
   
-  // Transactions
-  List<TransactionItem> _transactions = [];
-  
-  // Pagination variables
+  // Pagination
+  int _currentPage = 1;
+  bool _hasMoreData = true;
   DocumentSnapshot? _lastTransactionDoc;
   bool _hasMoreTransactions = true;
   bool _isLoadingMoreTransactions = false;
   final int _transactionsPerPage = 10;
   
-  // Scroll controller for infinite scrolling
-  late ScrollController _scrollController;
+  // Controllers
+  final ScrollController _scrollController = ScrollController();
+  
+  // Firebase instances
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService();
+  late final FinancialRepository _financialRepository;
+  
+  // Cache key
+  static const String _financesCacheKey = 'doctor_finances_data';
 
   @override
   void initState() {
     super.initState();
     _financialRepository = FinancialRepository();
-    
-    // Initialize scroll controller
-    _scrollController = ScrollController();
     _scrollController.addListener(_scrollListener);
-    
     _loadFinancialData();
   }
-  
+
   @override
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   // Scroll listener to detect when user scrolls to bottom
   void _scrollListener() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8 &&
@@ -70,8 +75,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
       _loadMoreTransactions();
     }
   }
-  
-  // Load more transactions when scrolling
+
   Future<void> _loadMoreTransactions() async {
     if (_isLoadingMoreTransactions || !_hasMoreTransactions) return;
     
@@ -91,8 +95,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
       // Load more transactions
       await _loadTransactions(currentUser.uid, isFirstLoad: false);
       
-      // Recalculate financial summaries if needed
-      // (Could be optimized to only add new values instead of recalculating everything)
+      // Recalculate financial summaries
       _calculateFinancialSummaries();
     } catch (e) {
       print('Error loading more transactions: $e');
@@ -104,54 +107,185 @@ class _FinancesScreenState extends State<FinancesScreen> {
       }
     }
   }
-  
-  // Load all financial data
+
   Future<void> _loadFinancialData() async {
     if (mounted) {
       setState(() {
         _isLoading = true;
-        // Reset pagination data on fresh load
-        _lastTransactionDoc = null;
-        _hasMoreTransactions = true;
-        _transactions.clear();
       });
     }
     
+    // First load cached data
+    bool hasCachedData = await _loadCachedData();
+    
+    // Only clear and refresh if no cached data or cache is old
+    if (!hasCachedData) {
+      if (mounted) {
+        setState(() {
+          // Reset pagination data on fresh load
+          _lastTransactionDoc = null;
+          _hasMoreTransactions = true;
+          _transactions.clear();
+        });
+      }
+      // Then start background refresh
+      _refreshData();
+    } else {
+      // If we have cached data, do a background refresh after a delay
+      Future.delayed(Duration(seconds: 30), () {
+        if (mounted) {
+          _refreshData();
+        }
+      });
+    }
+  }
+
+  // Load cached data first
+  Future<bool> _loadCachedData() async {
     try {
-      // Get current user
+      final prefs = await SharedPreferences.getInstance();
+      final String? cachedData = prefs.getString(_financesCacheKey);
+      
+      if (cachedData != null) {
+        final Map<String, dynamic> data = json.decode(cachedData);
+        
+        // Check if cache is not too old (24 hours)
+        final lastUpdated = DateTime.parse(data['lastUpdated'] ?? DateTime.now().toIso8601String());
+        final now = DateTime.now();
+        final difference = now.difference(lastUpdated);
+        
+        if (difference.inHours < 24) {
+          if (mounted) {
+            setState(() {
+              _totalBalance = (data['totalBalance'] as num?)?.toDouble() ?? 0.0;
+              _totalIncome = (data['totalIncome'] as num?)?.toDouble() ?? 0.0;
+              _totalExpenses = (data['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+              _currentMonthIncome = (data['currentMonthIncome'] as num?)?.toDouble() ?? 0.0;
+              _pendingAmount = (data['pendingAmount'] as num?)?.toDouble() ?? 0.0;
+              
+              // Load cached transactions
+              if (data.containsKey('transactions')) {
+                _transactions = (data['transactions'] as List)
+                    .map((item) => TransactionItem(
+                          item['title'],
+                          (item['amount'] as num).toDouble(),
+                          item['date'],
+                          _convertTransactionType(item['type']),
+                        ))
+                    .toList();
+              }
+              
+              _isLoading = false;
+            });
+          }
+          return true;
+        }
+      }
+    } catch (e) {
+      print('Error loading cached finances data: $e');
+    }
+    return false;
+  }
+
+  // Refresh data in background
+  Future<void> _refreshData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isRefreshing = true;
+    });
+    
+    try {
       final User? currentUser = _auth.currentUser;
       if (currentUser == null) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-        return;
+        throw Exception('User not authenticated');
       }
       
-      // First try to load using FinancialRepository
+      // Store current transactions in case we need to revert
+      final previousTransactions = List<TransactionItem>.from(_transactions);
+      
+      // Load transactions
       bool success = await _loadTransactionsFromRepository();
       
-      // If not successful, fallback to direct Firestore loading
+      // If repository load fails, use fallback
       if (!success) {
-        // Load transactions
         await _loadTransactions(currentUser.uid, isFirstLoad: true);
       }
       
       // Calculate financial summaries
       _calculateFinancialSummaries();
       
+      // Save to cache only if we successfully loaded new data
+      if (_transactions.isNotEmpty) {
+        await _saveToCache();
+      } else {
+        // Revert to previous transactions if new load failed
+        setState(() {
+          _transactions = previousTransactions;
+        });
+      }
+      
     } catch (e) {
-      print('Error loading financial data: $e');
+      print('Error refreshing financial data: $e');
     } finally {
       if (mounted) {
         setState(() {
+          _isRefreshing = false;
           _isLoading = false;
         });
       }
     }
   }
-  
+
+  // Save current data to cache
+  Future<void> _saveToCache() async {
+    try {
+      final Map<String, dynamic> cacheData = {
+        'totalBalance': _totalBalance,
+        'totalIncome': _totalIncome,
+        'totalExpenses': _totalExpenses,
+        'currentMonthIncome': _currentMonthIncome,
+        'pendingAmount': _pendingAmount,
+        'lastUpdated': DateTime.now().toIso8601String(),
+        'transactions': _transactions.map((item) => {
+          'title': item.title,
+          'amount': item.amount,
+          'date': item.date,
+          'type': item.type == TransactionType.income ? 'income' : 'expense',
+        }).toList(),
+      };
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_financesCacheKey, json.encode(cacheData));
+      print('Saved ${_transactions.length} transactions to cache');
+    } catch (e) {
+      print('Error saving finances to cache: $e');
+    }
+  }
+
+  void _calculateTotals() {
+    _totalIncome = _transactions
+        .where((t) => t.type == TransactionType.income)
+        .fold(0.0, (sum, t) => sum + t.amount);
+    _totalExpenses = _transactions
+        .where((t) => t.type == TransactionType.expense)
+        .fold(0.0, (sum, t) => sum + t.amount);
+    _totalBalance = _totalIncome - _totalExpenses;
+  }
+
+  List<TransactionItem> _generateMockTransactions() {
+    final random = DateTime.now();
+    return List.generate(10, (i) {
+      final isIncome = i % 3 == 0;
+      return TransactionItem(
+        isIncome ? 'Payment Received' : 'Purchase',
+        (i + 1) * 100.0,
+        DateFormat('dd MMM, yyyy').format(random.subtract(Duration(days: i))),
+        isIncome ? TransactionType.income : TransactionType.expense,
+      );
+    });
+  }
+
   // Attempt to load transactions using the FinancialRepository
   Future<bool> _loadTransactionsFromRepository() async {
     try {
@@ -175,7 +309,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
       for (var transaction in transactionsList) {
         _transactions.add(TransactionItem(
           transaction.title,
-          'Rs ${transaction.amount.toStringAsFixed(0)}',
+          transaction.amount,
           DateFormat('dd MMM, yyyy').format(transaction.date),
           _convertTransactionType(transaction.type),
         ));
@@ -276,7 +410,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
           // For doctors, all payments received are considered income
           _transactions.add(TransactionItem(
             description,
-            'Rs ${amount.toStringAsFixed(0)}',
+            amount,
             DateFormat('dd MMM, yyyy').format(date),
             TransactionType.income,
           ));
@@ -357,7 +491,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
         // For doctors, all appointment payments are income
         _transactions.add(TransactionItem(
           title,
-          'Rs ${amount.toStringAsFixed(0)}',
+          amount,
           DateFormat('dd MMM, yyyy').format(date),
           TransactionType.income,
         ));
@@ -380,21 +514,17 @@ class _FinancesScreenState extends State<FinancesScreen> {
     final currentYear = now.year;
     
     for (var transaction in _transactions) {
-      // Extract amount (remove 'Rs ' and convert to double)
-      final amountStr = transaction.amount.replaceAll('Rs ', '').replaceAll(',', '');
-      final amount = double.tryParse(amountStr) ?? 0.0;
-      
       // Calculate totals based on transaction type
       if (transaction.type == TransactionType.income) {
-        _totalIncome += amount;
+        _totalIncome += transaction.amount;
         
         // Check if transaction is from current month
         final transactionDate = DateFormat('dd MMM, yyyy').parse(transaction.date);
         if (transactionDate.month == currentMonth && transactionDate.year == currentYear) {
-          _currentMonthIncome += amount;
+          _currentMonthIncome += transaction.amount;
         }
       } else {
-        _totalExpenses += amount;
+        _totalExpenses += transaction.amount;
       }
     }
     
@@ -410,323 +540,373 @@ class _FinancesScreenState extends State<FinancesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: Color.fromRGBO(64, 124, 226, 1),
-              ),
-            )
-          : SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Custom app bar
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.shade100,
-                    spreadRadius: 1,
-                    blurRadius: 1,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Custom app bar
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.shade100,
+                        spreadRadius: 1,
+                        blurRadius: 1,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    "Financial Overview",
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                  Spacer(),
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Color.fromRGBO(64, 124, 226, 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      LucideIcons.wallet,
-                      color: Color.fromRGBO(64, 124, 226, 1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Main financial summary
-            Container(
-              margin: EdgeInsets.fromLTRB(20, 20, 20, 10),
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color.fromRGBO(64, 124, 226, 1),
-                    Color.fromRGBO(84, 144, 246, 1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color.fromRGBO(64, 124, 226, 0.3),
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                  child: Row(
                     children: [
+                      Text(
+                        "Financial Overview",
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
+                      ),
+                      Spacer(),
                       Container(
-                        padding: EdgeInsets.all(10),
+                        padding: EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Color.fromRGBO(64, 124, 226, 0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           LucideIcons.wallet,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        "Total Balance",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Color.fromRGBO(64, 124, 226, 1),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 15),
-                  Text(
-                    "Rs ${_totalBalance.toStringAsFixed(0)}",
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildBalanceItem(
-                        "Income",
-                        "Rs ${_totalIncome.toStringAsFixed(0)}",
-                        LucideIcons.arrowDown,
-                        Colors.greenAccent,
-                      ),
-                      Container(
-                        height: 40,
-                        width: 1,
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                      _buildBalanceItem(
-                        "Expenses",
-                        "Rs ${_totalExpenses.toStringAsFixed(0)}",
-                        LucideIcons.arrowUp,
-                        Colors.redAccent,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // Financial stats
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      "This Month",
-                      "Rs ${_currentMonthIncome.toStringAsFixed(0)}",
-                      Color(0xFFE8F5E9),
-                      LucideIcons.calendar,
-                      Color(0xFF4CAF50),
-                    ),
-                  ),
-                  SizedBox(width: 15),
-                  Expanded(
-                    child: _buildStatCard(
-                      "Pending",
-                      "Rs ${_pendingAmount.toStringAsFixed(0)}",
-                      Color(0xFFFFF3E0),
-                      LucideIcons.hourglass,
-                      Color(0xFFFF9800),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Recent transactions heading
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Recent Transactions",
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      // Refresh transactions
-                      _loadFinancialData();
-                    },
-                    child: Text(
-                      "Refresh",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Color.fromRGBO(64, 124, 226, 1),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Transactions list
-            Expanded(
-              child: _transactions.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            LucideIcons.database,
-                            size: 50,
-                            color: Colors.grey.shade300,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            "No transactions found",
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: ListView.builder(
-                            controller: _scrollController,
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: _transactions.length + (_hasMoreTransactions ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              // If we reached the end of the actual transactions list
-                              if (index == _transactions.length) {
-                                // Show loading indicator
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                  child: Center(
-                                    child: SizedBox(
-                                      height: 30,
-                                      width: 30,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 3,
-                                        color: Color.fromRGBO(64, 124, 226, 1),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              
-                              // Display transaction card
-                              return _buildTransactionCard(_transactions[index]);
-                            },
-                          ),
-                        ),
+                ),
+                
+                // Main financial summary
+                Container(
+                  margin: EdgeInsets.fromLTRB(20, 20, 20, 10),
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color.fromRGBO(64, 124, 226, 1),
+                        Color.fromRGBO(84, 144, 246, 1),
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color.fromRGBO(64, 124, 226, 0.3),
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: _isLoading
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20.0),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.wallet,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  "Total Balance",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 15),
+                            Text(
+                              "Rs ${_totalBalance.toStringAsFixed(0)}",
+                              style: GoogleFonts.poppins(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _buildBalanceItem(
+                                  "Income",
+                                  "Rs ${_totalIncome.toStringAsFixed(0)}",
+                                  LucideIcons.arrowDown,
+                                  Colors.greenAccent,
+                                ),
+                                Container(
+                                  height: 40,
+                                  width: 1,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                _buildBalanceItem(
+                                  "Expenses",
+                                  "Rs ${_totalExpenses.toStringAsFixed(0)}",
+                                  LucideIcons.arrowUp,
+                                  Colors.redAccent,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ),
+                
+                // Financial stats
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          "This Month",
+                          "Rs ${_currentMonthIncome.toStringAsFixed(0)}",
+                          Color(0xFFE8F5E9),
+                          LucideIcons.calendar,
+                          Color(0xFF4CAF50),
+                        ),
+                      ),
+                      SizedBox(width: 15),
+                      Expanded(
+                        child: _buildStatCard(
+                          "Pending",
+                          "Rs ${_pendingAmount.toStringAsFixed(0)}",
+                          Color(0xFFFFF3E0),
+                          LucideIcons.hourglass,
+                          Color(0xFFFF9800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Recent transactions heading
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 15, 20, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Recent Transactions",
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _refreshData,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isRefreshing)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color.fromRGBO(64, 124, 226, 1),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              _isRefreshing ? "Refreshing..." : "Refresh",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color.fromRGBO(64, 124, 226, 1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Transactions list
+                Expanded(
+                  child: _transactions.isEmpty && !_isLoading
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                LucideIcons.database,
+                                size: 50,
+                                color: Colors.grey.shade300,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                "No transactions found",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _transactions.length + (_hasMoreTransactions ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _transactions.length) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 30,
+                                    width: 30,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      color: Color.fromRGBO(64, 124, 226, 1),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return _buildTransactionCard(_transactions[index]);
+                          },
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          
+          // Bottom refresh indicator
+          if (_isRefreshing)
+            Positioned(
+              bottom: 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color.fromRGBO(64, 124, 226, 1),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        "Refreshing finances...",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildBalanceItem(String title, String amount, IconData icon, Color iconColor) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: 16,
-          ),
-        ),
-        SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: Colors.white.withOpacity(0.8),
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 16,
+                ),
               ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              amount,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+              SizedBox(width: 8),
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.9),
+                ),
               ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            amount,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String amount,
-    Color bgColor,
-    IconData icon,
-    Color iconColor,
-  ) {
+  Widget _buildStatCard(String title, String value, Color bgColor, IconData icon, Color iconColor) {
     return Container(
       padding: EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,29 +915,29 @@ class _FinancesScreenState extends State<FinancesScreen> {
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
               color: iconColor,
-              size: 20,
+              size: 18,
             ),
           ),
           SizedBox(height: 12),
           Text(
-            amount,
+            title,
             style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 14,
               color: Colors.black87,
             ),
           ),
           SizedBox(height: 4),
           Text(
-            title,
+            value,
             style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: Colors.black54,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
             ),
           ),
         ],
@@ -831,7 +1011,7 @@ class _FinancesScreenState extends State<FinancesScreen> {
           ),
           // Amount
           Text(
-            transaction.amount,
+            "Rs ${transaction.amount.toStringAsFixed(0)}",
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -848,7 +1028,7 @@ enum TransactionType { income, expense }
 
 class TransactionItem {
   final String title;
-  final String amount;
+  final double amount;
   final String date;
   final TransactionType type;
 
