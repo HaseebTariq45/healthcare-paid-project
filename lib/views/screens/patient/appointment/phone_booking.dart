@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PhoneBookingScreen extends StatelessWidget {
   const PhoneBookingScreen({Key? key}) : super(key: key);
@@ -445,7 +446,7 @@ class PhoneBookingScreen extends StatelessWidget {
   }
   
   Future<void> _makePhoneCall(BuildContext context, String phoneNumber) async {
-    // Show a dialog with the phone number instead of directly launching
+    // Show a dialog with the phone number
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -512,16 +513,22 @@ class PhoneBookingScreen extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Display copied message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Please use your phone dialer to call the number'),
-                  behavior: SnackBarBehavior.floating,
-                  duration: Duration(seconds: 3),
-                ),
-              );
+              // Launch phone dialer
+              final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+              if (await canLaunchUrl(phoneUri)) {
+                await launchUrl(phoneUri);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Could not launch phone dialer'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF3366CC),
