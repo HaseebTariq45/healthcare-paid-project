@@ -48,7 +48,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     6,
     (index) => TextEditingController(),
   );
-  
+
   // Main OTP controller for single input
   final TextEditingController _otpController = TextEditingController();
   
@@ -362,8 +362,8 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         child: SingleChildScrollView(
           physics: ClampingScrollPhysics(),
           child: SafeArea(
-            child: Column(
-              children: [
+          child: Column(
+            children: [
                 // Icon header
                 Container(
                   margin: EdgeInsets.only(top: 30, bottom: 30),
@@ -445,10 +445,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           child: TextField(
                             controller: _otpController,
                             focusNode: _otpFocusNode,
-                            keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.number,
                             maxLength: 6,
-                            decoration: InputDecoration(
-                              counterText: "",
+                        decoration: InputDecoration(
+                          counterText: "",
                             ),
                           ),
                         ),
@@ -511,12 +511,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                             ),
                                           )
                                         : null,
-                              ),
-                            );
-                          }),
-                        ),
                       ),
-                      
+                    );
+                  }),
+                ),
+              ),
+              
                       SizedBox(height: 24),
                       
                       // Error message
@@ -551,14 +551,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   ),
                                   SizedBox(width: 10),
                                   Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: GoogleFonts.poppins(
+                  child: Text(
+                    _errorMessage!,
+                    style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         color: Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ),
+                    ),
+                  ),
+                ),
                                 ],
                               ),
                             )
@@ -568,7 +568,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       SizedBox(height: 36),
                       
                       // Timer and resend button
-                      _start > 0
+              _start > 0
                           ? Container(
                               padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                               decoration: BoxDecoration(
@@ -589,18 +589,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    "Resend OTP in $formattedTime",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
+                    "Resend OTP in $formattedTime",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF3366CC),
                                     ),
                                   ),
                                 ],
-                              ),
-                            )
-                          : TextButton(
-                              onPressed: _isLoading ? null : _resendOTP,
+                    ),
+                  )
+                  : TextButton(
+                    onPressed: _isLoading ? null : _resendOTP,
                               style: TextButton.styleFrom(
                                 backgroundColor: Color(0xFFF0F7FF),
                                 padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
@@ -622,21 +622,21 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    "Resend OTP",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
+                      "Resend OTP",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                       color: Color(0xFF3366CC),
-                                    ),
+                      ),
                                   ),
                                 ],
-                              ),
-                            ),
+                    ),
+                  ),
                       
                       SizedBox(height: 36),
                       
-                      // Confirm OTP button
-                      Container(
+              // Confirm OTP button
+              Container(
                         width: double.infinity,
                         height: 56,
                         decoration: BoxDecoration(
@@ -729,9 +729,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                           letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ],
+                ),
+              ),
+            ],
                                   ),
                                 ),
                               ),

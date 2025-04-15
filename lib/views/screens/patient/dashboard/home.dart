@@ -1211,22 +1211,23 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                   ),
                                 );
                               },
-                              icon: Icon(Icons.calendar_today, size: 16),
+                              icon: Icon(Icons.calendar_today, size: 14),
                               label: Text(
                                 "Book Online",
                                 style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
                                 foregroundColor: Color(0xFF3366CC),
-                                padding: EdgeInsets.symmetric(vertical: 12),
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                minimumSize: Size(100, 36),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                elevation: 2,
+                                elevation: 1,
                                 shadowColor: Colors.black.withOpacity(0.1),
                               ),
                             ),
@@ -1242,22 +1243,23 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                   ),
                                 );
                               },
-                              icon: Icon(Icons.phone, size: 16),
+                              icon: Icon(Icons.phone, size: 14),
                               label: Text(
                                 "Book via Call",
                                 style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF204899),
                                 foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 12),
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                minimumSize: Size(100, 36),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                elevation: 2,
+                                elevation: 1,
                                 shadowColor: Color(0xFF3366CC).withOpacity(0.3),
                               ),
                             ),
@@ -1267,7 +1269,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       
                       // Complete Profile button (conditional)
                       if (profileStatus != "complete") ...[
-                        SizedBox(height: 12),
+                        SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -1279,20 +1281,21 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                 ),
                               );
                             },
-                            icon: Icon(Icons.person_add, size: 16),
+                            icon: Icon(Icons.person_add, size: 14),
                             label: Text(
                               "Complete Your Profile",
                               style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFF3366CC).withOpacity(0.15),
                               foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 12),
+                              padding: EdgeInsets.symmetric(vertical: 10),
+                              minimumSize: Size(100, 36),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               elevation: 0,
                             ),
@@ -1307,8 +1310,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           ),
           SizedBox(width: 16),
           Container(
-            height: 100,
-            width: 100,
+            height: 70,
+            width: 70,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),

@@ -166,7 +166,7 @@ class PhoneBookingScreen extends StatelessWidget {
                     _buildPhoneCard(
                       context,
                       "Main Helpline",
-                      "+92-300-1234567",
+                      "0300 1234567",
                       "For general booking inquiries",
                       Icons.headset_mic,
                     ),
@@ -177,7 +177,7 @@ class PhoneBookingScreen extends StatelessWidget {
                     _buildPhoneCard(
                       context,
                       "Priority Booking",
-                      "+92-300-7654321",
+                      "0300 7654321",
                       "For urgent appointments",
                       Icons.local_hospital,
                     ),
@@ -392,12 +392,12 @@ class PhoneBookingScreen extends StatelessWidget {
               icon: Icon(
                 Icons.phone,
                 color: Colors.white,
-                size: 16,
+                size: 14,
               ),
               label: Text(
                 "Call",
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: Colors.white,
                 ),
@@ -405,12 +405,13 @@ class PhoneBookingScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF3366CC),
                 foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                elevation: 2,
+                elevation: 1,
                 shadowColor: Color(0xFF3366CC).withOpacity(0.3),
+                minimumSize: Size(70, 32),
               ),
             ),
           ],
