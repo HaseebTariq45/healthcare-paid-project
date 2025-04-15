@@ -414,19 +414,23 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard> {
           ),
           SizedBox(height: 4),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 isPositive ? Icons.arrow_upward : Icons.arrow_downward,
                 color: isPositive ? Color(0xFF4CAF50) : Color(0xFFFF5722),
-                size: 16,
+                size: 12,
               ),
-              SizedBox(width: 4),
-              Text(
-                trend,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isPositive ? Color(0xFF4CAF50) : Color(0xFFFF5722),
+              SizedBox(width: 2),
+              Flexible(
+                child: Text(
+                  trend,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: isPositive ? Color(0xFF4CAF50) : Color(0xFFFF5722),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

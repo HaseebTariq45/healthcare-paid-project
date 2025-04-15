@@ -368,34 +368,40 @@ class _AdminHomeState extends State<AdminHome> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.attach_money,
-                              color: Color(0xFF4CAF50),
-                              size: 24,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Revenue',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.attach_money,
+                                color: Color(0xFF4CAF50),
+                                size: 20,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Revenue',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(height: 12),
                         Text(
                           _isLoading 
                               ? '-' 
                               : _dashboardStats['revenueFormatted'] ?? 'Rs 0.00',
                           style: GoogleFonts.poppins(
-                            fontSize: 24,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF4CAF50),
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 8),
                         Text(
@@ -428,37 +434,43 @@ class _AdminHomeState extends State<AdminHome> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.event_note,
-                              color: Color(0xFF3366CC),
-                              size: 24,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Appointment Status',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.event_note,
+                                color: Color(0xFF3366CC),
+                                size: 20,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Appointment Status',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        Column(
                           children: [
-                            _buildStatusCounter('Confirmed', 
+                            _buildStatusCounterRow('Confirmed', 
                               _isLoading ? 0 : _dashboardStats['confirmedAppointments'] ?? 0, 
                               Color(0xFF3366CC)
                             ),
-                            _buildStatusCounter('Completed', 
+                            SizedBox(height: 8),
+                            _buildStatusCounterRow('Completed', 
                               _isLoading ? 0 : _dashboardStats['completedAppointments'] ?? 0, 
                               Color(0xFF4CAF50)
                             ),
-                            _buildStatusCounter('Cancelled', 
+                            SizedBox(height: 8),
+                            _buildStatusCounterRow('Cancelled', 
                               _isLoading ? 0 : _dashboardStats['cancelledAppointments'] ?? 0, 
                               Color(0xFFFF5722)
                             ),
@@ -632,22 +644,62 @@ class _AdminHomeState extends State<AdminHome> {
   }
   
   Widget _buildStatusCounter(String label, int count, Color color) {
-    return Column(
+    // This method is no longer used, but we'll keep it for backward compatibility
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                count.toString(),
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+            SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildStatusCounterRow(String label, int count, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Flexible(
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        SizedBox(width: 4),
         Text(
           count.toString(),
           style: GoogleFonts.poppins(
-            fontSize: 20,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: color,
-          ),
-        ),
-        SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.grey.shade600,
           ),
         ),
       ],
@@ -658,58 +710,59 @@ class _AdminHomeState extends State<AdminHome> {
     return Column(
       children: [
         Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-              padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-                size: 16,
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 14,
               ),
             ),
-            SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                      fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+            SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
                   SizedBox(height: 2),
-                Text(
-                  description,
-                  style: GoogleFonts.poppins(
-                      fontSize: 12,
+                  Text(
+                    description,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
                       color: Colors.grey.shade600,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                  ),
-                ),
-            SizedBox(width: 8),
-                Text(
-                  time,
-                  style: GoogleFonts.poppins(
-                fontSize: 10,
-                color: Colors.grey.shade500,
-                  ),
-                ),
-              ],
+              ),
             ),
+            SizedBox(width: 4),
+            Text(
+              time,
+              style: GoogleFonts.poppins(
+                fontSize: 9,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
         Divider(height: 24),
-        ],
+      ],
     );
   }
 } 

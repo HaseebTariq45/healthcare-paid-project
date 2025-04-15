@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:healthcare/services/admin_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AppointmentManagement extends StatefulWidget {
   const AppointmentManagement({Key? key}) : super(key: key);
@@ -23,40 +25,116 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
   final AdminService _adminService = AdminService();
   List<Map<String, dynamic>> _appointments = [];
   bool _isLoading = true;
+  bool _isRefreshing = false;
   String? _errorMessage;
+  StreamSubscription? _appointmentSubscription;
   
   @override
   void initState() {
     super.initState();
     _loadAppointments();
+    _setupAppointmentListener();
   }
   
   @override
   void dispose() {
     _searchController.dispose();
+    _appointmentSubscription?.cancel();
     super.dispose();
+  }
+  
+  // Set up real-time appointment updates
+  void _setupAppointmentListener() {
+    try {
+      final stream = FirebaseFirestore.instance
+          .collection('appointments')
+          .orderBy('appointmentDate', descending: true)
+          .limit(100)
+          .snapshots();
+          
+      _appointmentSubscription = stream.listen(
+        (snapshot) {
+          if (!mounted) return;
+          
+          // Only refresh if we're not already loading
+          if (!_isLoading) {
+            _loadAppointments();
+          }
+        },
+        onError: (error) {
+          debugPrint('Error in appointment listener: $error');
+        },
+      );
+    } catch (e) {
+      debugPrint('Error setting up appointment listener: $e');
+    }
   }
   
   // Load appointments from AdminService
   Future<void> _loadAppointments() async {
+    if (_isRefreshing) return;
+    
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
     
     try {
+      debugPrint('📅 Starting to load appointments from Firestore...');
       final appointments = await _adminService.getAllAppointments();
+      debugPrint('📅 Successfully loaded ${appointments.length} appointments');
       
-      setState(() {
-        _appointments = appointments;
-        _isLoading = false;
-      });
+      if (appointments.isNotEmpty) {
+        debugPrint('Sample appointment: ${appointments.first}');
+      }
+      
+      if (mounted) {
+        setState(() {
+          _appointments = appointments;
+          _isLoading = false;
+          _isRefreshing = false;
+        });
+      }
     } catch (e) {
-      debugPrint('Error loading appointments: $e');
-      setState(() {
-        _errorMessage = 'Failed to load appointments: ${e.toString()}';
-        _isLoading = false;
-      });
+      debugPrint('❌ Error loading appointments: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load appointments: ${e.toString()}';
+          _isLoading = false;
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
+  
+  // Refresh appointments
+  Future<void> _refreshAppointments() async {
+    if (_isRefreshing) return;
+    
+    setState(() {
+      _isRefreshing = true;
+    });
+    
+    try {
+      // Clear cache to force fresh data
+      _adminService.clearAllCaches();
+      await _loadAppointments();
+    } catch (e) {
+      debugPrint('Error refreshing appointments: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error refreshing appointments: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
     }
   }
   
@@ -180,31 +258,44 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
+          if (_isRefreshing)
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3366CC)),
+                ),
+              ),
+            ),
           IconButton(
             icon: Icon(Icons.refresh),
-            onPressed: _loadAppointments,
+            onPressed: _refreshAppointments,
             tooltip: 'Refresh',
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search and filters section
+          // Redesigned Search and filters section
           Container(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(12, 8, 12, 8),
             color: Colors.white,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Search bar
+                // More compact search bar
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Search appointments...',
-                    prefixIcon: Icon(Icons.search),
+                    hintStyle: GoogleFonts.poppins(fontSize: 13),
+                    prefixIcon: Icon(Icons.search, size: 20),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear),
+                            icon: Icon(Icons.clear, size: 18),
                             onPressed: () {
                               setState(() {
                                 _searchController.clear();
@@ -214,21 +305,23 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                           )
                         : null,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Color(0xFF3366CC)),
                     ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    isDense: true,
                     filled: true,
                     fillColor: Colors.white,
                   ),
+                  style: GoogleFonts.poppins(fontSize: 14),
                   onChanged: (value) {
                     setState(() {
                       _searchQuery = value;
@@ -236,55 +329,95 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                   },
                 ),
                 
-                SizedBox(height: 16),
+                SizedBox(height: 8),
                 
-                // Filters
-                Text(
-                  'Filters',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                
-                SizedBox(height: 12),
-                
-                // Filter chips
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                // Compact filter controls row
+                Row(
                   children: [
-                    // Status filter
-                    _buildFilterDropdown(
-                      label: 'Status',
-                      value: _selectedStatusFilter,
-                      items: ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedStatusFilter = value;
-                          });
-                        }
-                      },
+                    // Compact title & reset
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        children: [
+                          Icon(Icons.filter_list, size: 16, color: Color(0xFF3366CC)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Filters:',
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _searchController.clear();
+                                _searchQuery = '';
+                                _selectedStatusFilter = 'All';
+                                _selectedDoctorFilter = 'All Doctors';
+                                _selectedDateRange = null;
+                              });
+                            },
+                            child: Text(
+                              'Reset',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF3366CC),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     
-                    // Doctor filter
-                    _buildFilterDropdown(
-                      label: 'Doctor',
-                      value: _selectedDoctorFilter,
-                      items: _doctorsList,
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedDoctorFilter = value;
-                          });
-                        }
-                      },
+                    // Compact filters in a row
+                    Expanded(
+                      flex: 5,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            // Status filter - compact
+                            _buildCompactFilterDropdown(
+                              label: 'Status',
+                              value: _selectedStatusFilter,
+                              items: ['All', 'Pending', 'Confirmed', 'Completed', 'Cancelled'],
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _selectedStatusFilter = value;
+                                  });
+                                }
+                              },
+                            ),
+                            
+                            SizedBox(width: 8),
+                            
+                            // Doctor filter - compact
+                            _buildCompactFilterDropdown(
+                              label: 'Doctor',
+                              value: _selectedDoctorFilter,
+                              items: _doctorsList,
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _selectedDoctorFilter = value;
+                                  });
+                                }
+                              },
+                            ),
+                            
+                            SizedBox(width: 8),
+                            
+                            // Date range filter - compact
+                            _buildCompactDateRangeFilter(),
+                          ],
+                        ),
+                      ),
                     ),
-                    
-                    // Date range filter
-                    _buildDateRangeFilter(),
                   ],
                 ),
               ],
@@ -420,7 +553,7 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
     );
   }
   
-  Widget _buildFilterDropdown({
+  Widget _buildCompactFilterDropdown({
     required String label,
     required String value,
     required List<String> items,
@@ -428,27 +561,30 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$label: ',
+            '$label:',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 12,
               color: Colors.grey.shade700,
             ),
           ),
+          SizedBox(width: 2),
           DropdownButton<String>(
             value: value,
-            icon: Icon(Icons.arrow_drop_down, size: 18),
+            icon: Icon(Icons.arrow_drop_down, size: 16),
+            iconSize: 16,
             underline: SizedBox(),
+            isDense: true,
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
               color: Colors.black87,
             ),
@@ -456,7 +592,10 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
             items: items.map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
                 value: value,
-                child: Text(value),
+                child: Text(
+                  value,
+                  style: GoogleFonts.poppins(fontSize: 12),
+                ),
               );
             }).toList(),
           ),
@@ -465,10 +604,10 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
     );
   }
   
-  Widget _buildDateRangeFilter() {
+  Widget _buildCompactDateRangeFilter() {
     final String displayText = _selectedDateRange != null
-        ? '${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}'
-        : 'Select Date Range';
+        ? '${DateFormat('MM/dd').format(_selectedDateRange!.start)} - ${DateFormat('MM/dd').format(_selectedDateRange!.end)}'
+        : 'Date Range';
     
     return InkWell(
       onTap: () async {
@@ -500,30 +639,30 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.date_range,
-              size: 18,
+              size: 14,
               color: Color(0xFF3366CC),
             ),
-            SizedBox(width: 8),
+            SizedBox(width: 4),
             Text(
               displayText,
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: Colors.black87,
               ),
             ),
             if (_selectedDateRange != null) ...[
-              SizedBox(width: 8),
+              SizedBox(width: 4),
               InkWell(
                 onTap: () {
                   setState(() {
@@ -532,7 +671,7 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                 },
                 child: Icon(
                   Icons.close,
-                  size: 16,
+                  size: 14,
                   color: Colors.grey.shade600,
                 ),
               ),

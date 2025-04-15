@@ -259,103 +259,159 @@ class AdminService {
   // Get all appointments
   Future<List<Map<String, dynamic>>> getAllAppointments() async {
     try {
+      debugPrint('🔍 Starting getAllAppointments...');
+      
       // Return cached data if available and not expired
       if (_appointmentsCache != null && _isCacheValid(_lastAppointmentsFetchTime)) {
+        debugPrint('📦 Returning cached appointments: ${_appointmentsCache!.length} items');
         return _appointmentsCache!;
       }
       
-      final snapshot = await _firestore.collection('appointments')
-          .orderBy('appointmentDate', descending: true)
-          .limit(100) // Limit to prevent loading too many
-          .get();
+      debugPrint('🔄 Cache invalid or empty, fetching from Firestore...');
+      
+      // Query appointments with fallback date fields
+      QuerySnapshot<Map<String, dynamic>> snapshot;
+      try {
+        snapshot = await _firestore.collection('appointments')
+            .orderBy('appointmentDate', descending: true)
+            .limit(100)
+            .get();
+            
+        if (snapshot.docs.isEmpty) {
+          debugPrint('⚠️ No appointments found with appointmentDate, trying date field...');
+          snapshot = await _firestore.collection('appointments')
+              .orderBy('date', descending: true)
+              .limit(100)
+              .get();
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error with ordered query: $e');
+        debugPrint('🔄 Falling back to unordered query...');
+        snapshot = await _firestore.collection('appointments').limit(100).get();
+      }
+      
+      debugPrint('📊 Found ${snapshot.docs.length} appointments in Firestore');
+      
+      if (snapshot.docs.isEmpty) {
+        debugPrint('❌ No appointments found in database');
+        return [];
+      }
+      
+      // Sample the first document to debug data structure
+      if (snapshot.docs.isNotEmpty) {
+        final sampleData = snapshot.docs.first.data();
+        debugPrint('📝 Sample appointment data structure:');
+        sampleData.forEach((key, value) {
+          debugPrint('   $key: $value (${value?.runtimeType})');
+        });
+      }
       
       final appointments = await Future.wait(snapshot.docs.map((doc) async {
-        final data = doc.data();
-        
-        // Get doctor details
-        String doctorName = "Unknown Doctor";
-        String specialty = "Unknown";
-        if (data['doctorId'] != null) {
-          final doctorDoc = await _firestore.collection('users')
-              .doc(data['doctorId'])
-              .get();
+        try {
+          final data = doc.data();
+          debugPrint('Processing appointment ${doc.id}...');
           
-          if (doctorDoc.exists) {
-            final doctorData = doctorDoc.data();
-            doctorName = doctorData?['fullName'] ?? "Unknown Doctor";
-            specialty = doctorData?['specialty'] ?? "Unknown";
+          // Get doctor details
+          String doctorName = "Unknown Doctor";
+          String specialty = "Unknown";
+          if (data['doctorId'] != null) {
+            final doctorDoc = await _firestore.collection('users')
+                .doc(data['doctorId'])
+                .get();
+            
+            if (doctorDoc.exists) {
+              final doctorData = doctorDoc.data();
+              doctorName = doctorData?['fullName'] ?? doctorData?['name'] ?? "Unknown Doctor";
+              specialty = doctorData?['specialty'] ?? "Unknown";
+            }
           }
-        }
-        
-        // Get patient details
-        String patientName = "Unknown Patient";
-        if (data['patientId'] != null) {
-          final patientDoc = await _firestore.collection('users')
-              .doc(data['patientId'])
-              .get();
           
-          if (patientDoc.exists) {
-            final patientData = patientDoc.data();
-            patientName = patientData?['fullName'] ?? "Unknown Patient";
+          // Get patient details
+          String patientName = "Unknown Patient";
+          if (data['patientId'] != null) {
+            final patientDoc = await _firestore.collection('users')
+                .doc(data['patientId'])
+                .get();
+            
+            if (patientDoc.exists) {
+              final patientData = patientDoc.data();
+              patientName = patientData?['fullName'] ?? patientData?['name'] ?? "Unknown Patient";
+            }
           }
-        }
-        
-        // Format date
-        DateTime appointmentDate;
-        if (data['appointmentDate'] != null) {
-          appointmentDate = (data['appointmentDate'] as Timestamp).toDate();
-        } else if (data['date'] != null && data['date'] is Timestamp) {
-          appointmentDate = (data['date'] as Timestamp).toDate();
-        } else {
-          appointmentDate = DateTime.now();
-        }
-        
-        String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
-        String formattedTime = data['time'] ?? 
+          
+          // Format date with fallbacks
+          DateTime appointmentDate;
+          try {
+            if (data['appointmentDate'] != null) {
+              appointmentDate = (data['appointmentDate'] as Timestamp).toDate();
+            } else if (data['date'] != null) {
+              if (data['date'] is Timestamp) {
+                appointmentDate = (data['date'] as Timestamp).toDate();
+              } else if (data['date'] is String) {
+                appointmentDate = DateTime.parse(data['date'] as String);
+              } else {
+                appointmentDate = DateTime.now();
+              }
+            } else {
+              appointmentDate = DateTime.now();
+            }
+          } catch (e) {
+            debugPrint('⚠️ Error parsing date for appointment ${doc.id}: $e');
+            appointmentDate = DateTime.now();
+          }
+          
+          String formattedDate = "${appointmentDate.day}/${appointmentDate.month}/${appointmentDate.year}";
+          String formattedTime = data['time'] ?? 
                              "${appointmentDate.hour}:${appointmentDate.minute.toString().padLeft(2, '0')}";
-        
-        // Determine status
-        String status = data['status'] ?? 'pending';
-        status = status.toLowerCase();
-        if (status == 'pending' || status == 'confirmed') {
-          // Check if the appointment has already passed
-          if (_isAppointmentPast(appointmentDate, formattedTime)) {
-            status = 'completed'; // Automatically mark as completed if past
+          
+          // Determine status
+          String status = data['status']?.toString().toLowerCase() ?? 'pending';
+          if (status == 'pending' || status == 'confirmed') {
+            if (_isAppointmentPast(appointmentDate, formattedTime)) {
+              status = 'completed';
+            }
           }
+          
+          String displayStatus = status.substring(0, 1).toUpperCase() + status.substring(1);
+          
+          return {
+            'id': doc.id,
+            'patientId': data['patientId'],
+            'doctorId': data['doctorId'],
+            'patientName': patientName,
+            'doctorName': doctorName,
+            'specialty': specialty,
+            'date': formattedDate,
+            'time': formattedTime,
+            'hospital': data['hospitalName'] ?? data['hospital'] ?? "Unknown Hospital",
+            'reason': data['reason'] ?? data['notes'] ?? 'Consultation',
+            'status': displayStatus,
+            'statusRaw': status,
+            'amount': data['fee'] ?? 0,
+            'type': 'In-Person Visit',
+            'displayAmount': data['fee'] != null ? "Rs ${data['fee']}" : "Free",
+            'actualDate': appointmentDate,
+            'paymentStatus': data['paymentStatus'] ?? 'pending',
+            'created': data['created'],
+          };
+        } catch (e) {
+          debugPrint('❌ Error processing appointment ${doc.id}: $e');
+          return null;
         }
-        
-        // Capitalize first letter for display
-        String displayStatus = status.substring(0, 1).toUpperCase() + status.substring(1);
-        
-        return {
-          'id': doc.id,
-          'patientId': data['patientId'],
-          'doctorId': data['doctorId'],
-          'patientName': patientName,
-          'doctorName': doctorName,
-          'specialty': specialty,
-          'date': formattedDate,
-          'time': formattedTime,
-          'hospital': data['hospitalName'] ?? "Unknown Hospital",
-          'reason': data['reason'] ?? data['notes'] ?? 'Consultation',
-          'status': displayStatus,
-          'statusRaw': status,
-          'amount': data['fee'] ?? 0,
-          'displayAmount': data['fee'] != null ? "Rs ${data['fee']}" : "Free",
-          'type': data['isPanelConsultation'] == true ? 'In-Person Visit' : 'Video Consultation',
-          'actualDate': appointmentDate,
-          'paymentStatus': data['paymentStatus'] ?? 'pending',
-          'created': data['created'],
-        };
       }));
       
+      // Filter out any null appointments from errors
+      final validAppointments = appointments.where((a) => a != null).cast<Map<String, dynamic>>().toList();
+      
+      debugPrint('✅ Successfully processed ${validAppointments.length} appointments');
+      
       // Update cache
-      _appointmentsCache = appointments;
+      _appointmentsCache = validAppointments;
       _lastAppointmentsFetchTime = DateTime.now();
       
-      return appointments;
+      return validAppointments;
     } catch (e) {
-      debugPrint('Error fetching appointments: $e');
+      debugPrint('❌ Error in getAllAppointments: $e');
       return [];
     }
   }

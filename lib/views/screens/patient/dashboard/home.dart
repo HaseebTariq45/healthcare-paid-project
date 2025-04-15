@@ -646,7 +646,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 'paymentStatus': appointmentData['paymentStatus'] ?? 'pending',
                 'paymentMethod': appointmentData['paymentMethod'] ?? 'Not specified',
                 'isPanelConsultation': appointmentData['isPanelConsultation'] ?? false,
-                'type': appointmentData['isPanelConsultation'] ? 'In-Person Visit' : 'Regular Consultation',
+                'type': 'In-Person Visit',
               });
             }
           }
