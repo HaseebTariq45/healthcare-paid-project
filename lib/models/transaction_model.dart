@@ -140,24 +140,30 @@ class FinancialTransaction {
 
   /// Create a FinancialTransaction from a Map (can be used with Firestore or local data)
   factory FinancialTransaction.fromMap(String id, Map<String, dynamic> data) {
+    // Handle date field - could be DateTime, Timestamp, or String
+    DateTime parseDate(dynamic dateField) {
+      if (dateField is DateTime) {
+        return dateField;
+      } else if (dateField is Timestamp) {
+        return dateField.toDate();
+      } else if (dateField is String) {
+        return DateTime.tryParse(dateField) ?? DateTime.now();
+      }
+      return DateTime.now();
+    }
+    
     return FinancialTransaction(
       id: id,
       userId: data['userId'] ?? '',
       title: data['title'] ?? '',
       description: data['description'] ?? '',
       amount: (data['amount'] ?? 0).toDouble(),
-      date: data['date'] is DateTime 
-          ? data['date'] 
-          : DateTime.tryParse(data['date'] ?? '') ?? DateTime.now(),
+      date: parseDate(data['date']),
       type: _typeFromString(data['type'] ?? 'payment'),
       status: _statusFromString(data['status'] ?? 'pending'),
       metadata: data['metadata'],
-      createdAt: data['createdAt'] is DateTime 
-          ? data['createdAt'] 
-          : DateTime.tryParse(data['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt: data['updatedAt'] is DateTime 
-          ? data['updatedAt'] 
-          : DateTime.tryParse(data['updatedAt'] ?? '') ?? DateTime.now(),
+      createdAt: parseDate(data['createdAt']),
+      updatedAt: parseDate(data['updatedAt']),
     );
   }
   

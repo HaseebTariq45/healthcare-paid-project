@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/services/financial_repository.dart';
 import 'package:healthcare/models/transaction_model.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class FinancialAnalyticsScreen extends StatefulWidget {
@@ -18,8 +19,11 @@ class FinancialAnalyticsScreen extends StatefulWidget {
 class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   
-  // Financial repository
-  final FinancialRepository _financialRepository = FinancialRepository();
+  // Firebase Auth
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Financial repository - override for doctor
+  late final FinancialRepository _financialRepository;
   
   // Financial data
   bool _isLoading = true;
@@ -37,8 +41,9 @@ class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> wit
   double _averageMonthlyIncome = 0;
   double _growthRate = 0;
   int _mostProfitableMonth = 0;
-  String _mostProfitableCategory = 'Unknown';
+  String _mostProfitableCategory = '';
   double _projectedAnnualIncome = 0;
+  bool _hasFinancialData = false;
   
   @override
   void initState() {
@@ -47,6 +52,12 @@ class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> wit
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     )..forward();
+    
+    // Initialize with custom doctor query handler
+    _financialRepository = FinancialRepository(
+      doctorMode: true, // Signal this is for doctor's view
+      currentUserId: _auth.currentUser?.uid ?? '', // Pass the doctor's ID
+    );
     
     _loadFinancialData();
   }
@@ -86,8 +97,13 @@ class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> wit
       final pendingTransactions = await _financialRepository.getPendingTransactions().first;
       final pendingAmount = pendingTransactions.fold(0.0, (sum, transaction) => sum + transaction.amount);
       
-      // Calculate financial insights
-      _analyzeFinancialData(monthlyData, summary, pendingAmount);
+      // Check if there's actual financial data
+      bool hasData = (summary['income'] ?? 0) > 0 || recentTransactions.isNotEmpty;
+      
+      // Calculate financial insights only if we have data
+      if (hasData) {
+        _analyzeFinancialData(monthlyData, summary, pendingAmount);
+      }
       
       if (mounted) {
         setState(() {
@@ -99,6 +115,7 @@ class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> wit
           };
           _monthlyData = monthlyData;
           _recentTransactions = recentTransactions;
+          _hasFinancialData = hasData;
           _isLoading = false;
         });
       }
@@ -107,6 +124,7 @@ class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> wit
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasFinancialData = false;
         });
       }
     }
@@ -190,60 +208,123 @@ class _FinancialAnalyticsScreenState extends State<FinancialAnalyticsScreen> wit
       _projectedAnnualIncome = _averageMonthlyIncome * 12 * (growthFactor > 0 ? growthFactor : 1);
     }
     
-    // Determine most profitable category (in a real app, you'd have transaction categories)
-    _mostProfitableCategory = "Consultations";
+    // Determine most profitable category from transactions if available
+    if (_recentTransactions.isNotEmpty) {
+      // This is a placeholder. In a real implementation, you would analyze
+      // transaction categories to determine the most profitable one
+      _mostProfitableCategory = "Consultations";
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          "Financial Analytics",
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            "Financial Analytics",
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      backgroundColor: Colors.white,
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadFinancialData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader("Financial Summary"),
-                    const SizedBox(height: 20),
-                    _buildFinanceCards(),
-                    const SizedBox(height: 25),
-                    _buildInsightsCard(),
-                    const SizedBox(height: 25),
-                    _buildSectionHeader("Earnings Breakdown"),
-                    const SizedBox(height: 20),
-                    _buildEarningsChart(),
-                    const SizedBox(height: 25),
-                    _buildSectionHeader("Growth Analysis"),
-                    const SizedBox(height: 20),
-                    _buildGrowthAnalysisCard(),
-                  ],
+        backgroundColor: Colors.white,
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadFinancialData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+                  child: !_hasFinancialData 
+                    ? _buildNoDataView()
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader("Financial Summary"),
+                        const SizedBox(height: 20),
+                        _buildFinanceCards(),
+                        const SizedBox(height: 25),
+                        _buildInsightsCard(),
+                        const SizedBox(height: 25),
+                        _buildSectionHeader("Earnings Breakdown"),
+                        const SizedBox(height: 20),
+                        _buildEarningsChart(),
+                        const SizedBox(height: 25),
+                        _buildSectionHeader("Growth Analysis"),
+                        const SizedBox(height: 20),
+                        _buildGrowthAnalysisCard(),
+                      ],
+                    ),
                 ),
               ),
+      ),
+    );
+  }
+  
+  Widget _buildNoDataView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 60),
+            Icon(
+              Icons.analytics_outlined,
+              size: 80,
+              color: Colors.grey.shade400,
             ),
+            const SizedBox(height: 20),
+            Text(
+              "No Financial Data Available",
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Your financial analytics will appear here once you start receiving payments.",
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: _loadFinancialData,
+              icon: Icon(Icons.refresh),
+              label: Text("Refresh"),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

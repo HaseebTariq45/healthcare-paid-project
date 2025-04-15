@@ -6,6 +6,8 @@ import '../models/transaction_model.dart';
 class FinancialRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+  final bool _doctorMode; // Flag to indicate if we're in doctor mode
+  final String? _currentUserId; // Optional override for user ID
 
   /// Collection reference to financial transactions
   final CollectionReference _transactionsCollection;
@@ -14,13 +16,22 @@ class FinancialRepository {
   FinancialRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    bool doctorMode = false, // Default to false for backward compatibility
+    String? currentUserId,
   }) : 
     _firestore = firestore ?? FirebaseFirestore.instance,
     _auth = auth ?? FirebaseAuth.instance,
+    _doctorMode = doctorMode,
+    _currentUserId = currentUserId,
     _transactionsCollection = (firestore ?? FirebaseFirestore.instance).collection('transactions');
 
   /// Get the current user ID or throw an error if not authenticated
   String _getCurrentUserId() {
+    // Use provided ID if available
+    if (_currentUserId != null && _currentUserId!.isNotEmpty) {
+      return _currentUserId!;
+    }
+    
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('User not authenticated');
@@ -38,7 +49,10 @@ class FinancialRepository {
   }) {
     try {
       final userId = _getCurrentUserId();
-      Query query = _transactionsCollection.where('userId', isEqualTo: userId);
+      
+      // Use doctorId or userId based on mode
+      String fieldName = _doctorMode ? 'doctorId' : 'userId';
+      Query query = _transactionsCollection.where(fieldName, isEqualTo: userId);
       
       if (type != null) {
         query = query.where('type', isEqualTo: type.value);
@@ -91,7 +105,9 @@ class FinancialRepository {
     try {
       final userId = _getCurrentUserId();
       
-      Query query = _transactionsCollection.where('userId', isEqualTo: userId);
+      // Use doctorId or userId based on mode
+      String fieldName = _doctorMode ? 'doctorId' : 'userId';
+      Query query = _transactionsCollection.where(fieldName, isEqualTo: userId);
       
       // Add date range filters if provided
       if (startDate != null) {
@@ -110,15 +126,22 @@ class FinancialRepository {
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final type = data['type'] as String;
-        final amountValue = data['amountValue'] as int;
+        
+        // Get the amount - check both amountValue and amount fields
+        num amount = 0;
+        if (data.containsKey('amountValue')) {
+          amount = data['amountValue'] as num;
+        } else if (data.containsKey('amount')) {
+          amount = data['amount'] as num;
+        }
         
         if (type == TransactionType.income.value || type == TransactionType.payment.value) {
-          totalIncome += amountValue;
+          totalIncome += amount;
         } else if (type == TransactionType.expense.value) {
-          totalExpense += amountValue;
+          totalExpense += amount;
         } else if (type == TransactionType.refund.value) {
           // Refunds are typically a credit (positive) to the user
-          totalIncome += amountValue;
+          totalIncome += amount;
         }
       }
       
@@ -128,6 +151,7 @@ class FinancialRepository {
         'balance': totalIncome - totalExpense,
       };
     } catch (e) {
+      print('Error getting financial summary: $e');
       return {
         'income': 0,
         'expense': 0,
@@ -149,8 +173,11 @@ class FinancialRepository {
       final startDate = DateTime(currentYear, 1, 1);
       final endDate = DateTime(currentYear, 12, 31, 23, 59, 59);
       
+      // Use doctorId or userId based on mode
+      String fieldName = _doctorMode ? 'doctorId' : 'userId';
+      
       final snapshot = await _transactionsCollection
-        .where('userId', isEqualTo: userId)
+        .where(fieldName, isEqualTo: userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
         .get();
@@ -170,19 +197,27 @@ class FinancialRepository {
         final date = (data['date'] as Timestamp).toDate();
         final month = date.month - 1; // 0-indexed
         final type = data['type'] as String;
-        final amountValue = data['amountValue'] as int;
+        
+        // Get the amount - check both amountValue and amount fields
+        num amount = 0;
+        if (data.containsKey('amountValue')) {
+          amount = data['amountValue'] as num;
+        } else if (data.containsKey('amount')) {
+          amount = data['amount'] as num;
+        }
         
         if (type == TransactionType.income.value || type == TransactionType.payment.value) {
-          monthlyTotals[month]['income'] += amountValue;
+          monthlyTotals[month]['income'] += amount;
         } else if (type == TransactionType.expense.value) {
-          monthlyTotals[month]['expense'] += amountValue;
+          monthlyTotals[month]['expense'] += amount;
         } else if (type == TransactionType.refund.value) {
-          monthlyTotals[month]['income'] += amountValue;
+          monthlyTotals[month]['income'] += amount;
         }
       }
       
       return monthlyTotals;
     } catch (e) {
+      print('Error getting monthly data: $e');
       // Return empty data in case of error
       return List.generate(12, (index) {
         return {
@@ -233,8 +268,11 @@ class FinancialRepository {
     try {
       final userId = _getCurrentUserId();
       
+      // Use doctorId or userId based on mode
+      String fieldName = _doctorMode ? 'doctorId' : 'userId';
+      
       return _transactionsCollection
-        .where('userId', isEqualTo: userId)
+        .where(fieldName, isEqualTo: userId)
         .where('status', isEqualTo: TransactionStatus.pending.value)
         .orderBy('date', descending: true)
         .snapshots()
@@ -244,6 +282,7 @@ class FinancialRepository {
             .toList();
         });
     } catch (e) {
+      print('Error getting pending transactions: $e');
       return Stream.value([]);
     }
   }
