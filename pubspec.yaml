@@ -51,7 +51,7 @@ dependencies:
   
   # Optional but useful
   http: ^1.1.0  # For API requests
-  shared_preferences: ^2.2.0  # For local storage
+  shared_preferences: ^2.5.3  # For local storage
   flutter_svg: ^2.0.7  # For SVG support
   
   # Firebase

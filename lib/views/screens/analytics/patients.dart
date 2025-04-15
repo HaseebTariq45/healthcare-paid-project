@@ -7,6 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:healthcare/services/doctor_profile_service.dart';
 import 'package:healthcare/views/screens/doctor/availability/hospital_selection_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:healthcare/views/screens/bottom_navigation_bar.dart';
 
 class PatientsScreen extends StatefulWidget {
   const PatientsScreen({super.key});
@@ -20,7 +23,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   
-  // Firestore instance
+  // Firebase instances
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DoctorProfileService _doctorProfileService = DoctorProfileService();
@@ -28,6 +31,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   // Patient data state
   List<Map<String, dynamic>> _patients = [];
   bool _isLoading = true;
+  bool _isRefreshing = false;
   String? _errorMessage;
   
   // Doctor earnings data
@@ -39,6 +43,10 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   bool _hasMoreData = true;
   bool _isLoadingMore = false;
   final int _patientsPerPage = 3;
+
+  // Cache key
+  static const String _patientsCacheKey = 'patients_data_cache';
+  static const Duration _cacheValidDuration = Duration(hours: 12);
 
   List<String> selectedFilters = [];
   int _selectedSortIndex = 0;
@@ -62,18 +70,13 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
         _hasMoreData = true;
         _patients.clear();
       });
-      _fetchPatientData();
+      _loadPatientsWithCache();
     });
     
-    // Load earnings immediately
-    _loadDoctorEarnings();
-    
-    // Fetch data when screen initializes
+    // Load data with caching strategy when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('Post frame callback running');
-      _fetchPatientData();
-      // Call earnings again to ensure it runs
-      _loadDoctorEarnings();
+      debugPrint('Post frame callback running - STARTING LOAD');
+      _loadPatientsWithCache();
     });
   }
   
@@ -83,24 +86,175 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     _searchController.dispose();
     super.dispose();
   }
-  
-  // Fetch initial patient data from Firestore
-  Future<void> _fetchPatientData() async {
+
+  // Main method to load patients data with caching strategy
+  Future<void> _loadPatientsWithCache() async {
     if (!mounted) return;
+    
+    debugPrint('🚀 Started _loadPatientsWithCache');
+    _debugPrintState('before-load');
     
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      // Reset pagination when doing a fresh fetch
+    });
+
+    // First try to load from cache
+    bool hasCachedData = await _loadFromCache();
+    
+    // Then start background refresh regardless of cache status
+    if (mounted) {
+      debugPrint('🔄 Starting background refresh');
+      _refreshDataInBackground();
+    }
+    
+    // If no cached data, keep loading state until the background refresh completes
+    if (!hasCachedData && mounted) {
+      debugPrint('⏳ No cache, showing loading state until fresh data arrives');
+      setState(() {
+        _isLoading = true;
+      });
+    } else {
+      debugPrint('📦 Using cached data while refreshing in background');
+    }
+    
+    _debugPrintState('after-load-setup');
+  }
+  
+  // Save data to cache
+  Future<void> _saveToCache() async {
+    try {
+      if (_patients.isEmpty) {
+        debugPrint('⚠️ CACHE: Not saving cache because patients list is empty');
+        return;
+      }
+      
+      final Map<String, dynamic> earningSummary = {
+        'totalEarnings': _totalEarnings,
+        'totalAppointments': _totalAppointments,
+      };
+      
+      final Map<String, dynamic> cacheData = {
+        'lastUpdated': DateTime.now().toIso8601String(),
+        'earningSummary': earningSummary,
+        'patients': _patients,
+      };
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_patientsCacheKey, json.encode(cacheData));
+      
+      debugPrint('✅ CACHE: Successfully saved ${_patients.length} patients to cache');
+    } catch (e) {
+      debugPrint('❌ CACHE ERROR: Error saving to cache: $e');
+    }
+  }
+  
+  // Load data from cache
+  Future<bool> _loadFromCache() async {
+    try {
+      debugPrint('🔍 CACHE: Attempting to load data from cache...');
+      final prefs = await SharedPreferences.getInstance();
+      final String? cachedData = prefs.getString(_patientsCacheKey);
+      
+      if (cachedData != null) {
+        debugPrint('📦 CACHE: Found cached data, parsing...');
+        final Map<String, dynamic> cached = json.decode(cachedData);
+        final DateTime lastUpdated = DateTime.parse(cached['lastUpdated']);
+        
+        // Check if cache is still valid (less than 12 hours old)
+        if (DateTime.now().difference(lastUpdated) < _cacheValidDuration) {
+          debugPrint('✅ CACHE: Cache is valid, using cached data');
+          final earningSummary = cached['earningSummary'];
+          final List<dynamic> patientsData = cached['patients'];
+          
+          if (mounted) {
+            setState(() {
+              // Parse earnings data
+              _totalEarnings = (earningSummary['totalEarnings'] as num?)?.toDouble() ?? 0.0;
+              _totalAppointments = earningSummary['totalAppointments'] as int? ?? 0;
+              
+              // Parse patients data
+              _patients = List<Map<String, dynamic>>.from(patientsData.map(
+                (p) => Map<String, dynamic>.from(p as Map)
+              ));
+              
+              _isLoading = false;
+              debugPrint('✅ CACHE: UI updated with ${_patients.length} patients from cache');
+            });
+          }
+          
+          return true;
+        } else {
+          debugPrint('⚠️ CACHE: Cache expired, last updated: ${lastUpdated.toIso8601String()}');
+        }
+      } else {
+        debugPrint('⚠️ CACHE: No cached data found');
+      }
+    } catch (e) {
+      debugPrint('❌ CACHE ERROR: Error loading from cache: $e');
+    }
+    
+    return false;
+  }
+  
+  // Refresh data in background
+  Future<void> _refreshDataInBackground() async {
+    if (!mounted) return;
+    
+    debugPrint('🔄 Starting data refresh in background');
+    _debugPrintState('before-refresh');
+    
+    setState(() {
+      _isRefreshing = true;
+      // Reset pagination for a fresh load
       _lastDocument = null;
       _hasMoreData = true;
-      _patients.clear();
     });
     
-    await _loadPatients(true);
+    try {
+      debugPrint('📊 Loading earnings data');
+      await _loadDoctorEarnings();
+      
+      debugPrint('👥 Fetching fresh patient data');
+      await _fetchPatientData(true);
+      
+      // Save to cache
+      debugPrint('💾 Saving fresh data to cache');
+      await _saveToCache();
+      
+      debugPrint('✅ Background refresh complete');
+    } catch (e) {
+      debugPrint('❌ Error refreshing data in background: $e');
+    } finally {
+      // Add slight delay to make refresh indicator more noticeable during testing
+      await Future.delayed(Duration(seconds: 1));
+      
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+          _isLoading = false;
+        });
+        _debugPrintState('after-refresh');
+      }
+    }
+  }
+  
+  // Fetch initial patient data from Firestore
+  Future<void> _fetchPatientData(bool isInitialLoad) async {
+    if (!mounted) return;
     
-    // Also refresh earnings data
-    await _loadDoctorEarnings();
+    debugPrint('📥 FETCH: Starting fetch patient data (initialLoad=$isInitialLoad)');
+    
+    if (isInitialLoad) {
+      // Keep existing patients to avoid UI flash but prepare for new data
+      setState(() {
+        _errorMessage = null;
+      });
+    }
+    
+    await _loadPatients(isInitialLoad);
+    
+    debugPrint('📥 FETCH: Completed fetching patient data');
   }
   
   // Load patients with pagination
@@ -163,6 +317,9 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       if (appointmentsSnapshot.docs.isEmpty) {
         if (!mounted) return;
         setState(() {
+          if (isInitialLoad) {
+            _patients.clear();
+          }
           _isLoading = false;
           _isLoadingMore = false;
         });
@@ -297,7 +454,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       }
       
       setState(() {
-        // Append new data to existing patients
+        // Replace or append new data to existing patients
         if (isInitialLoad) {
           _patients = newPatientsData;
         } else {
@@ -377,7 +534,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     _lastDocument = null;
     _hasMoreData = true;
     _patients.clear();
-    _fetchPatientData();
+    _fetchPatientData(true);
   }
 
   // Load doctor earnings data
@@ -420,158 +577,189 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
     }
   }
 
+  void _debugPrintState(String source) {
+    debugPrint('PATIENTS STATE [$source]: '
+        'isLoading=$_isLoading, '
+        'isRefreshing=$_isRefreshing, '
+        'hasError=${_errorMessage != null}, '
+        'patientCount=${_patients.length}, '
+        'hasMoreData=$_hasMoreData, '
+        'isLoadingMore=$_isLoadingMore');
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get filtered patients
     final displayedPatients = filteredPatients;
     
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _fetchPatientData,
-        child: Stack(
-          children: [
-            // Background gradient
-            Container(
-              height: 220,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color.fromRGBO(64, 124, 226, 1),
-                    Color.fromRGBO(84, 144, 246, 1),
+    // Force refresh indicator visibility for testing
+    // Comment this line out for production
+    // _isRefreshing = true;
+    
+    // Debug print current state
+    _debugPrintState('build');
+    
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate to the bottom navigation bar with home tab selected
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BottomNavigationBarScreen(
+              profileStatus: "complete",
+              initialIndex: 0, // Home tab index
+            ),
+          ),
+        );
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
+        body: RefreshIndicator(
+          onRefresh: _refreshDataInBackground,
+          child: Stack(
+            children: [
+              // Background gradient
+              Container(
+                height: 220,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color.fromRGBO(64, 124, 226, 1),
+                      Color.fromRGBO(84, 144, 246, 1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color.fromRGBO(64, 124, 226, 0.3),
+                      blurRadius: 10,
+                      offset: Offset(0, 5),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(30),
-                  bottomRight: Radius.circular(30),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color.fromRGBO(64, 124, 226, 0.3),
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
-                  ),
-                ],
               ),
-            ),
-            
-            // Main content
-            SafeArea(
-              child: Column(
-                children: [
-                  // Custom app bar with gradient background
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
+              
+              // Main content
+              SafeArea(
+                child: Column(
+                  children: [
+                    // Custom app bar with gradient background
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 15),
+                          Text(
+                            "Patient Appointments",
+                            style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Spacer(),
+                          Container(
                             padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              Icons.arrow_back_ios_new_rounded,
+                              LucideIcons.bell,
                               color: Colors.white,
                               size: 20,
                             ),
                           ),
-                        ),
-                        SizedBox(width: 15),
-                        Text(
-                          "Patient Appointments",
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Spacer(),
-                        Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            LucideIcons.bell,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Earnings summary
-                  Container(
-                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    padding: EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1,
+                        ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Doctor Performance",
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                    
+                    // Earnings summary
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
                           ),
-                        ),
-                        SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildEarningsStat(
-                              "Total Earnings",
-                              "Rs ${_totalEarnings.toStringAsFixed(0)}",
-                              LucideIcons.wallet,
-                            ),
-                            Container(
-                              height: 40,
-                              width: 1,
-                              color: Colors.white.withOpacity(0.3),
-                            ),
-                            _buildEarningsStat(
-                              "Appointments",
-                              _totalAppointments.toString(),
-                              LucideIcons.calendar,
-                            ),
-                          ],
-                        ),
-                        // Add debug text to show actual values
-                        Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            "Debug - Earnings: $_totalEarnings, Appointments: $_totalAppointments",
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Doctor Performance",
                             style: GoogleFonts.poppins(
-                              fontSize: 10,
-                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildEarningsStat(
+                                "Total Earnings",
+                                "Rs ${_totalEarnings.toStringAsFixed(0)}",
+                                LucideIcons.wallet,
+                              ),
+                              Container(
+                                height: 40,
+                                width: 1,
+                                color: Colors.white.withOpacity(0.3),
+                              ),
+                              _buildEarningsStat(
+                                "Appointments",
+                                _totalAppointments.toString(),
+                                LucideIcons.calendar,
+                              ),
+                            ],
+                          ),
+                          // Add debug text to show actual values
+                          Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              "Debug - Earnings: $_totalEarnings, Appointments: $_totalAppointments",
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  
+                    
                     // Search bar - elevated above main content
                     SlideTransition(
                       position: Tween<Offset>(
@@ -636,7 +824,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                     ),
                     
                     // Main content - scrollable area
-                  Expanded(
+                    Expanded(
                       child: _isLoading && _patients.isEmpty
                           ? Center(
                               child: Column(
@@ -689,7 +877,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                                       ),
                                       SizedBox(height: 24),
                                       ElevatedButton(
-                                        onPressed: _fetchPatientData,
+                                        onPressed: () => _fetchPatientData(true),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Color(0xFF3366CC),
                                           foregroundColor: Colors.white,
@@ -780,10 +968,14 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                 ],
               ),
               ),
+              
+              // Bottom refresh indicator - always visible for testing
+              if (_isRefreshing || _isLoading) _buildBottomRefreshIndicator(),
             ],
           ),
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -1615,7 +1807,7 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                 setState(() {
                   // Optionally handle the updated hospital list
                 });
-                _fetchPatientData();
+                _fetchPatientData(true);
               }
             } catch (e) {
               debugPrint('Error navigating to hospital selection: $e');
@@ -1681,6 +1873,59 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Fix the refresh indicator at the bottom of the screen
+  Widget _buildBottomRefreshIndicator() {
+    return Positioned(
+      bottom: 20,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            color: Color.fromRGBO(64, 124, 226, 0.12),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 10,
+                offset: Offset(0, 3),
+              ),
+            ],
+            border: Border.all(
+              color: Color.fromRGBO(64, 124, 226, 0.5),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color.fromRGBO(64, 124, 226, 1),
+                  ),
+                ),
+              ),
+              SizedBox(width: 14),
+              Text(
+                "Refreshing patient data...",
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color.fromRGBO(64, 124, 226, 1),
+                ),
+              ),
+            ],
           ),
         ),
       ),
