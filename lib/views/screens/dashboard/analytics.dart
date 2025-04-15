@@ -338,21 +338,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                               ),
                             )
                           : Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 _buildSummaryItem("${_totalPatients}", "Patients"),
                                 Container(
                                   height: 40,
                                   width: 1,
                                   color: Colors.white.withOpacity(0.3),
+                                  margin: EdgeInsets.symmetric(horizontal: 30),
                                 ),
                                 _buildSummaryItem("${_totalAppointments}", "Appointments"),
-                                Container(
-                                  height: 40,
-                                  width: 1,
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                                _buildSummaryItem(_formatCurrency(_totalEarnings), "Earnings"),
                               ],
                             ),
                     ),

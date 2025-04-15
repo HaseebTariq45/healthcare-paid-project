@@ -679,18 +679,6 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                             ),
                           ),
                           Spacer(),
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              LucideIcons.bell,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -1049,8 +1037,6 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
         _buildSortOptions(),
         SizedBox(height: 10),
         _buildFilters(),
-        SizedBox(height: 10),
-        _buildHospitalSelectionCard(),
         SizedBox(height: 10),
       ],
     );
@@ -1756,126 +1742,6 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
           ),
         ),
       ],
-    );
-  }
-
-  // Add this new method to build the hospital selection card
-  Widget _buildHospitalSelectionCard() {
-    return Container(
-      width: double.infinity,
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF3366CC),
-            Color(0xFF5E8EF7),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFF3366CC).withOpacity(0.3),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () async {
-            try {
-              // Navigate to HospitalSelectionScreen
-              final List<String> currentSelectedHospitals = 
-                  await _doctorProfileService.getDoctorSelectedHospitals();
-              
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => HospitalSelectionScreen(
-                    selectedHospitals: currentSelectedHospitals,
-                  ),
-                ),
-              );
-              
-              // Handle result if needed
-              if (result != null && result is List<String>) {
-                // Refresh data as hospital selection might impact availability
-                setState(() {
-                  // Optionally handle the updated hospital list
-                });
-                _fetchPatientData(true);
-              }
-            } catch (e) {
-              debugPrint('Error navigating to hospital selection: $e');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Could not load hospital selection screen'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.business,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Manage Hospital Selection",
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Select hospitals where you practice",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.85),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 

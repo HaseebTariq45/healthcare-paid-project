@@ -297,44 +297,6 @@ class _HospitalSelectionScreenState extends State<HospitalSelectionScreen> with 
           onPressed: () => Navigator.pop(context),
           ),
         ),
-        actions: [
-          Container(
-            margin: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: TextButton.icon(
-            onPressed: _isLoading ? null : _saveSelection,
-              icon: Icon(
-                LucideIcons.save,
-                color: Color(0xFF1E74FD),
-                size: 18,
-              ),
-              label: Text(
-              "Save",
-              style: GoogleFonts.poppins(
-                  fontSize: 14,
-                fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E74FD),
-                ),
-              ),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-          ),
-        ],
         centerTitle: true,
         title: Text(
           "Hospital Selection",
