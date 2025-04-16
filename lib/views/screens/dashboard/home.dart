@@ -20,6 +20,7 @@ import 'package:healthcare/services/auth_service.dart';
 import 'package:healthcare/services/doctor_profile_service.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../notifications/notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String profileStatus;
@@ -146,13 +147,13 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final User? currentUser = _auth.currentUser;
       if (currentUser == null) {
-        setState(() {
+          setState(() {
           _isRefreshing = false;
-          _isLoading = false;
-        });
+            _isLoading = false;
+          });
         return;
       }
-
+      
       if (userType == "Doctor") {
         await _loadDoctorProfileData();
       } else {
@@ -169,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-
+  
   Future<void> _loadDoctorProfileData() async {
     try {
       final doctorProfile = await _doctorProfileService.getDoctorProfile();
@@ -195,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         
         double averageRating = reviewCount > 0 ? totalRating / reviewCount : 0.0;
-        
+      
         // Prepare data for caching
         final Map<String, dynamic> cacheData = {
           'userName': doctorProfile['fullName'] ?? "Doctor",
@@ -211,15 +212,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_doctorCacheKey, json.encode(cacheData));
         
-        if (mounted) {
-          setState(() {
+      if (mounted) {
+        setState(() {
             _userName = cacheData['userName'];
             _specialty = cacheData['specialty'];
             _profileImageUrl = cacheData['profileImageUrl'];
             _totalEarnings = cacheData['totalEarnings'];
             _overallRating = cacheData['overallRating'];
             _reviewCount = cacheData['reviewCount'];
-          });
+        });
         }
       }
     } catch (e) {
@@ -227,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
       rethrow;
     }
   }
-
+  
   Future<void> _loadProfileData() async {
     try {
       final userData = await _authService.getUserData();
@@ -256,321 +257,404 @@ class _HomeScreenState extends State<HomeScreen> {
         return await showExitDialog(context);
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+      backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white.withOpacity(0.85),
+          elevation: 0,
+          title: Text(
+            'Home',
+            style: GoogleFonts.poppins(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+          ),
+          actions: [
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('notifications')
+                  .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                  .where('isRead', isEqualTo: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                int unreadCount = 0;
+                if (snapshot.hasData) {
+                  unreadCount = snapshot.data!.docs.length;
+                }
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications,
+                        color: Color(0xFF3366CC),
+                        size: 28,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFFF3B30),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 2,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
         body: Stack(
           children: [
             if (_isLoading)
               const Center(
-                child: CircularProgressIndicator(
-                  color: Color.fromRGBO(64, 124, 226, 1),
-                ),
-              )
+              child: CircularProgressIndicator(
+                color: Color.fromRGBO(64, 124, 226, 1),
+              ),
+            )
             else
               SingleChildScrollView(
-                padding: EdgeInsets.zero,
-                child: Column(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with gradient
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.fromRGBO(64, 124, 226, 1),
+                    Color.fromRGBO(84, 144, 246, 1),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color.fromRGBO(64, 124, 226, 0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.fromLTRB(25, 70, 25, 30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header with gradient
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color.fromRGBO(64, 124, 226, 1),
-                            Color.fromRGBO(84, 144, 246, 1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(30),
-                          bottomRight: Radius.circular(30),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color.fromRGBO(64, 124, 226, 0.3),
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      padding: EdgeInsets.fromLTRB(25, 70, 25, 30),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Welcome",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white.withOpacity(0.9),
-                                    ),
-                                  ),
-                                  Text(
-                                    _userName,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 8,
-                                        offset: Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Hero(
-                                    tag: 'profileImage',
-                                    child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                                        ? CircleAvatar(
-                                            radius: 28,
-                                            backgroundImage: NetworkImage(_profileImageUrl!),
-                                          )
-                                        : CircleAvatar(
-                                            radius: 28,
-                                            backgroundImage: AssetImage("assets/images/User.png"),
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 25),
-                          // Earnings info in header
-                          Container(
-                            padding: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    Icons.paid_outlined,
-                                    color: Color.fromRGBO(64, 124, 226, 1),
-                                    size: 30,
-                                  ),
-                                ),
-                                SizedBox(width: 15),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Total Earning",
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Text(
-                                      "Rs ${_totalEarnings.toStringAsFixed(2)}",
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Spacer(),
-                                IconButton(
-                                  onPressed: () {
-                                    NavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
-                                  },
-                                  icon: Icon(
-                                    LucideIcons.arrowRight,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    Text(
+                      "Welcome",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.9),
                       ),
                     ),
-                    
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 25),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: 25),
-                          
-                          // Quick action buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _buildQuickActionButton(
-                                icon: LucideIcons.building2,
-                                label: "Add Hospital",
-                                color: Color.fromRGBO(64, 124, 226, 1),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => HospitalSelectionScreen(
-                                        selectedHospitals: [],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              _buildQuickActionButton(
-                                icon: LucideIcons.calendar,
-                                label: "Availability",
-                                color: Color(0xFF4CAF50),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => DoctorAvailabilityScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              _buildQuickActionButton(
-                                icon: Icons.bar_chart,
-                                label: "Reports",
-                                color: Color(0xFFF44336),
-                                onTap: () {
-                                  _onItemTapped(1); // Navigate to Analytics
-                                },
-                              ),
-                              _buildQuickActionButton(
-                                icon: LucideIcons.messageCircle,
-                                label: "Menu",
-                                color: Color(0xFFFF9800),
-                                onTap: () {
-                                  _onItemTapped(3); // Navigate to Menu
-                                },
-                              ),
-                            ],
-                          ),
-                          
-                          SizedBox(height: 25),
-                          
-                          // Ratings Card with improved design
-                          Container(
-                            padding: EdgeInsets.all(20),
-                            decoration: BoxDecoration(
+                    Text(
+                      _userName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w600,
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color.fromRGBO(158, 158, 158, 0.2),
-                                  blurRadius: 15,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                              border: Border.all(
-                                color: Colors.grey.shade100,
-                                width: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                        onTap: () {
+                          NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
+                        },
+                        child: Container(
+              decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+                          child: Hero(
+                            tag: 'profileImage',
+                            child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                ? CircleAvatar(
+                                    radius: 28,
+                                    backgroundImage: NetworkImage(_profileImageUrl!),
+                                  )
+                                : CircleAvatar(
+                                    radius: 28,
+                                    backgroundImage: AssetImage("assets/images/User.png"),
+                                  ),
+                          ),
+                        ),
+                                  ),
+                                ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 25),
+                  // Earnings info in header
+                  Container(
+                    padding: EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.paid_outlined,
+                            color: Color.fromRGBO(64, 124, 226, 1),
+                            size: 30,
+                          ),
+                        ),
+                        SizedBox(width: 15),
+                  Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Total Earning",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                                fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                              "Rs ${_totalEarnings.toStringAsFixed(2)}",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                                fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                        ),
+                        Spacer(),
+                        IconButton(
+                          onPressed: () {
+                            NavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
+                          },
+                          icon: Icon(
+                            LucideIcons.arrowRight,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 25),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 25),
+                  
+                  // Quick action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildQuickActionButton(
+                        icon: LucideIcons.building2,
+                        label: "Add Hospital",
+                        color: Color.fromRGBO(64, 124, 226, 1),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => HospitalSelectionScreen(
+                                selectedHospitals: [],
                               ),
                             ),
-                            child: Column(
+                          );
+                        },
+                      ),
+                      _buildQuickActionButton(
+                        icon: LucideIcons.calendar,
+                        label: "Availability",
+                        color: Color(0xFF4CAF50),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DoctorAvailabilityScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildQuickActionButton(
+                        icon: Icons.bar_chart,
+                        label: "Reports",
+                        color: Color(0xFFF44336),
+                        onTap: () {
+                          _onItemTapped(1); // Navigate to Analytics
+                        },
+                      ),
+                      _buildQuickActionButton(
+                        icon: LucideIcons.messageCircle,
+                        label: "Menu",
+                        color: Color(0xFFFF9800),
+                        onTap: () {
+                          _onItemTapped(3); // Navigate to Menu
+                        },
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 25),
+                  
+                  // Ratings Card with improved design
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                          color: Color.fromRGBO(158, 158, 158, 0.2),
+                          blurRadius: 15,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Colors.grey.shade100,
+                        width: 1,
+                      ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Color.fromRGBO(64, 124, 226, 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                LucideIcons.thumbsUp,
+                                color: Color.fromRGBO(64, 124, 226, 1),
+                                size: 20,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                      Text(
+                        "Overall Ratings",
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                        SizedBox(height: 15),
+                  Row(
+                    children: [
+                      Text(
+                              _overallRating.toStringAsFixed(1),
+                        style: GoogleFonts.poppins(
+                                fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromRGBO(64, 124, 226, 1),
+                        ),
+                      ),
+                            SizedBox(width: 12),
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   children: [
-                                    Container(
-                                      padding: EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Color.fromRGBO(64, 124, 226, 0.1),
-                                        borderRadius: BorderRadius.circular(10),
+                                    for (int i = 1; i <= 5; i++)
+                                      Icon(
+                                        i <= _overallRating
+                                            ? Icons.star
+                                            : i <= _overallRating + 0.5
+                                                ? Icons.star_half
+                                                : Icons.star_border,
+                                        color: Colors.amber,
+                                        size: 18,
                                       ),
-                                      child: Icon(
-                                        LucideIcons.thumbsUp,
-                                        color: Color.fromRGBO(64, 124, 226, 1),
-                                        size: 20,
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text(
-                                      "Overall Ratings",
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
                                   ],
                                 ),
-                                SizedBox(height: 15),
-                                Row(
-                                  children: [
-                                    Text(
-                                      _overallRating.toStringAsFixed(1),
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 30,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color.fromRGBO(64, 124, 226, 1),
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            for (int i = 1; i <= 5; i++)
-                                              Icon(
-                                                i <= _overallRating
-                                                    ? Icons.star
-                                                    : i <= _overallRating + 0.5
-                                                        ? Icons.star_half
-                                                        : Icons.star_border,
-                                                color: Colors.amber,
-                                                size: 18,
-                                              ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 5),
-                                        Text(
-                                          "Based on $_reviewCount reviews",
-                                          style: GoogleFonts.poppins(
-                                            color: Colors.grey,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                SizedBox(height: 5),
+                  Text(
+                    "Based on $_reviewCount reviews",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          
-                          SizedBox(height: 25),
+                          ],
+                  ),
+                ],
+              ),
+            ),
+                  
+                  SizedBox(height: 25),
 
-                          // Add extra space at the bottom
-                          SizedBox(height: 25),
-                        ],
+                  // Add extra space at the bottom
+                  SizedBox(height: 25),
+                ],
                       ),
                     ),
                   ],
@@ -621,8 +705,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                ),
               ),
+            ),
           ],
         ),
       ),

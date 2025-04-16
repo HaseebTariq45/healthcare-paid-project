@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BookViaCallScreen extends StatefulWidget {
   const BookViaCallScreen({Key? key}) : super(key: key);
@@ -1264,6 +1265,64 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
   }
   
   Widget _buildInfoRow(IconData icon, String label, String value, Color iconColor) {
+    // Special handling for phone number to add call button
+    if (icon == Icons.phone) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: iconColor,
+            ),
+            SizedBox(width: 12),
+            Text(
+              '$label:',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Color(0xFF333333),
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (value != 'N/A' && value.isNotEmpty)
+              GestureDetector(
+                onTap: () => _makePhoneCall(value),
+                child: Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.call,
+                    size: 16,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+    
+    // Default row for other info types
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
@@ -1301,6 +1360,30 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
         ],
       ),
     );
+  }
+  
+  // Function to make a phone call
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cannot launch phone dialer'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error launching phone dialer: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

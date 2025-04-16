@@ -59,7 +59,37 @@ class _ManagePatientsState extends State<ManagePatients> {
     });
     
     try {
-      final patients = await _adminService.getAllPatients();
+      final QuerySnapshot snapshot = await _firestore
+          .collection('patients')
+          .get();
+      
+      List<Map<String, dynamic>> patients = [];
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Count appointments for this patient
+        final appointmentCount = await _firestore
+            .collection('appointments')
+            .where('patientId', isEqualTo: data['id'] ?? doc.id)
+            .count()
+            .get();
+        
+        patients.add({
+          'id': data['id'] ?? doc.id,
+          'name': data['fullName'] ?? 'Unknown',
+          'email': data['email'] ?? 'No email',
+          'phoneNumber': data['phoneNumber'] ?? 'No phone',
+          'age': data['age'] ?? 'Unknown',
+          'gender': data['gender'] ?? 'Unknown',
+          'createdAt': data['createdAt'],
+          'updatedAt': data['updatedAt'],
+          'appointmentCount': appointmentCount.count,
+          'status': data['profileComplete'] == true ? 'Active' : 'Inactive',
+          'profileImageUrl': data['profileImageUrl'],
+        });
+      }
+      
       setState(() {
         _patients = patients;
         _filteredPatients = List.from(_patients);
@@ -183,22 +213,76 @@ class _ManagePatientsState extends State<ManagePatients> {
   
   // Delete patient
   Future<void> _deletePatient(String patientId, String patientName) async {
-    // Show confirmation dialog
+    // Show enhanced confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text('Delete Patient'),
-        content: Text('Are you sure you want to delete $patientName? This action cannot be undone.'),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 8),
+            Text('Delete Patient'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete this patient?',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Patient: $patientName',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'This action cannot be undone. All data associated with this patient will be permanently deleted.',
+              style: GoogleFonts.poppins(
+                color: Colors.red.shade700,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              elevation: 2,
+            ),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ) ?? false;
     
@@ -209,11 +293,30 @@ class _ManagePatientsState extends State<ManagePatients> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => Center(child: CircularProgressIndicator()),
+        builder: (context) => Center(
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFF3366CC)),
+                SizedBox(height: 12),
+                Text(
+                  'Deleting patient...',
+                  style: GoogleFonts.poppins(),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
       
-      // Delete patient from Firestore
-      await _firestore.collection('users').doc(patientId).delete();
+      // Delete patient from Firestore using the patients collection
+      await _firestore.collection('patients').doc(patientId).delete();
       
       // Also delete any appointments related to this patient
       final appointmentsSnapshot = await _firestore
@@ -236,8 +339,15 @@ class _ManagePatientsState extends State<ManagePatients> {
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Patient deleted successfully'),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Patient deleted successfully'),
+            ],
+          ),
           backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
         ),
       );
     } catch (e) {
@@ -247,8 +357,17 @@ class _ManagePatientsState extends State<ManagePatients> {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to delete patient: ${e.toString()}'),
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Failed to delete patient: ${e.toString()}'),
+              ),
+            ],
+          ),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
         ),
       );
     }
@@ -331,7 +450,7 @@ class _ManagePatientsState extends State<ManagePatients> {
                       labelText: 'Status',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     value: _selectedStatusFilter,
@@ -359,7 +478,7 @@ class _ManagePatientsState extends State<ManagePatients> {
                       labelText: 'Sort By',
                       contentPadding: EdgeInsets.symmetric(horizontal: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     value: _selectedSortOption,
@@ -425,69 +544,57 @@ class _ManagePatientsState extends State<ManagePatients> {
                           )
                         : RefreshIndicator(
                             onRefresh: _loadPatients,
-                            child: ListView.builder(
-                              padding: EdgeInsets.all(16),
+            child: ListView.builder(
+              padding: EdgeInsets.all(16),
                               itemCount: _filteredPatients.length,
-                              itemBuilder: (context, index) {
-                                return _buildPatientCard(context, _filteredPatients[index]);
-                              },
-                            ),
-                          ),
+              itemBuilder: (context, index) {
+                                final patient = _filteredPatients[index];
+                                final isActive = patient['status'] == 'Active';
+                                final createdAt = patient['createdAt'] != null 
+                                    ? DateFormat('MMM d, yyyy').format((patient['createdAt'] as Timestamp).toDate())
+                                    : 'Unknown';
+                                final lastLogin = patient['updatedAt'] != null 
+                                    ? DateFormat('MMM d, yyyy').format((patient['updatedAt'] as Timestamp).toDate())
+                                    : 'Unknown';
+                                
+                                return Container(
+                                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 10,
+                                        offset: Offset(0, 4),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPatientCard(BuildContext context, Map<String, dynamic> patient) {
-    final bool isActive = patient['status'] == 'Active';
-    
-    // Format date strings
-    String lastLogin = 'Never logged in';
-    if (patient['lastLogin'] != null) {
-      final loginDate = (patient['lastLogin'] as Timestamp).toDate();
-      lastLogin = DateFormat('MMM d, yyyy').format(loginDate);
-    }
-    
-    String createdAt = 'Unknown';
-    if (patient['createdAt'] != null) {
-      final createDate = (patient['createdAt'] as Timestamp).toDate();
-      createdAt = DateFormat('MMM d, yyyy').format(createDate);
-    }
-    
-    return Card(
-      margin: EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+                                      Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Patient avatar
                 CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.grey.shade200,
-                  backgroundImage: patient['profileImageUrl'] != null
-                      ? NetworkImage(patient['profileImageUrl'])
-                      : null,
-                  child: patient['profileImageUrl'] == null
-                      ? Text(
-                          patient['name'].toString().isNotEmpty
-                              ? patient['name'].toString().substring(0, 1)
-                              : '?',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,
-                          ),
-                        )
-                      : null,
+                                              radius: 32,
+                                              backgroundColor: Colors.blue.shade100,
+                                              backgroundImage: patient['profileImageUrl'] != null
+                                                  ? NetworkImage(patient['profileImageUrl'])
+                                                  : null,
+                                              child: patient['profileImageUrl'] == null
+                                                  ? Text(
+                                                      patient['name'].toString().substring(0, 1),
+                    style: TextStyle(
+                                                        fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                                                        color: Color(0xFF3366CC),
+                    ),
+                                                    )
+                                                  : null,
                 ),
                 SizedBox(width: 16),
                 // Patient info
@@ -495,112 +602,117 @@ class _ManagePatientsState extends State<ManagePatients> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              patient['name'] ?? 'Unknown',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              isActive ? 'Active' : 'Blocked',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isActive ? Colors.green : Colors.red,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      _buildInfoRow(Icons.email, patient['email'] ?? 'No email'),
-                      SizedBox(height: 4),
-                      _buildInfoRow(Icons.phone, patient['phoneNumber'] ?? 'No phone'),
-                      SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          patient['name'] ?? 'Unknown',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                                                            color: Color(0xFF333333),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Container(
+                                                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                                          borderRadius: BorderRadius.circular(20),
+                                                          border: Border.all(
+                                                            color: isActive ? Colors.green.shade300 : Colors.red.shade300,
+                                                          ),
+                                                        ),
+                                                        child: Text(
+                                                          isActive ? 'Active' : 'Inactive',
+                                                          style: GoogleFonts.poppins(
+                                                            fontSize: 12,
+                                                            fontWeight: FontWeight.w500,
+                                                            color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 12),
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            _buildInfoRow(Icons.email, patient['email'] ?? 'No email'),
+                                                            SizedBox(height: 6),
+                                                            _buildInfoRow(Icons.phone, patient['phoneNumber'] ?? 'No phone'),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            _buildInfoRow(
+                                                              Icons.event_note,
+                                                              'Appointments: ${patient['appointmentCount'] ?? 0}',
+                                                            ),
+                                                            SizedBox(height: 6),
                       _buildInfoRow(
-                        Icons.event_note,
-                        'Appointments: ${patient['appointmentCount'] ?? 0}',
-                      ),
-                      SizedBox(height: 4),
-                      _buildInfoRow(
-                        Icons.person,
-                        '${patient['gender'] ?? 'Unknown'}, ${patient['age'] ?? 'Unknown age'}',
-                      ),
-                      SizedBox(height: 4),
-                      _buildInfoRow(
-                        Icons.access_time,
-                        'Joined: $createdAt',
-                      ),
-                      SizedBox(height: 4),
-                      _buildInfoRow(
-                        Icons.login,
-                        'Last Login: $lastLogin',
+                                                              Icons.person,
+                                                              '${patient['gender'] ?? 'Unknown'}, ${patient['age'] ?? 'Unknown age'}',
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            // Action buttons
+                                                  SizedBox(height: 6),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildActionButton(
-                  label: 'View',
-                  icon: Icons.visibility,
-                  color: Colors.blue,
-                  onTap: () {
-                    // Navigate to detailed patient view
-                    // TODO: Implement patient details screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('View patient details - Feature coming soon')),
-                    );
-                  },
-                ),
-                _buildActionButton(
-                  label: 'Edit',
-                  icon: Icons.edit,
-                  color: Colors.orange,
-                  onTap: () {
-                    // Navigate to edit patient screen
-                    // TODO: Implement edit patient screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Edit patient - Feature coming soon')),
-                    );
-                  },
-                ),
-                _buildActionButton(
-                  label: isActive ? 'Block' : 'Unblock',
-                  icon: isActive ? Icons.block : Icons.lock_open,
-                  color: isActive ? Colors.red : Colors.green,
-                  onTap: () {
-                    _togglePatientStatus(patient['id'], isActive);
-                  },
-                ),
-                _buildActionButton(
-                  label: 'Delete',
-                  icon: Icons.delete,
-                  color: Colors.red.shade700,
-                  onTap: () {
-                    _deletePatient(patient['id'], patient['name']);
-                  },
+                                                      Expanded(
+                                                        child: _buildInfoRow(
+                                                          Icons.access_time,
+                                                          'Joined: $createdAt',
+                                                        ),
+                                                      ),
+                                                      Expanded(
+                                                        child: _buildInfoRow(
+                                                          Icons.login,
+                                                          'Last Activity: $lastLogin',
+                                                        ),
                 ),
               ],
             ),
           ],
         ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Action buttons - Divider and Delete button section
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade50,
+                                          borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(16),
+                                            bottomRight: Radius.circular(16),
+                                          ),
+                                        ),
+                                        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          children: [
+                                            _buildDeleteButton(patientId: patient['id'], patientName: patient['name']),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+          ),
+        ],
       ),
     );
   }
@@ -629,37 +741,38 @@ class _ManagePatientsState extends State<ManagePatients> {
     );
   }
   
-  Widget _buildActionButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
+  Widget _buildDeleteButton({
+    required String patientId,
+    required String patientName,
   }) {
     return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
+      onTap: () => _deletePatient(patientId, patientName),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.delete_outline,
+              color: Colors.red.shade700,
               size: 20,
-              color: color,
             ),
-          ),
-          SizedBox(height: 4),
+            SizedBox(width: 8),
           Text(
-            label,
+              'Delete',
             style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.red.shade700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
