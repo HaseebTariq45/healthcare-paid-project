@@ -234,24 +234,68 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
     });
     
     try {
-      // Format date to YYYY-MM-DD
-      final String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      // Format date to YYYY-MM-DD ensuring proper padding of month and day
+      final String formattedDate = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      
+      debugPrint('Fetching time slots for:');
+      debugPrint('Doctor ID: $doctorId');
+      debugPrint('Hospital ID: $hospitalId');
+      debugPrint('Date: $formattedDate');
       
       final QuerySnapshot snapshot = await _firestore
           .collection('doctor_availability')
           .where('doctorId', isEqualTo: doctorId)
           .where('hospitalId', isEqualTo: hospitalId)
           .where('date', isEqualTo: formattedDate)
-          .limit(1)
           .get();
+      
+      debugPrint('Found ${snapshot.docs.length} availability documents');
       
       List<String> timeSlots = [];
       
       if (snapshot.docs.isNotEmpty) {
         final data = snapshot.docs.first.data() as Map<String, dynamic>;
+        debugPrint('Availability data: $data');
         
         if (data['timeSlots'] != null && data['timeSlots'] is List) {
           timeSlots = List<String>.from(data['timeSlots']);
+          debugPrint('Retrieved time slots: $timeSlots');
+        } else {
+          debugPrint('No time slots found in the document or invalid format');
+        }
+      } else {
+        debugPrint('No availability document found for the given criteria');
+      }
+      
+      // If no time slots found, check if we need to create default slots
+      if (timeSlots.isEmpty) {
+        debugPrint('No time slots found, checking if we should create default slots');
+        
+        // Only create default slots for future dates
+        if (date.isAfter(DateTime.now())) {
+          timeSlots = [
+            "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
+            "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
+            "07:00 PM", "08:00 PM"
+          ];
+          
+          // Create the availability document
+          try {
+            await _firestore.collection('doctor_availability').add({
+              'doctorId': doctorId,
+              'hospitalId': hospitalId,
+              'hospitalName': _selectedHospitalData?['hospitalName'] ?? '',
+              'date': formattedDate,
+              'timeSlots': timeSlots,
+              'created': FieldValue.serverTimestamp(),
+              'lastUpdated': FieldValue.serverTimestamp(),
+            });
+            debugPrint('Created new availability document with default time slots');
+          } catch (e) {
+            debugPrint('Error creating default availability: $e');
+          }
+        } else {
+          debugPrint('Date is in the past, not creating default slots');
         }
       }
       
@@ -265,6 +309,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
       });
       
     } catch (e) {
+      debugPrint('Error loading time slots: $e');
       setState(() {
         _errorMessage = 'Error loading time slots: ${e.toString()}';
         _isLoadingTimeSlots = false;

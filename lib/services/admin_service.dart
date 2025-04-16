@@ -148,49 +148,140 @@ class AdminService {
         return _doctorsCache!;
       }
       
-      final snapshot = await _firestore.collection('users')
-          .where('role', isEqualTo: 'doctor')
-          .get();
+      debugPrint('🩺 Fetching doctors from Firestore...');
+      
+      // Query the doctors collection directly
+      final snapshot = await _firestore.collection('doctors').get();
+      debugPrint('📊 Found ${snapshot.docs.length} doctors in Firestore');
+      
+      if (snapshot.docs.isNotEmpty) {
+        final sampleData = snapshot.docs.first.data();
+        debugPrint('📝 Sample doctor data structure:');
+        sampleData.forEach((key, value) {
+          debugPrint('   $key: $value (${value?.runtimeType})');
+        });
+      }
       
       final doctors = await Future.wait(snapshot.docs.map((doc) async {
         final data = doc.data();
-        
-        // Get doctor's hospitals
-        final hospitalsSnapshot = await _firestore.collection('doctor_hospitals')
-            .where('doctorId', isEqualTo: doc.id)
-            .get();
-        
-        final hospitals = hospitalsSnapshot.docs
-            .map((hospitalDoc) => hospitalDoc.data()['hospitalName'] as String? ?? 'Unknown Hospital')
-            .toList();
+        final doctorId = data['id'] ?? doc.id;
         
         // Get doctor's appointment count
         final appointmentsQuery = await _firestore.collection('appointments')
-            .where('doctorId', isEqualTo: doc.id)
+            .where('doctorId', isEqualTo: doctorId)
             .count()
             .get();
         
-        // Get doctor's rating
-        double rating = data['rating'] != null 
-            ? (data['rating'] is double) 
-                ? data['rating'] 
-                : (data['rating'] as num).toDouble() 
-            : 0.0;
+        // Get doctor's reviews information if not already in data
+        double rating = 0.0;
+        int reviewCount = 0;
+        
+        if (data.containsKey('reviewCount')) {
+          reviewCount = data['reviewCount'] is int 
+              ? data['reviewCount'] 
+              : (data['reviewCount'] is String ? int.tryParse(data['reviewCount']) ?? 0 : 0);
+        }
+        
+        // If not provided in document, calculate average rating from reviews
+        if (!data.containsKey('rating')) {
+          try {
+            final reviewsSnapshot = await _firestore
+                .collection('doctor_reviews')
+                .where('doctorId', isEqualTo: doctorId)
+                .get();
+                
+            if (reviewsSnapshot.docs.isNotEmpty) {
+              double totalRating = 0.0;
+              for (var reviewDoc in reviewsSnapshot.docs) {
+                final reviewData = reviewDoc.data();
+                if (reviewData.containsKey('rating')) {
+                  totalRating += (reviewData['rating'] is num) 
+                      ? (reviewData['rating'] as num).toDouble() 
+                      : 0.0;
+                }
+              }
+              rating = totalRating / reviewsSnapshot.docs.length;
+              reviewCount = reviewsSnapshot.docs.length;
+            }
+          } catch (e) {
+            debugPrint('⚠️ Error calculating rating from reviews: $e');
+          }
+        } else {
+          rating = data['rating'] is num 
+              ? (data['rating'] as num).toDouble() 
+              : (data['rating'] is String ? double.tryParse(data['rating']) ?? 0.0 : 0.0);
+        }
+        
+        // Process education data
+        List<Map<String, dynamic>> education = [];
+        if (data.containsKey('education') && data['education'] is List) {
+          education = (data['education'] as List).map((item) {
+            if (item is Map) {
+              final map = item as Map;
+              return {
+                'degree': map['degree']?.toString() ?? 'Unknown',
+                'institution': map['institution']?.toString() ?? 'Unknown',
+                'completionDate': map['completionDate']?.toString() ?? 'Unknown',
+              };
+            }
+            return {'degree': 'Unknown', 'institution': 'Unknown', 'completionDate': 'Unknown'};
+          }).toList().cast<Map<String, dynamic>>();
+        }
+        
+        // Process languages
+        List<String> languages = [];
+        if (data.containsKey('languages') && data['languages'] is List) {
+          languages = (data['languages'] as List)
+              .map((item) => item?.toString() ?? '')
+              .where((item) => item.isNotEmpty)
+              .toList()
+              .cast<String>();
+        }
+        
+        // Process qualifications
+        List<String> qualifications = [];
+        if (data.containsKey('qualifications') && data['qualifications'] is List) {
+          qualifications = (data['qualifications'] as List)
+              .map((item) => item?.toString() ?? '')
+              .where((item) => item.isNotEmpty)
+              .toList()
+              .cast<String>();
+        }
+        
+        // Process available days
+        List<String> availableDays = [];
+        if (data.containsKey('availableDays') && data['availableDays'] is List) {
+          availableDays = (data['availableDays'] as List)
+              .map((item) => item?.toString() ?? '')
+              .where((item) => item.isNotEmpty)
+              .toList()
+              .cast<String>();
+        }
         
         return {
-          'id': doc.id,
+          'id': doctorId,
           'name': data['fullName'] ?? 'Unknown',
           'specialty': data['specialty'] ?? 'General',
           'phoneNumber': data['phoneNumber'] ?? 'N/A',
           'email': data['email'] ?? 'N/A',
           'profileImageUrl': data['profileImageUrl'],
-          'hospitals': hospitals,
+          'experience': data['experience'] ?? 'N/A',
+          'fee': data['fee'] ?? 0,
+          'rating': rating.toStringAsFixed(1),
+          'reviewCount': reviewCount,
+          'city': data['city'] ?? 'N/A',
+          'address': data['address'] ?? 'N/A',
+          'bio': data['bio'] ?? 'No bio available',
+          'languages': languages,
+          'qualifications': qualifications,
+          'education': education,
+          'availableDays': availableDays,
           'appointmentCount': appointmentsQuery.count,
-          'rating': rating,
-          'verified': data['verified'] ?? false,
+          'verified': data['isVerified'] ?? false,
           'createdAt': data['createdAt'],
-          'lastLogin': data['lastLogin'],
-          'status': data['active'] == false ? 'Inactive' : 'Active',
+          'updatedAt': data['updatedAt'],
+          'status': data['isActive'] == false ? 'Inactive' : 'Active',
+          'profileComplete': data['profileComplete'] ?? false,
         };
       }));
       
@@ -200,7 +291,7 @@ class AdminService {
       
       return doctors;
     } catch (e) {
-      debugPrint('Error fetching doctors: $e');
+      debugPrint('❌ Error fetching doctors: $e');
       return [];
     }
   }
@@ -615,6 +706,49 @@ class AdminService {
       return {
         'success': false,
         'message': 'Failed to update doctor active status: ${e.toString()}',
+      };
+    }
+  }
+  
+  // Update doctor status (wrapper method)
+  Future<Map<String, dynamic>> updateDoctorStatus(String doctorId, String status) async {
+    try {
+      bool isActive = status.toLowerCase() == 'active';
+      
+      // Update in users collection
+      await _firestore.collection('users').doc(doctorId).update({
+        'status': status,
+        'active': isActive,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': _auth.currentUser?.uid,
+      });
+      
+      // Also try to update in doctors collection if it exists
+      try {
+        await _firestore.collection('doctors').doc(doctorId).update({
+          'status': status,
+          'isActive': isActive,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('Doctor not found in doctors collection: $e');
+      }
+      
+      // Clear cache to ensure fresh data
+      _doctorsCache = null;
+      _lastUsersFetchTime = null;
+      
+      return {
+        'success': true,
+        'message': isActive 
+            ? 'Doctor activated successfully' 
+            : 'Doctor deactivated successfully',
+      };
+    } catch (e) {
+      debugPrint('Error updating doctor status: $e');
+      return {
+        'success': false,
+        'message': 'Failed to update doctor status: ${e.toString()}',
       };
     }
   }

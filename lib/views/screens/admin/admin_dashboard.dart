@@ -7,6 +7,8 @@ import 'package:healthcare/views/screens/admin/analytics_dashboard.dart';
 import 'package:healthcare/views/screens/admin/appointment_management.dart';
 import 'package:healthcare/views/screens/admin/book_via_call_screen.dart';
 import 'package:healthcare/services/admin_service.dart';
+import 'package:healthcare/services/auth_service.dart';
+import 'package:healthcare/views/screens/onboarding/onboarding_3.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -65,29 +67,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: Icon(Icons.logout, color: Color(0xFF3366CC)),
+            tooltip: 'Logout',
             onPressed: () {
-              // Show confirmation dialog before logging out
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Log Out'),
-                  content: Text('Are you sure you want to log out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.of(context).popUntil((route) => route.isFirst);
-                      },
-                      child: Text('Log Out'),
-                    ),
-                  ],
-                ),
-              );
+              _showLogoutConfirmationDialog(context);
             },
           ),
         ],
@@ -141,6 +124,154 @@ class _AdminDashboardState extends State<AdminDashboard> {
               label: 'Settings',
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    final AuthService _authService = AuthService();
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEB),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.logout,
+                  color: Color(0xFFFF5252),
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Logout",
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Are you sure you want to logout from the admin dashboard?",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 25),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey.shade800,
+                        backgroundColor: Colors.grey.shade100,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Close the dialog first
+                        Navigator.of(dialogContext).pop();
+                        
+                        // Show loading indicator dialog
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (loadingContext) => Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const CircularProgressIndicator(),
+                            ),
+                          ),
+                        );
+                        
+                        // Use Future.delayed to ensure the loading indicator is shown
+                        Future.delayed(Duration(milliseconds: 100), () async {
+                          try {
+                            // Perform logout
+                            await _authService.signOut();
+                            
+                            // Navigate after signout completes
+                            if (context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => const Onboarding3(),
+                                ),
+                                (route) => false, // Remove all previous routes
+                              );
+                            }
+                          } catch (e) {
+                            // Close loading dialog if error occurs and context is still mounted
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
+                              
+                              // Show error
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error logging out: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5252),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        "Logout",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

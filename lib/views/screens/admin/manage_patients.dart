@@ -90,19 +90,23 @@ class _ManagePatientsState extends State<ManagePatients> {
         });
       }
       
-      setState(() {
-        _patients = patients;
-        _filteredPatients = List.from(_patients);
-        _isLoading = false;
-      });
-      
-      // Apply initial sort
-      _sortPatients();
+      if (mounted) {
+        setState(() {
+          _patients = patients;
+          _filteredPatients = List.from(_patients);
+          _isLoading = false;
+        });
+        
+        // Apply initial sort
+        _sortPatients();
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load patients: ${e.toString()}';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load patients: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
     }
   }
   
@@ -132,6 +136,8 @@ class _ManagePatientsState extends State<ManagePatients> {
   
   // Sort patients based on selected sort option
   void _sortPatients() {
+    if (!mounted) return;
+    
     setState(() {
       switch (_selectedSortOption) {
         case 'Name (A-Z)':
