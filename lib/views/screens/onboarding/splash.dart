@@ -73,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 Image.asset("assets/images/logo.png"),
                 const SizedBox(height: 20),
                 Text(
-                  "Healthcare",
+                  "Asan Ilaaj",
                   style: GoogleFonts.poppins(
                     fontSize: 32,
                     fontWeight: FontWeight.w600,

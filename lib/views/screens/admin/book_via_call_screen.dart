@@ -6,6 +6,89 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// Custom Phone Number Formatter
+class PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue
+  ) {
+    // If the input is being deleted, just return as is
+    if (newValue.text.length < oldValue.text.length) {
+      return newValue;
+    }
+    
+    String text = newValue.text.replaceAll(RegExp(r'[^0-9+]'), '');
+    
+    // Handle starting with +
+    if (text.isNotEmpty && text[0] == '+') {
+      // For international format (+92xxxxxxxxxx)
+      if (text.length > 3) {
+        // Format international number with spaces after country code
+        // +92 xxx xxx xxxx
+        String formattedText = '+${text.substring(1, 3)}';
+        
+        // Add space after country code
+        if (text.length > 5) {
+          formattedText += ' ${text.substring(3, 6)}';
+          
+          // Add space after first group of digits
+          if (text.length > 9) {
+            formattedText += ' ${text.substring(6, 10)}';
+            
+            // Add remaining digits
+            if (text.length > 10) {
+              formattedText += ' ${text.substring(10)}';
+            }
+          } else if (text.length > 6) {
+            formattedText += ' ${text.substring(6)}';
+          }
+        } else if (text.length > 3) {
+          formattedText += ' ${text.substring(3)}';
+        }
+        
+        return TextEditingValue(
+          text: formattedText,
+          selection: TextSelection.collapsed(offset: formattedText.length),
+        );
+      }
+    } 
+    // Handle starting with 0
+    else if (text.isNotEmpty && text[0] == '0') {
+      // For local format (03xxxxxxxxx)
+      // Format as 03xx xxx xxxx
+      String formattedText = '0';
+      
+      if (text.length > 4) {
+        formattedText += '${text.substring(1, 4)}';
+        
+        if (text.length > 7) {
+          formattedText += ' ${text.substring(4, 7)}';
+          
+          if (text.length > 7) {
+            formattedText += ' ${text.substring(7)}';
+          }
+        } else if (text.length > 4) {
+          formattedText += ' ${text.substring(4)}';
+        }
+      } else if (text.length > 1) {
+        formattedText += '${text.substring(1)}';
+      }
+      
+      return TextEditingValue(
+        text: formattedText,
+        selection: TextSelection.collapsed(offset: formattedText.length),
+      );
+    }
+    
+    // Default case
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
 class BookViaCallScreen extends StatefulWidget {
   const BookViaCallScreen({Key? key}) : super(key: key);
 
@@ -15,7 +98,7 @@ class BookViaCallScreen extends StatefulWidget {
 
 class _BookViaCallScreenState extends State<BookViaCallScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TextEditingController _cnicController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   
   bool _isLoading = false;
   bool _isSearching = false;
@@ -46,27 +129,49 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
   
   @override
   void dispose() {
-    _cnicController.dispose();
+    _phoneController.dispose();
     _reasonController.dispose();
     super.dispose();
   }
   
-  // Search for patient by CNIC
-  Future<void> _searchPatient() async {
-    final cnic = _cnicController.text.trim();
+  String _convertToInternationalFormat(String phoneNumber) {
+    // Remove any spaces, hyphens or other characters
+    phoneNumber = phoneNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
     
-    if (cnic.isEmpty) {
+    // Check if it starts with 0
+    if (phoneNumber.startsWith('0')) {
+      // Remove the leading 0 and add +92 (Pakistan)
+      return '+92${phoneNumber.substring(1)}';
+    } 
+    // If it starts with 92
+    else if (phoneNumber.startsWith('92')) {
+      return '+$phoneNumber';
+    }
+    // If it already has the + sign
+    else if (phoneNumber.startsWith('+')) {
+      return phoneNumber;
+    }
+    // Default case, assume it's without the leading zero
+    else {
+      return '+92$phoneNumber';
+    }
+  }
+  
+  // Search for patient by phone number
+  Future<void> _searchPatient() async {
+    final phoneNumber = _phoneController.text.trim();
+    
+    if (phoneNumber.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter a CNIC number';
+        _errorMessage = 'Please enter a phone number';
       });
       return;
     }
     
-    // Format validation for CNIC
-    RegExp cnicRegex = RegExp(r'^\d{5}-\d{7}-\d{1}$');
-    if (!cnicRegex.hasMatch(cnic)) {
+    // Basic validation for phone number
+    if (phoneNumber.length < 10 || !RegExp(r'^[0-9+\s\-\(\)]+$').hasMatch(phoneNumber)) {
       setState(() {
-        _errorMessage = 'CNIC should follow the pattern xxxxx-xxxxxxx-x';
+        _errorMessage = 'Please enter a valid phone number';
       });
       return;
     }
@@ -78,37 +183,68 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
     });
     
     try {
-      // Query Firestore for the patient with the given CNIC
+      // Convert to international format for searching
+      final internationalFormat = _convertToInternationalFormat(phoneNumber);
+      
+      debugPrint('Searching for patient with phone number: $internationalFormat');
+      
+      // Query Firestore for the patient with the given phone number
       final QuerySnapshot snapshot = await _firestore
           .collection('patients')
-          .where('cnic', isEqualTo: cnic)
+          .where('phoneNumber', isEqualTo: internationalFormat)
           .limit(1)
           .get();
       
+      // If not found in patients collection, try the users collection
       if (snapshot.docs.isEmpty) {
+        final QuerySnapshot usersSnapshot = await _firestore
+            .collection('users')
+            .where('phoneNumber', isEqualTo: internationalFormat)
+            .limit(1)
+            .get();
+            
+        if (usersSnapshot.docs.isEmpty) {
+          setState(() {
+            _errorMessage = 'No patient found with this phone number';
+            _isSearching = false;
+          });
+          return;
+        }
+        
+        // Get patient data from users collection
+        final doc = usersSnapshot.docs.first;
+        final data = doc.data() as Map<String, dynamic>;
+        
         setState(() {
-          _errorMessage = 'No patient found with this CNIC';
+          _patientData = {
+            'id': doc.id,
+            'name': data['fullName'] ?? data['name'] ?? 'Unknown',
+            'email': data['email'] ?? 'N/A',
+            'phone': data['phoneNumber'] ?? internationalFormat,
+            'gender': data['gender'] ?? 'Not specified',
+            'age': data['age'] ?? 'N/A',
+            'profileImageUrl': data['profileImageUrl'],
+          };
           _isSearching = false;
         });
-        return;
+      } else {
+        // Get patient data from the first snapshot
+        final doc = snapshot.docs.first;
+        final data = doc.data() as Map<String, dynamic>;
+        
+        setState(() {
+          _patientData = {
+            'id': doc.id,
+            'name': data['fullName'] ?? data['name'] ?? 'Unknown',
+            'email': data['email'] ?? 'N/A',
+            'phone': data['phoneNumber'] ?? internationalFormat,
+            'gender': data['gender'] ?? 'Not specified',
+            'age': data['age'] ?? 'N/A',
+            'profileImageUrl': data['profileImageUrl'],
+          };
+          _isSearching = false;
+        });
       }
-      
-      // Get patient data from the first snapshot
-      final doc = snapshot.docs.first;
-      final data = doc.data() as Map<String, dynamic>;
-      
-      setState(() {
-        _patientData = {
-          'id': data['id'] ?? doc.id,
-          'name': data['fullName'] ?? 'Unknown',
-          'email': data['email'] ?? 'N/A',
-          'phone': data['phoneNumber'] ?? 'N/A',
-          'gender': data['gender'] ?? 'Not specified',
-          'age': data['age'] ?? 'N/A',
-          'profileImageUrl': data['profileImageUrl'],
-        };
-        _isSearching = false;
-      });
       
       // After finding the patient, load available doctors
       _loadDoctors();
@@ -506,7 +642,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
         _selectedHospitalData = null;
         _availableTimeSlots = [];
         _selectedTimeSlot = null;
-        _cnicController.clear();
+        _phoneController.clear();
         _reasonController.clear();
         _selectedDate = DateTime.now().add(Duration(days: 1));
       });
@@ -626,7 +762,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                       ),
                       SizedBox(height: 12),
                       Text(
-                        'Enter the patient\'s CNIC to start booking an appointment for them. Select a doctor, hospital, and available time slot for the consultation.',
+                        'Enter the patient\'s phone number to start booking an appointment for them. Select a doctor, hospital, and available time slot for the consultation.',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.white.withOpacity(0.9),
@@ -642,7 +778,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
               
               // Patient Search Form
               Text(
-                'Search Patient by CNIC',
+                'Search Patient by Phone Number',
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -669,14 +805,14 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                       children: [
                         Expanded(
                           child: TextField(
-                            controller: _cnicController,
+                            controller: _phoneController,
                             decoration: InputDecoration(
-                              hintText: 'Format: xxxxx-xxxxxxx-x',
+                              hintText: 'Enter phone number (e.g., 03001234567)',
                               hintStyle: GoogleFonts.poppins(
                                 color: Colors.grey.shade400,
                                 fontSize: 14,
                               ),
-                              prefixIcon: Icon(Icons.badge, color: Color(0xFF3366CC)),
+                              prefixIcon: Icon(Icons.phone, color: Color(0xFF3366CC)),
                               filled: true,
                               fillColor: Colors.grey.shade50,
                               border: OutlineInputBorder(
@@ -696,11 +832,10 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                                 vertical: 14,
                               ),
                             ),
-                            keyboardType: TextInputType.number,
+                            keyboardType: TextInputType.phone,
                             inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(13),
-                              _CNICInputFormatter(),
+                              PhoneNumberFormatter(),
+                              LengthLimitingTextInputFormatter(15),
                             ],
                             style: GoogleFonts.poppins(
                               color: Color(0xFF333333),
@@ -744,6 +879,16 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                       ],
                     ),
                     
+                    SizedBox(height: 8),
+                    Text(
+                      'Enter a phone number in local format (03001234567) or international format (+923001234567)',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    
                     if (_errorMessage != null) ...[
                       SizedBox(height: 16),
                       Container(
@@ -754,17 +899,32 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                           border: Border.all(color: Colors.red.shade200),
                         ),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
                             SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.red.shade700,
-                                  height: 1.5,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Error',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    _errorMessage!,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.red.shade700,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -1622,58 +1782,5 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
         ),
       );
     }
-  }
-}
-
-// Custom input formatter for CNIC
-class _CNICInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue, 
-    TextEditingValue newValue
-  ) {
-    if (newValue.text.isEmpty) {
-      return newValue;
-    }
-    
-    // Remove any existing hyphens
-    String text = newValue.text.replaceAll('-', '');
-    
-    // Build formatted text
-    final StringBuffer newText = StringBuffer();
-    
-    // Add first group (5 digits)
-    if (text.length >= 5) {
-      newText.write(text.substring(0, 5) + '-');
-    } else {
-      newText.write(text);
-      return TextEditingValue(
-        text: newText.toString(),
-        selection: TextSelection.collapsed(offset: newText.length),
-      );
-    }
-    
-    // Add second group (7 digits)
-    if (text.length >= 12) {
-      newText.write(text.substring(5, 12) + '-');
-    } else if (text.length > 5) {
-      newText.write(text.substring(5));
-      return TextEditingValue(
-        text: newText.toString(),
-        selection: TextSelection.collapsed(offset: newText.length),
-      );
-    }
-    
-    // Add third group (1 digit)
-    if (text.length >= 13) {
-      newText.write(text.substring(12, 13));
-    } else if (text.length > 12) {
-      newText.write(text.substring(12));
-    }
-    
-    return TextEditingValue(
-      text: newText.toString(),
-      selection: TextSelection.collapsed(offset: newText.length),
-    );
   }
 } 

@@ -150,7 +150,7 @@ class _Onboarding3State extends State<Onboarding3> with SingleTickerProviderStat
                                   child: Column(
                                     children: [
                                       Text(
-                                        "Welcome to HealthCare",
+                                        "Welcome to Asan Ilaaj",
                                         textAlign: TextAlign.center,
                                         style: GoogleFonts.poppins(
                                           fontSize: 28,

@@ -364,7 +364,7 @@ class _SignINState extends State<SignIN> with SingleTickerProviderStateMixin {
                               ),
                               SizedBox(height: screenHeight * 0.015),
                               Text(
-                                "Sign in to continue with your HealthCare account",
+                                "Sign in to continue with your Asan Ilaaj account",
                                 style: GoogleFonts.poppins(
                                   fontSize: screenWidth * 0.04,
                                   color: Colors.grey.shade700,

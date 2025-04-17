@@ -520,7 +520,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                                         child: Column(
                                           children: [
                                             Text(
-                                              "HealthCare App",
+                                              "Asan Ilaaj App",
                                               style: GoogleFonts.poppins(
                                                 fontSize: screenSize.width * 0.035,
                                                 fontWeight: FontWeight.w600,
