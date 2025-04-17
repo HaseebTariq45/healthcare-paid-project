@@ -756,6 +756,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    
     return WillPopScope(
       onWillPop: () async {
         return await _showExitConfirmationDialog(context);
@@ -772,30 +775,42 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   children: [
                     RefreshIndicator(
                       onRefresh: _refreshData,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(),
-                            _buildBanner(),
-                            _buildDiseaseCategories(),
-                            _buildAppointmentsSection(),
-                            SizedBox(height: 20),
-                          ],
-                        ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(),
+                                  _buildBanner(),
+                                  _buildDiseaseCategories(),
+                                  _buildAppointmentsSection(),
+                                  SizedBox(height: screenSize.height * 0.025),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
                       ),
                     ),
                     
                     // Refresh indicator at bottom
                     if (isRefreshing)
                       Positioned(
-                        bottom: 16,
+                        bottom: screenSize.height * 0.02,
                         left: 0,
                         right: 0,
                         child: Center(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenSize.width * 0.04,
+                              vertical: screenSize.height * 0.01,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
@@ -820,7 +835,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                     ),
                                   ),
                                 ),
-                                SizedBox(width: 8),
+                                SizedBox(width: screenSize.width * 0.02),
                                 Text(
                                   "Refreshing...",
                                   style: GoogleFonts.poppins(
@@ -863,9 +878,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         earliestAppointment = upcoming.first;
       }
     }
+    
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 15, 20, 30),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding, 
+        verticalPadding, 
+        horizontalPadding, 
+        verticalPadding * 1.5
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -876,8 +901,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           ],
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(35),
-          bottomRight: Radius.circular(35),
+          bottomLeft: Radius.circular(screenSize.width * 0.09),
+          bottomRight: Radius.circular(screenSize.width * 0.09),
         ),
         boxShadow: [
           BoxShadow(
@@ -894,37 +919,48 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Hello,",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
-                      letterSpacing: 0.5,
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        "Hello,",
+                        style: GoogleFonts.poppins(
+                          fontSize: screenSize.width * 0.04,
+                          color: Colors.white.withOpacity(0.9),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
-                  ),
-                  Text(
-                    userName,
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                      height: 1.2,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        userName,
+                        style: GoogleFonts.poppins(
+                          fontSize: screenSize.width * 0.07,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                          height: 1.2,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-          SizedBox(height: 20),
+          SizedBox(height: verticalPadding),
           
           // Profile Completion Tab - Only show when not 100% complete
           if (profileCompletionPercentage < 100)
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding * 0.8, 
+                vertical: verticalPadding * 0.6
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -934,7 +970,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     Color(0xFFFF7043),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(screenSize.width * 0.04),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0xFFFF7043).withOpacity(0.2),
@@ -946,7 +982,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               child: Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(8),
+                    padding: EdgeInsets.all(screenSize.width * 0.02),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.3),
                       shape: BoxShape.circle,
@@ -954,35 +990,41 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     child: Icon(
                       LucideIcons.userCheck,
                       color: Colors.white,
-                      size: 18,
+                      size: screenSize.width * 0.045,
                     ),
                   ),
-                  SizedBox(width: 12),
+                  SizedBox(width: horizontalPadding * 0.6),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Text(
-                              "Profile Completion",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
+                            Flexible(
+                              child: Text(
+                                "Profile Completion",
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenSize.width * 0.035,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             Spacer(),
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding * 0.4, 
+                                vertical: verticalPadding * 0.1
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(screenSize.width * 0.025),
                               ),
                               child: Text(
                                 "$profileCompletionPercentage%",
                                 style: GoogleFonts.poppins(
-                                  fontSize: 12,
+                                  fontSize: screenSize.width * 0.03,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFFFF7043),
                                 ),
@@ -990,9 +1032,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                             ),
                           ],
                         ),
-                        SizedBox(height: 6),
+                        SizedBox(height: verticalPadding * 0.3),
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(screenSize.width * 0.01),
                           child: LinearProgressIndicator(
                             value: profileCompletionPercentage / 100,
                             backgroundColor: Colors.white.withOpacity(0.3),
@@ -1003,7 +1045,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ],
                     ),
                   ),
-                  SizedBox(width: 12),
+                  SizedBox(width: horizontalPadding * 0.6),
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -1014,15 +1056,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       );
                     },
                     child: Container(
-                      padding: EdgeInsets.all(8),
+                      padding: EdgeInsets.all(screenSize.width * 0.02),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(screenSize.width * 0.02),
                       ),
                       child: Icon(
                         LucideIcons.arrowRight,
                         color: Color(0xFFFF7043),
-                        size: 16,
+                        size: screenSize.width * 0.04,
                       ),
                     ),
                   ),
@@ -1030,12 +1072,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
             ),
           
-          SizedBox(height: 20),
+          SizedBox(height: verticalPadding),
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding * 0.9, 
+              vertical: verticalPadding * 0.8
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(screenSize.width * 0.045),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.08),
@@ -1048,19 +1093,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             child: Row(
               children: [
                 Container(
-                  height: 48,
-                  width: 48,
+                  height: screenSize.width * 0.12,
+                  width: screenSize.width * 0.12,
                   decoration: BoxDecoration(
                     color: Color(0xFF3366CC).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(screenSize.width * 0.03),
                   ),
                   child: Icon(
                     earliestAppointment != null ? LucideIcons.calendar : LucideIcons.user,
                     color: Color(0xFF3366CC),
-                    size: 24,
+                    size: screenSize.width * 0.06,
                   ),
                 ),
-                SizedBox(width: 15),
+                SizedBox(width: horizontalPadding * 0.75),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1068,17 +1113,17 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       Text(
                         earliestAppointment != null ? "Upcoming Appointment" : "Profile Status",
                         style: GoogleFonts.poppins(
-                          fontSize: 13,
+                          fontSize: screenSize.width * 0.033,
                           color: Colors.grey.shade600,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      SizedBox(height: verticalPadding * 0.1),
                       earliestAppointment != null 
                       ? Text(
                           "With ${earliestAppointment['doctorName']} on ${earliestAppointment['date']}",
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: screenSize.width * 0.035,
                             fontWeight: FontWeight.w500,
                             color: Colors.black87,
                           ),
@@ -1087,7 +1132,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       : Row(
                           children: [
                             Container(
-                              padding: EdgeInsets.all(2),
+                              padding: EdgeInsets.all(screenSize.width * 0.005),
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade200,
                                 shape: BoxShape.circle,
@@ -1099,16 +1144,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                               child: Icon(
                                 LucideIcons.user,
                                 color: Colors.grey.shade400,
-                                size: 22,
+                                size: screenSize.width * 0.055,
                               ),
                             ),
-                            SizedBox(width: 10),
-                            Text(
-                              "No profile picture added",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade600,
+                            SizedBox(width: horizontalPadding * 0.5),
+                            Flexible(
+                              child: Text(
+                                "No profile picture added",
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenSize.width * 0.035,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -1118,10 +1166,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 ),
                 if (earliestAppointment != null)
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding * 0.6, 
+                      vertical: verticalPadding * 0.3
+                    ),
                     decoration: BoxDecoration(
                       color: Color(0xFF3366CC).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.05),
                       border: Border.all(
                         color: Color(0xFF3366CC).withOpacity(0.2),
                         width: 1,
@@ -1130,7 +1181,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     child: Text(
                       earliestAppointment['time'],
                       style: GoogleFonts.poppins(
-                        fontSize: 12,
+                        fontSize: screenSize.width * 0.03,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF3366CC),
                       ),
@@ -1145,9 +1196,19 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildBanner() {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+
     return Container(
-      margin: EdgeInsets.fromLTRB(20, 20, 20, 0),
-      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.fromLTRB(
+        horizontalPadding, 
+        verticalPadding, 
+        horizontalPadding, 
+        0
+      ),
+      padding: EdgeInsets.all(horizontalPadding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1157,45 +1218,51 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             Color(0xFF5E8EF7),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(screenSize.width * 0.05),
         boxShadow: [
           BoxShadow(
             color: Color(0xFF3366CC).withOpacity(0.3),
-            blurRadius: 10,
-            offset: Offset(0, 5),
+            blurRadius: screenSize.width * 0.025,
+            offset: Offset(0, screenSize.height * 0.006),
           ),
         ],
       ),
       child: Row(
         children: [
           Expanded(
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  userData.containsKey('bloodGroup') ? 
-                    "Your Blood Group: ${userData['bloodGroup']}" :
-                    "Complete Your Profile",
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    userData.containsKey('bloodGroup') ? 
+                      "Your Blood Group: ${userData['bloodGroup']}" :
+                      "Complete Your Profile",
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.04,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-                SizedBox(height: 6),
+                SizedBox(height: verticalPadding * 0.3),
                 Text(
                   profileStatus == "complete" ?
                     "Your profile is complete. Book appointments with top doctors." :
                     "Complete your profile to get personalized recommendations",
                   style: GoogleFonts.poppins(
-                    fontSize: 13,
+                    fontSize: screenSize.width * 0.033,
                     color: Colors.white.withOpacity(0.9),
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 10),
+                SizedBox(height: verticalPadding * 0.5),
                 // Button Section
                 Container(
-                  margin: EdgeInsets.only(top: 5),
+                  margin: EdgeInsets.only(top: verticalPadding * 0.25),
                   child: Column(
                     children: [
                       // First row of buttons
@@ -1211,28 +1278,31 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                   ),
                                 );
                               },
-                              icon: Icon(Icons.calendar_today, size: 14),
-                              label: Text(
-                                "Book Online",
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 12,
+                              icon: Icon(Icons.calendar_today, size: screenSize.width * 0.035),
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  "Book Online",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: screenSize.width * 0.03,
+                                  ),
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
                                 foregroundColor: Color(0xFF3366CC),
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                minimumSize: Size(100, 36),
+                                padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.5),
+                                minimumSize: Size(screenSize.width * 0.25, screenSize.height * 0.045),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(screenSize.width * 0.02),
                                 ),
                                 elevation: 1,
                                 shadowColor: Colors.black.withOpacity(0.1),
                               ),
                             ),
                           ),
-                          SizedBox(width: 10),
+                          SizedBox(width: horizontalPadding * 0.5),
                           Expanded(
                             child: ElevatedButton.icon(
                               onPressed: () {
@@ -1243,21 +1313,24 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                   ),
                                 );
                               },
-                              icon: Icon(Icons.phone, size: 14),
-                              label: Text(
-                                "Book via Call",
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 12,
+                              icon: Icon(Icons.phone, size: screenSize.width * 0.035),
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  "Book via Call",
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: screenSize.width * 0.03,
+                                  ),
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF204899),
                                 foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                minimumSize: Size(100, 36),
+                                padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.5),
+                                minimumSize: Size(screenSize.width * 0.25, screenSize.height * 0.045),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(screenSize.width * 0.02),
                                 ),
                                 elevation: 1,
                                 shadowColor: Color(0xFF3366CC).withOpacity(0.3),
@@ -1269,7 +1342,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       
                       // Complete Profile button (conditional)
                       if (profileStatus != "complete") ...[
-                        SizedBox(height: 8),
+                        SizedBox(height: verticalPadding * 0.4),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -1281,21 +1354,24 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                 ),
                               );
                             },
-                            icon: Icon(Icons.person_add, size: 14),
-                            label: Text(
-                              "Complete Your Profile",
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 12,
+                            icon: Icon(Icons.person_add, size: screenSize.width * 0.035),
+                            label: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                "Complete Your Profile",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: screenSize.width * 0.03,
+                                ),
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFF3366CC).withOpacity(0.15),
                               foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 10),
-                              minimumSize: Size(100, 36),
+                              padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.5),
+                              minimumSize: Size(double.infinity, screenSize.height * 0.045),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(screenSize.width * 0.02),
                               ),
                               elevation: 0,
                             ),
@@ -1308,18 +1384,18 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ],
             ),
           ),
-          SizedBox(width: 16),
+          SizedBox(width: horizontalPadding * 0.8),
           Container(
-            height: 70,
-            width: 70,
+            height: screenSize.width * 0.18,
+            width: screenSize.width * 0.18,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(screenSize.width * 0.03),
             ),
             child: Icon(
               profileStatus == "complete" ? LucideIcons.stethoscope : LucideIcons.userPlus,
               color: Colors.white,
-              size: 40,
+              size: screenSize.width * 0.1,
             ),
           ),
         ],
@@ -1328,33 +1404,53 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildDiseaseCategories() {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding, 
+        verticalPadding * 1.25, 
+        horizontalPadding,
+        0
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Specialties",
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              "Specialties",
+              style: GoogleFonts.poppins(
+                fontSize: screenSize.width * 0.045,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
             ),
           ),
-          SizedBox(height: 15),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.8,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: _diseaseCategories.length,
-            itemBuilder: (context, index) {
-              final category = _diseaseCategories[index];
-              return _buildDiseaseCategoryCard(category);
+          SizedBox(height: verticalPadding),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Adapt grid columns based on screen width
+              final int crossAxisCount = screenSize.width > 600 ? 4 : 3;
+              
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: 0.8,
+                  crossAxisSpacing: screenSize.width * 0.025,
+                  mainAxisSpacing: screenSize.width * 0.025,
+                ),
+                itemCount: _diseaseCategories.length,
+                itemBuilder: (context, index) {
+                  final category = _diseaseCategories[index];
+                  return _buildDiseaseCategoryCard(category);
+                },
+              );
             },
           ),
         ],
@@ -1363,6 +1459,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildDiseaseCategoryCard(DiseaseCategory category) {
+    final Size screenSize = MediaQuery.of(context).size;
+    
     return InkWell(
       onTap: () async {
         try {
@@ -1389,10 +1487,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             builder: (BuildContext context) {
               return Center(
                 child: Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(screenSize.width * 0.05),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(screenSize.width * 0.038),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1400,11 +1498,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3366CC)),
                       ),
-                      SizedBox(height: 15),
+                      SizedBox(height: screenSize.height * 0.02),
                       Text(
                         "Loading doctors...",
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: screenSize.width * 0.035,
                           color: Colors.grey[700],
                         ),
                       ),
@@ -1453,11 +1551,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           }
         }
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(screenSize.width * 0.03),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -1474,7 +1572,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(10),
+              padding: EdgeInsets.all(screenSize.width * 0.025),
               decoration: BoxDecoration(
                 color: category.color.withOpacity(0.1),
                 shape: BoxShape.circle,
@@ -1482,30 +1580,36 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               child: Icon(
                 category.icon,
                 color: category.color,
-                size: 24,
+                size: screenSize.width * 0.06,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              category.name,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+            SizedBox(height: screenSize.height * 0.01),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                category.name,
+                style: GoogleFonts.poppins(
+                  fontSize: screenSize.width * 0.03,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              category.nameUrdu,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                color: Colors.grey.shade600,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                category.nameUrdu,
+                style: GoogleFonts.poppins(
+                  fontSize: screenSize.width * 0.025,
+                  color: Colors.grey.shade600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1603,6 +1707,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildAppointmentsSection() {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     // Filter appointments based on status
     final List<Map<String, dynamic>> upcoming = upcomingAppointments.where((a) => 
       a['status']?.toString().toLowerCase() == 'upcoming').toList();
@@ -1610,19 +1719,29 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
       a['status']?.toString().toLowerCase() == 'completed').toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 0),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding, 
+        verticalPadding * 1.25, 
+        horizontalPadding, 
+        0
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "My Appointments",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    "My Appointments",
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.045,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
               ),
               TextButton(
@@ -1632,20 +1751,23 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     MaterialPageRoute(builder: (context) => AppointmentsScreen()),
                   );
                 },
-                child: Text(
-                  "See all",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF3366CC),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    "See all",
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.035,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF3366CC),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 15),
+          SizedBox(height: verticalPadding),
           Container(
-            height: 40,
+            height: screenSize.height * 0.05,
             child: Row(
               children: [
                 Expanded(
@@ -1656,22 +1778,25 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       });
                     },
                     child: Container(
-                      margin: EdgeInsets.only(right: 10),
+                      margin: EdgeInsets.only(right: horizontalPadding / 2),
                       decoration: BoxDecoration(
                         color: _selectedCategoryIndex == 0
                             ? Color(0xFF3366CC)
                             : Color(0xFFF5F7FF),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(screenSize.width * 0.05),
                       ),
                       alignment: Alignment.center,
-                      child: Text(
-                        "Upcoming",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _selectedCategoryIndex == 0
-                              ? Colors.white
-                              : Colors.grey.shade600,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          "Upcoming",
+                          style: GoogleFonts.poppins(
+                            fontSize: screenSize.width * 0.035,
+                            fontWeight: FontWeight.w500,
+                            color: _selectedCategoryIndex == 0
+                                ? Colors.white
+                                : Colors.grey.shade600,
+                          ),
                         ),
                       ),
                     ),
@@ -1689,17 +1814,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         color: _selectedCategoryIndex == 1
                             ? Color(0xFF3366CC)
                             : Color(0xFFF5F7FF),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(screenSize.width * 0.05),
                       ),
                       alignment: Alignment.center,
-                      child: Text(
-                        "Completed",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _selectedCategoryIndex == 1
-                              ? Colors.white
-                              : Colors.grey.shade600,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          "Completed",
+                          style: GoogleFonts.poppins(
+                            fontSize: screenSize.width * 0.035,
+                            fontWeight: FontWeight.w500,
+                            color: _selectedCategoryIndex == 1
+                                ? Colors.white
+                                : Colors.grey.shade600,
+                          ),
                         ),
                       ),
                     ),
@@ -1708,25 +1836,28 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ],
             ),
           ),
-          SizedBox(height: 15),
+          SizedBox(height: verticalPadding),
           if ((_selectedCategoryIndex == 0 ? upcoming : completed).isEmpty)
             Center(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(verticalPadding),
                 child: Column(
                   children: [
                     Icon(
                       LucideIcons.calendar,
-                      size: 48,
+                      size: screenSize.width * 0.12,
                       color: Colors.grey.shade400,
                     ),
-                    SizedBox(height: 12),
-                    Text(
-                      "No ${_selectedCategoryIndex == 0 ? 'upcoming' : 'completed'} appointments",
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade600,
+                    SizedBox(height: verticalPadding),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        "No ${_selectedCategoryIndex == 0 ? 'upcoming' : 'completed'} appointments",
+                        style: GoogleFonts.poppins(
+                          fontSize: screenSize.width * 0.04,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ),
                   ],
@@ -1742,6 +1873,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     final String statusText = appointment['status']?.toString().toLowerCase() ?? 'upcoming';
     final bool isUpcoming = statusText == 'upcoming' || statusText == 'pending' || statusText == 'confirmed';
     
@@ -1763,10 +1899,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         );
       },
       child: Container(
-        margin: EdgeInsets.only(bottom: 18),
+        margin: EdgeInsets.only(bottom: verticalPadding),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.045),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.06),
@@ -1783,12 +1919,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.all(16),
+              padding: EdgeInsets.all(horizontalPadding * 0.8),
               decoration: BoxDecoration(
                 color: Color(0xFF3366CC).withOpacity(0.05),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(18),
+                  topLeft: Radius.circular(screenSize.width * 0.045),
+                  topRight: Radius.circular(screenSize.width * 0.045),
                 ),
               ),
               child: Row(
@@ -1805,54 +1941,66 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ],
                     ),
                     child: CircleAvatar(
-                      radius: 25,
+                      radius: screenSize.width * 0.06,
                       backgroundImage: appointment['doctorImage'].startsWith('assets/')
                           ? AssetImage(appointment['doctorImage'])
                           : NetworkImage(appointment['doctorImage']) as ImageProvider,
                     ),
                   ),
-                  SizedBox(width: 15),
+                  SizedBox(width: horizontalPadding * 0.75),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          appointment['doctorName'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                            letterSpacing: 0.2,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            appointment['doctorName'],
+                            style: GoogleFonts.poppins(
+                              fontSize: screenSize.width * 0.04,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                              letterSpacing: 0.2,
+                            ),
                           ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          appointment['specialty'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
+                        SizedBox(height: verticalPadding * 0.1),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            appointment['specialty'],
+                            style: GoogleFonts.poppins(
+                              fontSize: screenSize.width * 0.035,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding * 0.6,
+                      vertical: verticalPadding * 0.3
+                    ),
                     decoration: BoxDecoration(
                       color: Color(0xFF3366CC).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.05),
                       border: Border.all(
                         color: Color(0xFF3366CC).withOpacity(0.2),
                         width: 1,
                       ),
                     ),
-                    child: Text(
-                      displayStatus,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        displayStatus,
+                        style: GoogleFonts.poppins(
+                          fontSize: screenSize.width * 0.03,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
                       ),
                     ),
                   ),
@@ -1860,7 +2008,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(horizontalPadding * 0.8),
               child: Column(
                 children: [
                   Row(
@@ -1870,7 +2018,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         "Appointment Date",
                         appointment['date'],
                       ),
-                      SizedBox(width: 15),
+                      SizedBox(width: horizontalPadding * 0.75),
                       _buildAppointmentDetail(
                         LucideIcons.clock,
                         "Appointment Time",
@@ -1878,7 +2026,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: verticalPadding * 0.6),
                   Row(
                     children: [
                       _buildAppointmentDetail(
@@ -1886,7 +2034,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         "Hospital",
                         appointment['hospitalName'] ?? "Unknown Hospital",
                       ),
-                      SizedBox(width: 15),
+                      SizedBox(width: horizontalPadding * 0.75),
                       _buildAppointmentDetail(
                         LucideIcons.tag,
                         "Type",
@@ -1894,7 +2042,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       ),
                     ],
                   ),
-                  SizedBox(height: 18),
+                  SizedBox(height: verticalPadding * 0.9),
                   Row(
                     children: [
                       Expanded(
@@ -1913,18 +2061,18 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Color(0xFF3366CC),
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                            padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.6),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(screenSize.width * 0.03),
                             ),
                             elevation: 3,
                             shadowColor: Color(0xFF3366CC).withOpacity(0.3),
                           ),
-                          icon: Icon(LucideIcons.building2, size: 18),
+                          icon: Icon(LucideIcons.building2, size: screenSize.width * 0.045),
                           label: Text(
                             "View Details",
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
+                              fontSize: screenSize.width * 0.035,
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.3,
                             ),
@@ -1944,42 +2092,53 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Widget _buildAppointmentDetail(IconData icon, String label, String value) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     return Expanded(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: EdgeInsets.all(8),
+            padding: EdgeInsets.all(screenSize.width * 0.02),
             decoration: BoxDecoration(
               color: Color.fromRGBO(64, 124, 226, 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(screenSize.width * 0.02),
             ),
             child: Icon(
               icon,
-              size: 16,
+              size: screenSize.width * 0.04,
               color: Color.fromRGBO(64, 124, 226, 1),
             ),
           ),
-          SizedBox(width: 10),
+          SizedBox(width: horizontalPadding * 0.5),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.03,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                 ),
-                Text(
-                  value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.035,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -1991,49 +2150,56 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 
   // Add exit confirmation dialog
   Future<bool> _showExitConfirmationDialog(BuildContext context) async {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     return await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(horizontalPadding),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(15),
+                  padding: EdgeInsets.all(horizontalPadding * 0.75),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFEBEB),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.exit_to_app,
                     color: Color(0xFFFF5252),
-                    size: 30,
+                    size: screenSize.width * 0.075,
                   ),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  "Exit App",
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                SizedBox(height: verticalPadding),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    "Exit App",
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.05,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: verticalPadding * 0.5),
                 Text(
                   "Are you sure you want to exit the app?",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: screenSize.width * 0.035,
                     color: Colors.grey.shade600,
                   ),
                 ),
-                const SizedBox(height: 25),
+                SizedBox(height: verticalPadding * 1.25),
                 Row(
                   children: [
                     Expanded(
@@ -2043,20 +2209,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                           foregroundColor: Colors.grey.shade800,
                           backgroundColor: Colors.grey.shade100,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(screenSize.width * 0.03),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.6),
                         ),
                         child: Text(
                           "Cancel",
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: screenSize.width * 0.035,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 15),
+                    SizedBox(width: horizontalPadding * 0.75),
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
@@ -2067,15 +2233,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                           backgroundColor: const Color(0xFFFF5252),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(screenSize.width * 0.03),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.6),
                           elevation: 0,
                         ),
                         child: Text(
                           "Exit",
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: screenSize.width * 0.035,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -2093,6 +2259,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 }
 
 void showPopup(BuildContext context) {
+  final Size screenSize = MediaQuery.of(context).size;
+  final double horizontalPadding = screenSize.width * 0.05;
+  final double verticalPadding = screenSize.height * 0.02;
+  
   showDialog(
     context: context,
     barrierDismissible: false,
@@ -2111,11 +2281,14 @@ void showPopup(BuildContext context) {
           AlertDialog(
             backgroundColor: const Color.fromRGBO(64, 124, 226, 1),
             title: Padding(
-              padding: const EdgeInsets.only(top: 30, bottom: 20),
+              padding: EdgeInsets.only(top: verticalPadding * 1.5, bottom: verticalPadding),
               child: Center(
                 child: Text(
                   "Please Complete Your Profile first",
-                  style: GoogleFonts.poppins(fontSize: 20, color: Colors.white),
+                  style: GoogleFonts.poppins(
+                    fontSize: screenSize.width * 0.05, 
+                    color: Colors.white
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -2133,7 +2306,7 @@ void showPopup(BuildContext context) {
                 child: Center(
                   child: Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.08),
                       color: const Color.fromRGBO(217, 217, 217, 1),
                       boxShadow: [
                         BoxShadow(
@@ -2143,13 +2316,13 @@ void showPopup(BuildContext context) {
                         ),
                       ],
                     ),
-                    width: 100,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    width: screenSize.width * 0.25,
+                    padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.5),
                     child: Center(
                       child: Text(
                         "Proceed",
                         style: GoogleFonts.poppins(
-                          fontSize: 16,
+                          fontSize: screenSize.width * 0.04,
                           color: Colors.black,
                         ),
                       ),
