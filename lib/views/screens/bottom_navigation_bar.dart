@@ -76,12 +76,49 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final bottomPadding = mediaQuery.padding.bottom;
+    
+    // Calculate icon size based on screen width
+    final double iconSize = screenWidth * 0.06;
+    // Calculate label font size based on screen width
+    final double fontSize = screenWidth * 0.03;
+    // Calculate bottom navigation bar height based on screen height
+    final double navBarHeight = 56.0 + (bottomPadding > 0 ? bottomPadding : 0);
+    
     return Scaffold(
-      body: Center(child: _widgetOptions().elementAt(_selectedIndex)),
-      bottomNavigationBar: BottomNavigationBar(
+      body: SafeArea(
+        bottom: false, // Handle bottom padding in the NavBar itself
+        child: Center(
+          child: _widgetOptions().elementAt(_selectedIndex),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: BottomNavigationBar(
+            elevation: 0,
         backgroundColor: Colors.white,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+            type: BottomNavigationBarType.fixed,
+            selectedFontSize: fontSize,
+            unselectedFontSize: fontSize,
+            iconSize: iconSize,
+            items: <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_filled), 
+                label: 'Home',
+              ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_rounded),
             label: 'Analytics',
@@ -90,13 +127,18 @@ class _BottomNavigationBarScreenState extends State<BottomNavigationBarScreen> {
             icon: Icon(Icons.account_balance_wallet),
             label: 'Finances',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Menu'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.menu), 
+                label: 'Menu',
+              ),
         ],
         currentIndex: _selectedIndex,
         unselectedItemColor: const Color.fromARGB(255, 94, 93, 93),
         unselectedLabelStyle: TextStyle(color: Colors.grey),
         selectedItemColor: Color.fromRGBO(64, 124, 226, 1),
         onTap: _onItemTapped,
+          ),
+        ),
       ),
     );
   }

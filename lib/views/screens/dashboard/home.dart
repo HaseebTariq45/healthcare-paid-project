@@ -251,116 +251,43 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Show exit confirmation dialog
-        return await showExitDialog(context);
-      },
-      child: Scaffold(
-      backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          title: Text(
-            'Home',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          actions: [
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('notifications')
-                  .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                  .where('isRead', isEqualTo: false)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                int unreadCount = 0;
-                if (snapshot.hasData) {
-                  unreadCount = snapshot.data!.docs.length;
-                }
+    // Get screen size for responsive design
+    final Size screenSize = MediaQuery.of(context).size;
+    final double screenWidth = screenSize.width;
+    final double screenHeight = screenSize.height;
+    
+    // Calculate responsive values
+    final double headerHeight = screenHeight * 0.28;
+    final double horizontalPadding = screenWidth * 0.06;
+    final double verticalSpacing = screenHeight * 0.025;
+    
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      body: SafeArea(
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(),
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
                 return Stack(
                   children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.notifications,
-                        color: Color(0xFF3366CC),
-                        size: 28,
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFFF3B30),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 2,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          child: Text(
-                            unreadCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: Stack(
-          children: [
-            if (_isLoading)
-              const Center(
-              child: CircularProgressIndicator(
-                color: Color.fromRGBO(64, 124, 226, 1),
-              ),
-            )
-            else
+                      // Main scrollable content
               SingleChildScrollView(
-        padding: EdgeInsets.zero,
+                        physics: BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with gradient
+                            // Header with gradient background
             Container(
-              width: double.infinity,
+                              height: headerHeight,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                   colors: [
                     Color.fromRGBO(64, 124, 226, 1),
-                    Color.fromRGBO(84, 144, 246, 1),
+                                    Color.fromRGBO(46, 106, 208, 1),
                   ],
                 ),
                 borderRadius: BorderRadius.only(
@@ -369,43 +296,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color.fromRGBO(64, 124, 226, 0.3),
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
+                                    color: Colors.blue.shade200.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: Offset(0, 10),
                   ),
                 ],
               ),
-              padding: EdgeInsets.fromLTRB(25, 70, 25, 30),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                                vertical: verticalSpacing,
+                              ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+                                  // Top row with user name and profile image
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Welcome",
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              "Hi, $_userName",
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                    Text(
-                      _userName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 26,
+                                                fontSize: screenWidth * 0.065,
                         fontWeight: FontWeight.w600,
                               color: Colors.white,
+                                              ),
                       ),
                     ),
                   ],
                 ),
-                              Row(
-                                children: [
                                   GestureDetector(
                         onTap: () {
                           NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
@@ -426,11 +349,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             tag: 'profileImage',
                             child: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
                                 ? CircleAvatar(
-                                    radius: 28,
+                                                    radius: screenWidth * 0.07,
                                     backgroundImage: NetworkImage(_profileImageUrl!),
                                   )
                                 : CircleAvatar(
-                                    radius: 28,
+                                                    radius: screenWidth * 0.07,
                                     backgroundImage: AssetImage("assets/images/User.png"),
                                   ),
                           ),
@@ -438,12 +361,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ],
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 25),
+                                  SizedBox(height: verticalSpacing),
                   // Earnings info in header
-                  Container(
-                    padding: EdgeInsets.all(15),
+                                  Flexible(
+                                    child: Container(
+                                      padding: EdgeInsets.all(screenWidth * 0.04),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(15),
@@ -451,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                         Container(
-                          padding: EdgeInsets.all(10),
+                                            padding: EdgeInsets.all(screenWidth * 0.025),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
@@ -459,31 +381,39 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Icon(
                             Icons.paid_outlined,
                             color: Color.fromRGBO(64, 124, 226, 1),
-                            size: 30,
+                                              size: screenWidth * 0.075,
                           ),
                         ),
-                        SizedBox(width: 15),
-                  Column(
+                                          SizedBox(width: screenWidth * 0.04),
+                                          Expanded(
+                                            child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                                                FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
                         "Total Earning",
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                                fontSize: 14,
+                                                      fontSize: screenWidth * 0.035,
+                                                    ),
                         ),
                       ),
-                      Text(
+                                                FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
                               "Rs ${_totalEarnings.toStringAsFixed(2)}",
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                                fontSize: 22,
+                                                      fontSize: screenWidth * 0.055,
                           fontWeight: FontWeight.bold,
+                                                    ),
                         ),
                       ),
                     ],
                         ),
-                        Spacer(),
+                                          ),
                         IconButton(
                           onPressed: () {
                             NavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
@@ -491,9 +421,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icon(
                             LucideIcons.arrowRight,
                             color: Colors.white,
+                                              size: screenWidth * 0.05,
                           ),
                         ),
                       ],
+                                      ),
                     ),
                   ),
                 ],
@@ -501,14 +433,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 25),
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 25),
+                                  SizedBox(height: verticalSpacing),
                   
                   // Quick action buttons
-                  Row(
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final double buttonWidth = (constraints.maxWidth - 24) / 4;
+                                      return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildQuickActionButton(
@@ -525,6 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                         },
+                                            width: buttonWidth,
                       ),
                       _buildQuickActionButton(
                         icon: LucideIcons.calendar,
@@ -538,6 +474,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                         },
+                                            width: buttonWidth,
                       ),
                       _buildQuickActionButton(
                         icon: Icons.bar_chart,
@@ -546,6 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: () {
                           _onItemTapped(1); // Navigate to Analytics
                         },
+                                            width: buttonWidth,
                       ),
                       _buildQuickActionButton(
                         icon: LucideIcons.messageCircle,
@@ -554,15 +492,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: () {
                           _onItemTapped(3); // Navigate to Menu
                         },
+                                            width: buttonWidth,
                       ),
                     ],
+                                      );
+                                    }
                   ),
                   
-                  SizedBox(height: 25),
+                                  SizedBox(height: verticalSpacing),
                   
                   // Ratings Card with improved design
             Container(
-              padding: EdgeInsets.all(20),
+                                    padding: EdgeInsets.all(screenWidth * 0.05),
               decoration: BoxDecoration(
                 color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -584,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                             Container(
-                              padding: EdgeInsets.all(8),
+                                              padding: EdgeInsets.all(screenWidth * 0.02),
                               decoration: BoxDecoration(
                                 color: Color.fromRGBO(64, 124, 226, 0.1),
                                 borderRadius: BorderRadius.circular(10),
@@ -592,32 +533,36 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Icon(
                                 LucideIcons.thumbsUp,
                                 color: Color.fromRGBO(64, 124, 226, 1),
-                                size: 20,
+                                                size: screenWidth * 0.05,
                               ),
                             ),
-                            SizedBox(width: 12),
+                                            SizedBox(width: screenWidth * 0.03),
                       Text(
                         "Overall Ratings",
                         style: GoogleFonts.poppins(
-                          fontSize: 16,
+                                                fontSize: screenWidth * 0.04,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                        SizedBox(height: 15),
+                                        SizedBox(height: verticalSpacing * 0.6),
                   Row(
                     children: [
-                      Text(
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
                               _overallRating.toStringAsFixed(1),
                         style: GoogleFonts.poppins(
-                                fontSize: 30,
+                                                  fontSize: screenWidth * 0.075,
                           fontWeight: FontWeight.bold,
                           color: Color.fromRGBO(64, 124, 226, 1),
                         ),
                       ),
-                            SizedBox(width: 12),
-                            Column(
+                                            ),
+                                            SizedBox(width: screenWidth * 0.03),
+                                            Expanded(
+                                              child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
@@ -630,19 +575,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ? Icons.star_half
                                                 : Icons.star_border,
                                         color: Colors.amber,
-                                        size: 18,
+                                                          size: screenWidth * 0.045,
                                       ),
                                   ],
                                 ),
-                                SizedBox(height: 5),
-                  Text(
+                                                  SizedBox(height: screenHeight * 0.005),
+                                                  FittedBox(
+                                                    fit: BoxFit.scaleDown,
+                                                    child: Text(
                     "Based on $_reviewCount reviews",
                                   style: GoogleFonts.poppins(
                                     color: Colors.grey,
-                                    fontSize: 12,
+                                                        fontSize: screenWidth * 0.03,
+                                                      ),
                                   ),
                                 ),
                               ],
+                                              ),
                             ),
                           ],
                   ),
@@ -650,10 +599,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
                   
-                  SizedBox(height: 25),
+                                  SizedBox(height: verticalSpacing),
 
                   // Add extra space at the bottom
-                  SizedBox(height: 25),
+                                  SizedBox(height: verticalSpacing),
                 ],
                       ),
                     ),
@@ -669,7 +618,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 right: 0,
                 child: Center(
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.04, 
+                                vertical: screenHeight * 0.01
+                              ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -685,8 +637,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox(
-                          width: 16,
-                          height: 16,
+                                    width: screenWidth * 0.04,
+                                    height: screenWidth * 0.04,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -694,11 +646,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 8),
+                                  SizedBox(width: screenWidth * 0.02),
                         Text(
                           "Refreshing...",
                           style: GoogleFonts.poppins(
-                            fontSize: 12,
+                                      fontSize: screenWidth * 0.03,
                             color: Colors.grey.shade700,
                           ),
                         ),
@@ -708,6 +660,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+                  );
+                }
         ),
       ),
     );
@@ -718,35 +672,47 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required Color color,
     required VoidCallback onTap,
+    required double width,
   }) {
     return GestureDetector(
       onTap: onTap,
+      child: Container(
+        width: width,
       child: Column(
         children: [
-          Container(
-            width: 50,
-            height: 50,
+            AspectRatio(
+              aspectRatio: 1,
+              child: Container(
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(icon, color: color),
+                child: Icon(icon, color: color, size: width * 0.5),
+              ),
           ),
           SizedBox(height: 8),
-          Text(
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
             label,
+                textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
-              fontSize: 12,
+                  fontSize: width * 0.24,
               fontWeight: FontWeight.w500,
+                ),
             ),
           ),
         ],
+        ),
       ),
     );
   }
 }
 
 Future<bool> showExitDialog(BuildContext context) async {
+  final Size screenSize = MediaQuery.of(context).size;
+  final double screenWidth = screenSize.width;
+  
   return await showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -755,41 +721,44 @@ Future<bool> showExitDialog(BuildContext context) async {
           borderRadius: BorderRadius.circular(20),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(screenWidth * 0.05),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(15),
+                padding: EdgeInsets.all(screenWidth * 0.04),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFEBEB),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.exit_to_app,
                   color: Color(0xFFFF5252),
-                  size: 30,
+                  size: screenWidth * 0.075,
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
+              SizedBox(height: screenWidth * 0.05),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
                 "Exit App",
                 style: GoogleFonts.poppins(
-                  fontSize: 20,
+                    fontSize: screenWidth * 0.05,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: screenWidth * 0.025),
               Text(
                 "Are you sure you want to exit the app?",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: screenWidth * 0.035,
                   color: Colors.grey.shade600,
                 ),
               ),
-              const SizedBox(height: 25),
+              SizedBox(height: screenWidth * 0.06),
               Row(
                 children: [
                   Expanded(
@@ -801,18 +770,21 @@ Future<bool> showExitDialog(BuildContext context) async {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
                       ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
                       child: Text(
                         "Cancel",
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                            fontSize: screenWidth * 0.035,
                           fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  SizedBox(width: screenWidth * 0.04),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
@@ -825,14 +797,17 @@ Future<bool> showExitDialog(BuildContext context) async {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.03),
                         elevation: 0,
                       ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
                       child: Text(
                         "Exit",
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                            fontSize: screenWidth * 0.035,
                           fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
