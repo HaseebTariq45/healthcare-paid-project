@@ -466,7 +466,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
         timeOfDay.minute,
       );
       
-      final String formattedDate = DateFormat('MMM d, yyyy').format(_selectedDate);
+      final String formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
       
       // Create appointment data
       final Map<String, dynamic> appointmentData = {
