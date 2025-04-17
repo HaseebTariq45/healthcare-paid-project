@@ -415,9 +415,9 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
                 
                 return Dialog(
                   insetPadding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.05),
-                  shape: RoundedRectangleBorder(
+                shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(screenSize.width * 0.05),
-                  ),
+                ),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final maxWidth = constraints.maxWidth;
@@ -444,153 +444,153 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
                         ),
                         child: SingleChildScrollView(
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Header with success icon
-                              Container(
-                                width: double.infinity,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header with success icon
+                    Container(
+                      width: double.infinity,
                                 padding: EdgeInsets.symmetric(vertical: padding['medium']!),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF3366FF),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF3366FF),
                                   borderRadius: BorderRadius.vertical(top: Radius.circular(screenSize.width * 0.05)),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Container(
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
                                       padding: EdgeInsets.all(maxWidth * 0.04),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.check,
-                                        color: Color(0xFF3366FF),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: Color(0xFF3366FF),
                                         size: maxWidth * 0.08,
-                                      ),
-                                    ),
+                            ),
+                          ),
                                     SizedBox(height: padding['small']!),
                                     FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
-                                        "Payment Successful",
-                                        style: GoogleFonts.poppins(
+                            "Payment Successful",
+                            style: GoogleFonts.poppins(
                                           fontSize: fontSize['large'],
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                                         ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // Payment details
-                              Padding(
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Payment details
+                    Padding(
                                 padding: EdgeInsets.all(padding['large']!),
-                                child: Column(
-                                  children: [
-                                    // Amount
+                      child: Column(
+                        children: [
+                          // Amount
                                     _buildPaymentInfoContainer(
-                                      "Amount Paid",
-                                      "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
+                                        "Amount Paid",
+                                        "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
                                       Icons.attach_money,
                                       padding: padding,
                                       fontSize: fontSize,
-                                    ),
-                                    
+                          ),
+                          
                                     SizedBox(height: padding['small']!),
-                                    
-                                    // Doctor details
+                          
+                          // Doctor details
                                     _buildPaymentInfoContainer(
-                                      "Doctor",
-                                      "${widget.appointmentDetails?['doctorName'] ?? 'Doctor'}",
+                                        "Doctor",
+                                        "${widget.appointmentDetails?['doctorName'] ?? 'Doctor'}",
                                       Icons.medical_services,
                                       padding: padding,
                                       fontSize: fontSize,
-                                    ),
-                                    
+                          ),
+                          
                                     SizedBox(height: padding['small']!),
-                                    
-                                    // Payment method
+                          
+                          // Payment method
                                     _buildPaymentInfoContainer(
-                                      "Payment Method",
-                                      selectedCard["name"],
+                                        "Payment Method",
+                                        selectedCard["name"],
                                       Icons.credit_card,
                                       padding: padding,
                                       fontSize: fontSize,
-                                    ),
-                                    
+                          ),
+                          
                                     SizedBox(height: padding['medium']!),
-                                    
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              PatientNavigationHelper.navigateToHome(context);
-                                            },
-                                            style: OutlinedButton.styleFrom(
+                          
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    PatientNavigationHelper.navigateToHome(context);
+                                  },
+                                  style: OutlinedButton.styleFrom(
                                               padding: EdgeInsets.symmetric(vertical: maxHeight * 0.02),
-                                              side: BorderSide(
-                                                color: Color(0xFF3366FF),
-                                                width: 1.5,
-                                              ),
-                                              shape: RoundedRectangleBorder(
+                                    side: BorderSide(
+                                      color: Color(0xFF3366FF),
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(maxWidth * 0.03),
-                                              ),
-                                            ),
+                                    ),
+                                  ),
                                             child: FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: Text(
-                                                "Go to Home",
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.w500,
+                                  child: Text(
+                                    "Go to Home",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w500,
                                                   fontSize: fontSize['medium'],
-                                                  color: Color(0xFF3366FF),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
+                                      color: Color(0xFF3366FF),
+                                    ),
+                                  ),
+                                ),
+                              ),
                                         ),
                                         SizedBox(width: padding['small']!),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              PatientNavigationHelper.navigateToHome(context);
-                                              Future.delayed(Duration(milliseconds: 100), () {
-                                                PatientNavigationHelper.navigateToTab(context, 2);
-                                              });
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Color(0xFF3366FF),
-                                              foregroundColor: Colors.white,
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    PatientNavigationHelper.navigateToHome(context);
+                                    Future.delayed(Duration(milliseconds: 100), () {
+                                      PatientNavigationHelper.navigateToTab(context, 2);
+                                    });
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF3366FF),
+                                    foregroundColor: Colors.white,
                                               padding: EdgeInsets.symmetric(vertical: maxHeight * 0.02),
-                                              shape: RoundedRectangleBorder(
+                                    shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(maxWidth * 0.03),
-                                              ),
-                                            ),
+                                    ),
+                                  ),
                                             child: FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: Text(
-                                                "View History",
-                                                style: GoogleFonts.poppins(
-                                                  fontWeight: FontWeight.w500,
+                                  child: Text(
+                                    "View History",
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w500,
                                                   fontSize: fontSize['medium'],
                                                 ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
                       );
                     },
                   ),

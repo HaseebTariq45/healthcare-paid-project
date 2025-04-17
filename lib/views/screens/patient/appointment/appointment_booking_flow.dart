@@ -441,6 +441,22 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
 
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final bool isSmallScreen = screenSize.width < 360;
+    
+    // Calculate responsive sizes
+    final double padding = screenSize.width * 0.04;
+    final double borderRadius = screenSize.width * 0.05;
+    final double iconSize = screenSize.width * 0.055;
+    
+    // Responsive text styles
+    final titleStyle = GoogleFonts.poppins(
+      fontSize: isSmallScreen ? 20 : screenSize.width * 0.055,
+      fontWeight: FontWeight.w600,
+      color: Colors.black,
+    );
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -448,11 +464,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         elevation: 0,
         title: Text(
           'Book Appointment',
-          style: GoogleFonts.poppins(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
+          style: titleStyle,
         ),
         centerTitle: true,
         leading: IconButton(
@@ -460,97 +472,130 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(borderRadius),
+                    topRight: Radius.circular(borderRadius),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: Offset(0, -5),
+                    ),
+                  ],
                 ),
-                child: Stack(
-                  children: [
-                    Theme(
-                      data: Theme.of(context).copyWith(
-                        colorScheme: ColorScheme.light(
-                          primary: Color(0xFF2B8FEB),
-                          secondary: Color(0xFF2B8FEB),
-                          surface: Colors.white,
-                        ),
-                        elevatedButtonTheme: ElevatedButtonThemeData(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF2B8FEB),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 16,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(borderRadius),
+                    topRight: Radius.circular(borderRadius),
+                  ),
+                  child: Stack(
+                    children: [
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: ColorScheme.light(
+                            primary: Color(0xFF2B8FEB),
+                            secondary: Color(0xFF2B8FEB),
+                            surface: Colors.white,
+                          ),
+                          elevatedButtonTheme: ElevatedButtonThemeData(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF2B8FEB),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: padding * 1.5,
+                                vertical: padding,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      child: Stepper(
-                        currentStep: _currentStep,
-                        onStepContinue: _proceedToNextStep,
-                        onStepCancel: _goToPreviousStep,
-                        onStepTapped: (step) {
-                          // Add animation when tapping on step
-                          setState(() {
-                            _currentStep = step;
-                          });
-                        },
-                        steps: _buildSteps(),
-                        type: StepperType.vertical,
-                        elevation: 0,
-                        margin: EdgeInsets.zero,
-                        controlsBuilder: (context, details) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 24.0),
-                            child: Row(
-                              children: [
-                                if (details.currentStep > 0)
+                        child: Stepper(
+                          currentStep: _currentStep,
+                          onStepContinue: _proceedToNextStep,
+                          onStepCancel: _goToPreviousStep,
+                          onStepTapped: (step) {
+                            // Add animation when tapping on step
+                            setState(() {
+                              _currentStep = step;
+                            });
+                          },
+                          steps: _buildSteps(),
+                          type: StepperType.vertical,
+                          elevation: 0,
+                          margin: EdgeInsets.zero,
+                          controlsBuilder: (context, details) {
+                            return Padding(
+                              padding: EdgeInsets.only(top: padding * 1.5),
+                              child: Row(
+                                children: [
+                                  if (details.currentStep > 0)
+                                    Expanded(
+                                      flex: 1,
+                                      child: TweenAnimationBuilder<double>(
+                                        tween: Tween<double>(begin: 0.9, end: 1.0),
+                                        duration: Duration(milliseconds: 200),
+                                        builder: (context, scale, child) {
+                                          return Transform.scale(
+                                            scale: scale,
+                                            child: OutlinedButton(
+                                              onPressed: details.onStepCancel,
+                                              style: OutlinedButton.styleFrom(
+                                                side: BorderSide(color: Color(0xFF2B8FEB)),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                                                ),
+                                                padding: EdgeInsets.symmetric(vertical: padding),
+                                              ),
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  'Back',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: screenSize.width * 0.038,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Color(0xFF2B8FEB),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  if (details.currentStep > 0)
+                                    SizedBox(width: padding),
                                   Expanded(
-                                    flex: 1,
+                                    flex: 2,
                                     child: TweenAnimationBuilder<double>(
                                       tween: Tween<double>(begin: 0.9, end: 1.0),
                                       duration: Duration(milliseconds: 200),
                                       builder: (context, scale, child) {
                                         return Transform.scale(
                                           scale: scale,
-                                          child: OutlinedButton(
-                                            onPressed: details.onStepCancel,
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(color: Color(0xFF2B8FEB)),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              padding: EdgeInsets.symmetric(vertical: 16),
-                                            ),
-                                            child: Text(
-                                              'Back',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500,
-                                                color: Color(0xFF2B8FEB),
+                                          child: ElevatedButton(
+                                            onPressed: details.onStepContinue,
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                details.currentStep == _buildSteps().length - 1
+                                                    ? 'Confirm Booking'
+                                                    : 'Continue',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: screenSize.width * 0.038,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -558,199 +603,175 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                                       },
                                     ),
                                   ),
-                                if (details.currentStep > 0)
-                                  SizedBox(width: 16),
-                                Expanded(
-                                  flex: 2,
-                                  child: TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(begin: 0.9, end: 1.0),
-                                    duration: Duration(milliseconds: 200),
-                                    builder: (context, scale, child) {
-                                      return Transform.scale(
-                                        scale: scale,
-                                        child: ElevatedButton(
-                                          onPressed: details.onStepContinue,
-                                          child: Text(
-                                            details.currentStep == _buildSteps().length - 1
-                                                ? 'Confirm Booking'
-                                                : 'Continue',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      if (_errorMessage != null)
+                        AnimatedPositioned(
+                          duration: Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                          bottom: padding,
+                          left: padding,
+                          right: padding,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: padding * 1.2,
+                              vertical: padding,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(screenSize.width * 0.04),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    if (_errorMessage != null)
-                      AnimatedPositioned(
-                        duration: Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                        bottom: 20,
-                        left: 20,
-                        right: 20,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.red.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade100,
-                                  shape: BoxShape.circle,
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(padding * 0.4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade100,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                    size: iconSize * 0.8,
+                                  ),
                                 ),
-                                child: Icon(
-                                  Icons.error_outline,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Error',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.red.shade900,
+                                SizedBox(width: padding),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Error',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: screenSize.width * 0.04,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.red.shade900,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      _errorMessage!,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        color: Colors.red.shade700,
+                                      SizedBox(height: 4),
+                                      Text(
+                                        _errorMessage!,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: screenSize.width * 0.035,
+                                          color: Colors.red.shade700,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.close,
-                                  color: Colors.red.shade900,
-                                  size: 20,
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: Colors.red.shade900,
+                                    size: iconSize * 0.8,
+                                  ),
+                                  constraints: BoxConstraints(),
+                                  padding: EdgeInsets.all(padding * 0.3),
+                                  onPressed: () {
+                                    setState(() {
+                                      _errorMessage = null;
+                                    });
+                                  },
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _errorMessage = null;
-                                  });
-                                },
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            // Full screen loading overlay when processing payment
-            if (_isLoading)
-              Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final Size screenSize = MediaQuery.of(context).size;
-                      final double dialogWidth = screenSize.width * 0.85;
-                      final double dialogPadding = screenSize.width * 0.06;
-                      final double iconSize = screenSize.width * 0.11;
-                      final double progressSize = screenSize.width * 0.1;
-                      final double verticalSpacing = screenSize.height * 0.025;
-                      
-                      return Container(
-                        padding: EdgeInsets.all(dialogPadding),
-                        width: dialogWidth,
-                        constraints: BoxConstraints(
-                          maxWidth: 450, // Maximum width on larger devices
-                          minHeight: screenSize.height * 0.2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(screenSize.width * 0.05),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(iconSize * 0.3),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF2754C3).withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: SizedBox(
-                                width: progressSize,
-                                height: progressSize,
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2754C3)),
-                                  strokeWidth: 3,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: verticalSpacing),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                'Loading Appointment Details',
-                                style: GoogleFonts.poppins(
-                                  fontSize: screenSize.width * 0.045,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: verticalSpacing * 0.4),
-                            Text(
-                              'Please wait while we prepare the booking information...',
-                              style: GoogleFonts.poppins(
-                                fontSize: screenSize.width * 0.035,
-                                color: Colors.grey[600],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                    ],
                   ),
                 ),
               ),
-          ],
+              // Full screen loading overlay when processing payment
+              if (_isLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double dialogWidth = screenSize.width * 0.85;
+                        final double dialogPadding = screenSize.width * 0.06;
+                        final double iconSize = screenSize.width * 0.11;
+                        final double progressSize = screenSize.width * 0.1;
+                        final double verticalSpacing = screenSize.height * 0.025;
+                        
+                        return Container(
+                          padding: EdgeInsets.all(dialogPadding),
+                          width: dialogWidth,
+                          constraints: BoxConstraints(
+                            maxWidth: 450, // Maximum width on larger devices
+                            minHeight: screenSize.height * 0.2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 20,
+                                offset: Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(iconSize * 0.3),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF2754C3).withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: SizedBox(
+                                  width: progressSize,
+                                  height: progressSize,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2754C3)),
+                                    strokeWidth: 3,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: verticalSpacing),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Loading Appointment Details',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.045,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: verticalSpacing * 0.4),
+                              Text(
+                                'Please wait while we prepare the booking information...',
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenSize.width * 0.035,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1134,6 +1155,22 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildLocationStep() {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final bool isSmallScreen = screenSize.width < 360;
+    
+    // Calculate responsive dimensions
+    final double padding = screenSize.width * 0.04;
+    final Map<String, double> fontSize = {
+      'title': screenSize.width * 0.045,
+      'subtitle': screenSize.width * 0.035,
+      'item': screenSize.width * 0.04,
+      'detail': screenSize.width * 0.035,
+    };
+    final double borderRadius = screenSize.width * 0.04;
+    final double iconSize = screenSize.width * 0.06;
+    final double spacing = padding * 0.75;
+
     // Get available hospitals for the selected doctor
     List<Map<String, dynamic>> doctorHospitals = [];
     
@@ -1157,22 +1194,22 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 ? 'Choose Hospital for ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
                 : 'Choose Hospital Location',
             style: GoogleFonts.poppins(
-              fontSize: 18,
+              fontSize: fontSize['title'],
               fontWeight: FontWeight.w600,
               color: Colors.black87,
             ),
           ),
-          SizedBox(height: 8),
+          SizedBox(height: spacing),
           Text(
             _selectedDoctor != null || widget.preSelectedDoctor != null
                 ? 'Select the hospital where you would like to schedule your appointment with ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
                 : 'Select the hospital where you would like to schedule your appointment',
             style: GoogleFonts.poppins(
-              fontSize: 14,
+              fontSize: fontSize['subtitle'],
               color: Colors.grey[600],
             ),
           ),
-          SizedBox(height: 24),
+          SizedBox(height: padding * 1.5),
           
           if (doctorHospitals.isEmpty) ...[
             Center(
@@ -1180,24 +1217,24 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 children: [
                   Icon(
                     Icons.error_outline,
-                    size: 48,
+                    size: iconSize * 2,
                     color: Colors.grey[400],
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: padding),
                   Text(
                     'No hospitals available for the selected doctor',
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: fontSize['item'],
                       fontWeight: FontWeight.w500,
                       color: Colors.grey[600],
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: spacing),
                   Text(
                     'Please select a different doctor or try another date',
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: fontSize['subtitle'],
                       color: Colors.grey[500],
                     ),
                     textAlign: TextAlign.center,
@@ -1206,113 +1243,117 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               ),
             )
           ] else ...[
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: doctorHospitals.length,
-              itemBuilder: (context, index) {
-                final hospital = doctorHospitals[index];
-                final hospitalName = hospital['hospitalName'];
-                final hospitalId = hospital['hospitalId'];
-                final isSelected = hospitalId == _selectedHospitalId || hospitalName == _selectedLocation;
-                
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedLocation = hospitalName;
-                        _selectedHospitalId = hospitalId;
-                        
-                        // If date is selected, fetch time slots for this hospital and date
-                        if (_selectedDate != null) {
-                          _fetchTimeSlotsForDate(hospitalId, _selectedDate!);
-                        }
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Color(0xFFEDF7FF) : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
-                          width: isSelected ? 2 : 1,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: Color(0xFF2B8FEB).withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ]
-                            : [],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Color(0xFF2B8FEB).withOpacity(0.1)
-                                  : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: doctorHospitals.length,
+                  itemBuilder: (context, index) {
+                    final hospital = doctorHospitals[index];
+                    final hospitalName = hospital['hospitalName'];
+                    final hospitalId = hospital['hospitalId'];
+                    final isSelected = hospitalId == _selectedHospitalId || hospitalName == _selectedLocation;
+                    
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: spacing),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() {
+                            _selectedLocation = hospitalName;
+                            _selectedHospitalId = hospitalId;
+                            
+                            // If date is selected, fetch time slots for this hospital and date
+                            if (_selectedDate != null) {
+                              _fetchTimeSlotsForDate(hospitalId, _selectedDate!);
+                            }
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(borderRadius),
+                        child: Container(
+                          padding: EdgeInsets.all(padding),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Color(0xFFEDF7FF) : Colors.white,
+                            borderRadius: BorderRadius.circular(borderRadius),
+                            border: Border.all(
+                              color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
+                              width: isSelected ? 2 : 1,
                             ),
-                            child: Icon(
-                              MdiIcons.officeBuildingOutline,
-                              color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
-                              size: 24,
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  hospitalName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                if (hospital.containsKey('address')) ...[
-                                  SizedBox(height: 4),
-                                  Text(
-                                    hospital['address'],
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: Color(0xFF2B8FEB).withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ],
-                            ),
+                                  ]
+                                : [],
                           ),
-                          if (isSelected)
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Color(0xFF2B8FEB),
-                                shape: BoxShape.circle,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(padding * 0.75),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Color(0xFF2B8FEB).withOpacity(0.1)
+                                      : Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(borderRadius * 0.75),
+                                ),
+                                child: Icon(
+                                  MdiIcons.officeBuildingOutline,
+                                  color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
+                                  size: iconSize,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.check_circle,
-                                color: Colors.white,
-                                size: 16,
+                              SizedBox(width: padding),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      hospitalName,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: fontSize['item'],
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    if (hospital.containsKey('address')) ...[
+                                      SizedBox(height: spacing * 0.5),
+                                      Text(
+                                        hospital['address'],
+                                        style: GoogleFonts.poppins(
+                                          fontSize: fontSize['detail'],
+                                          color: Colors.grey[600],
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
-                            ),
-                        ],
+                              if (isSelected)
+                                Container(
+                                  padding: EdgeInsets.all(padding * 0.5),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFF2B8FEB),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: iconSize * 0.6,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
-              },
+              }
             ),
           ],
         ],

@@ -41,6 +41,9 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
   String? _selectedTimeSlot;
   final TextEditingController _reasonController = TextEditingController();
   
+  // Track booked time slots
+  List<String> _bookedTimeSlots = [];
+  
   @override
   void dispose() {
     _cnicController.dispose();
@@ -230,6 +233,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
     setState(() {
       _isLoadingTimeSlots = true;
       _availableTimeSlots = [];
+      _bookedTimeSlots = [];
       _selectedTimeSlot = null;
     });
     
@@ -267,44 +271,42 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
         debugPrint('No availability document found for the given criteria');
       }
       
-      // If no time slots found, check if we need to create default slots
-      if (timeSlots.isEmpty) {
-        debugPrint('No time slots found, checking if we should create default slots');
-        
-        // Only create default slots for future dates
-        if (date.isAfter(DateTime.now())) {
-          timeSlots = [
-            "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-            "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
-            "07:00 PM", "08:00 PM"
-          ];
-          
-          // Create the availability document
-          try {
-            await _firestore.collection('doctor_availability').add({
-              'doctorId': doctorId,
-              'hospitalId': hospitalId,
-              'hospitalName': _selectedHospitalData?['hospitalName'] ?? '',
-              'date': formattedDate,
-              'timeSlots': timeSlots,
-              'created': FieldValue.serverTimestamp(),
-              'lastUpdated': FieldValue.serverTimestamp(),
-            });
-            debugPrint('Created new availability document with default time slots');
-          } catch (e) {
-            debugPrint('Error creating default availability: $e');
-          }
-        } else {
-          debugPrint('Date is in the past, not creating default slots');
-        }
-      }
+      // Fetch booked appointments for this doctor, hospital and date
+      await _fetchBookedAppointments(doctorId, hospitalId, formattedDate);
       
       setState(() {
         _availableTimeSlots = timeSlots;
         _isLoadingTimeSlots = false;
         
-        if (timeSlots.isNotEmpty) {
-          _selectedTimeSlot = timeSlots.first;
+        // Filter out already booked slots
+        List<String> availableSlots = timeSlots.where((slot) => !_bookedTimeSlots.contains(slot)).toList();
+        
+        // Only select the first time slot if it's not booked and not in the past
+        if (availableSlots.isNotEmpty) {
+          // Check if first slot is in the past
+          bool isFirstSlotInPast = false;
+          if (date.year == DateTime.now().year && 
+              date.month == DateTime.now().month && 
+              date.day == DateTime.now().day) {
+            final firstSlotTime = _parseTimeOfDay(availableSlots.first);
+            final now = TimeOfDay.now();
+            isFirstSlotInPast = firstSlotTime.hour < now.hour || 
+                              (firstSlotTime.hour == now.hour && firstSlotTime.minute < now.minute);
+          }
+          
+          if (!isFirstSlotInPast) {
+            _selectedTimeSlot = availableSlots.first;
+          } else {
+            // Find the first slot that is not in the past
+            for (var slot in availableSlots) {
+              final slotTime = _parseTimeOfDay(slot);
+              final now = TimeOfDay.now();
+              if (!(slotTime.hour < now.hour || (slotTime.hour == now.hour && slotTime.minute < now.minute))) {
+                _selectedTimeSlot = slot;
+                break;
+              }
+            }
+          }
         }
       });
       
@@ -314,6 +316,36 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
         _errorMessage = 'Error loading time slots: ${e.toString()}';
         _isLoadingTimeSlots = false;
       });
+    }
+  }
+  
+  // Fetch booked appointments for a specific doctor, hospital, and date
+  Future<void> _fetchBookedAppointments(String doctorId, String hospitalId, String formattedDate) async {
+    try {
+      final QuerySnapshot appointmentsSnapshot = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('hospitalId', isEqualTo: hospitalId)
+          .where('date', isEqualTo: formattedDate)
+          .where('status', whereIn: ['Confirmed', 'pending_payment', 'In Progress'])
+          .get();
+      
+      debugPrint('Found ${appointmentsSnapshot.docs.length} existing appointments');
+      
+      List<String> bookedSlots = [];
+      for (var doc in appointmentsSnapshot.docs) {
+        final appointmentData = doc.data() as Map<String, dynamic>;
+        if (appointmentData['time'] != null && appointmentData['time'] is String) {
+          bookedSlots.add(appointmentData['time']);
+        }
+      }
+      
+      setState(() {
+        _bookedTimeSlots = bookedSlots;
+        debugPrint('Booked time slots: $_bookedTimeSlots');
+      });
+    } catch (e) {
+      debugPrint('Error fetching booked appointments: $e');
     }
   }
   
@@ -334,10 +366,51 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
       return;
     }
     
+    if (_availableTimeSlots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No time slots are available. Cannot book appointment.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
     if (_selectedTimeSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select an available time slot')),
       );
+      return;
+    }
+    
+    // Check if selected time slot is in the past
+    if (_selectedDate.year == DateTime.now().year &&
+        _selectedDate.month == DateTime.now().month &&
+        _selectedDate.day == DateTime.now().day) {
+      final selectedTime = _parseTimeOfDay(_selectedTimeSlot!);
+      final now = TimeOfDay.now();
+      
+      if (selectedTime.hour < now.hour || (selectedTime.hour == now.hour && selectedTime.minute < now.minute)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Cannot book an appointment for a time slot that has already passed.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+    
+    // Check if selected time slot is already booked
+    if (_bookedTimeSlots.contains(_selectedTimeSlot)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('This time slot has already been booked. Please select another time slot.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      // Refresh the available time slots
+      _loadAvailableTimeSlots(_selectedDoctor!['id'], _selectedHospitalData!['hospitalId'], _selectedDate);
       return;
     }
     
@@ -440,6 +513,23 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
   TimeOfDay _parseTimeSlot(String timeSlot) {
     final time = DateFormat('hh:mm a').parse(timeSlot);
     return TimeOfDay(hour: time.hour, minute: time.minute);
+  }
+  
+  // Helper method to parse time string into TimeOfDay
+  TimeOfDay _parseTimeOfDay(String timeString) {
+    final components = timeString.split(' ');
+    final timeComponents = components[0].split(':');
+    int hour = int.parse(timeComponents[0]);
+    final minute = int.parse(timeComponents[1]);
+    final isPM = components[1].toUpperCase() == 'PM';
+    
+    if (isPM && hour != 12) {
+      hour += 12;
+    } else if (!isPM && hour == 12) {
+      hour = 0;
+    }
+    
+    return TimeOfDay(hour: hour, minute: minute);
   }
   
   @override
@@ -620,6 +710,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                               : Text(
                                   'Search',
                                   style: GoogleFonts.poppins(
+                                  color: Colors.white,
                                     fontWeight: FontWeight.w500,
                                     fontSize: 14,
                                   ),
@@ -1134,68 +1225,143 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                             decoration: BoxDecoration(
                               color: Colors.orange.shade50,
                               borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.orange.shade200),
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.access_time, color: Colors.orange.shade800),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'No time slots available for this date. Please select another date.',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      color: Colors.orange.shade800,
+                                Row(
+                                  children: [
+                                    Icon(Icons.access_time, color: Colors.orange.shade800),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'No Time Slots Available',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.orange.shade800,
+                                        ),
+                                      ),
                                     ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'There are no time slots available for this doctor at this hospital on the selected date. Please select a different date or contact the doctor to set up availability.',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: Colors.orange.shade800,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Time slots must be manually added to the doctor\'s schedule in the doctor_availability collection.',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.orange.shade700,
                                   ),
                                 ),
                               ],
                             ),
                           )
                         else
-                          Container(
-                            height: 60,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _availableTimeSlots.length,
-                              itemBuilder: (context, index) {
-                                final timeSlot = _availableTimeSlots[index];
-                                final isSelected = timeSlot == _selectedTimeSlot;
-                                
-                                return Padding(
-                                  padding: EdgeInsets.only(right: 10),
-                                  child: InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedTimeSlot = timeSlot;
-                                      });
-                                    },
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? Color(0xFF3366CC) : Colors.grey.shade50,
-                                        border: Border.all(
-                                          color: isSelected ? Color(0xFF3366CC) : Colors.grey.shade300,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Available Time Slots',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 12,
+                                children: _availableTimeSlots.map((time) {
+                                  final isSelected = time == _selectedTimeSlot;
+                                  
+                                  // Check if this slot is in the past
+                                  final isPastTime = _selectedDate?.day == DateTime.now().day &&
+                                      _parseTimeOfDay(time).hour < TimeOfDay.now().hour ||
+                                      (_parseTimeOfDay(time).hour == TimeOfDay.now().hour &&
+                                      _parseTimeOfDay(time).minute < TimeOfDay.now().minute);
+                                  
+                                  // Check if slot is already booked
+                                  final isBooked = _bookedTimeSlots.contains(time);
+                                  
+                                  // Whether this slot is available
+                                  final isAvailable = !isPastTime && !isBooked;
+                                  
+                                  return InkWell(
+                                    onTap: isAvailable 
+                                        ? () {
+                                            setState(() {
+                                              _selectedTimeSlot = time;
+                                            });
+                                          }
+                                        : null,
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: AnimatedContainer(
+                                      duration: Duration(milliseconds: 200),
                                       padding: EdgeInsets.symmetric(
                                         horizontal: 16,
-                                        vertical: 10,
+                                        vertical: 12,
                                       ),
-                                      child: Center(
-                                        child: Text(
-                                          timeSlot,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-                                            color: isSelected ? Colors.white : Color(0xFF333333),
-                                          ),
+                                      decoration: BoxDecoration(
+                                        color: !isAvailable 
+                                            ? Colors.grey.shade200
+                                            : isSelected
+                                                ? Color(0xFF3366CC)
+                                                : Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: !isAvailable
+                                              ? Colors.grey.shade300
+                                              : isSelected
+                                                  ? Color(0xFF3366CC)
+                                                  : Colors.grey.shade200,
+                                        ),
+                                        boxShadow: isSelected && isAvailable
+                                            ? [
+                                                BoxShadow(
+                                                  color: Color(0xFF3366CC).withOpacity(0.2),
+                                                  blurRadius: 8,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ]
+                                            : [],
+                                      ),
+                                      child: Text(
+                                        time,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                          color: !isAvailable
+                                              ? Colors.grey.shade500
+                                              : isSelected
+                                                  ? Colors.white
+                                                  : Colors.black87,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
+                                  );
+                                }).toList(),
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'Grayed out time slots are unavailable or already booked.',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
                           ),
                         
                         SizedBox(height: 20),
@@ -1247,7 +1413,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: _isBooking ? null : _createAppointment,
+                            onPressed: (_isBooking || _availableTimeSlots.isEmpty) ? null : _createAppointment,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFF3366CC),
                               foregroundColor: Colors.white,
@@ -1287,7 +1453,9 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                                       Icon(Icons.check_circle),
                                       SizedBox(width: 12),
                                       Text(
-                                        'Book Appointment',
+                                        _availableTimeSlots.isEmpty
+                                            ? 'No Available Time Slots'
+                                            : 'Book Appointment',
                                         style: GoogleFonts.poppins(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,

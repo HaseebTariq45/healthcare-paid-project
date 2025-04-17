@@ -785,6 +785,8 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             appointment['specialty'] ?? 'Doctor',
@@ -792,16 +794,21 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                               fontSize: 14,
                               color: Colors.grey.shade600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: Colors.grey.shade400,
-                      size: 20,
-                    ),
-                    SizedBox(width: 16),
+                  ],
+                ),
+                
+                SizedBox(height: 8),
+                
+                // Patient info (separated from doctor info to avoid overflow)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     // Patient avatar
                     CircleAvatar(
                       radius: 24,
@@ -827,6 +834,8 @@ class _AppointmentManagementState extends State<AppointmentManagement> {
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             'Patient',
