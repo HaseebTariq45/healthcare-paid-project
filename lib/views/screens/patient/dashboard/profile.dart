@@ -262,6 +262,11 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     return WillPopScope(
       onWillPop: () async {
         // Navigate to the bottom navigation bar with PatientHomeScreen as initial tab
@@ -297,239 +302,271 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
             children: [
               RefreshIndicator(
                 onRefresh: _refreshData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                    Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF3366CC),
-            Color(0xFF5E8EF7),
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3366CC).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 15, 20, 18),
-      child: Column(
-        children: [
-          Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                "My Profile",
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          
-          // Profile section
-          Row(
-            children: [
-              // Profile image with border
-              Hero(
-                tag: 'profileImage',
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 40,
-                    backgroundImage: profileImageUrl != null
-                        ? NetworkImage(profileImageUrl!)
-                        : const AssetImage("assets/images/User.png") as ImageProvider,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      userName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: const [
-                          Shadow(
-                            color: Colors.black12,
-                            offset: Offset(0, 2),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      userRole,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // View detailed profile button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const PatientDetailProfileScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.user,
-                              color: Color(0xFF3366CC),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "View Medical Profile",
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3366CC),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-                          ),
-                        ),
-                        
-                        // Always show profile completion card
-                        _buildProfileCompletionCard(),
-                        
-                        SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 25),
-                                
-                                Text(
-                                  "Settings",
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                    letterSpacing: 0.5,
+                        child: Padding(
+                          padding: EdgeInsets.all(horizontalPadding),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF3366CC),
+                                      Color(0xFF5E8EF7),
+                                    ],
                                   ),
+                                  borderRadius: BorderRadius.only(
+                                    bottomLeft: Radius.circular(screenSize.width * 0.08),
+                                    bottomRight: Radius.circular(screenSize.width * 0.08),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF3366CC).withOpacity(0.3),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 8),
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 16),
-                                
-                                // Menu items
-                                ...menuItems.map((item) => _buildMenuItem(item)).toList(),
-                                
-                                // Logout button
-                                _buildLogoutButton(),
-                                
-                                const SizedBox(height: 25),
-                                
-                                // App version info
-                                Center(
+                                padding: EdgeInsets.fromLTRB(
+                                  horizontalPadding, 
+                                  verticalPadding * 0.75, 
+                                  horizontalPadding, 
+                                  verticalPadding * 0.9
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            "My Profile",
+                                            style: GoogleFonts.poppins(
+                                              fontSize: screenSize.width * 0.045,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: verticalPadding * 0.75),
+                                    
+                                    // Profile section
+                                    Row(
+                                      children: [
+                                        // Profile image with border
+                                        Hero(
+                                          tag: 'profileImage',
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 3),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black26,
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: CircleAvatar(
+                                              radius: screenSize.width * 0.1,
+                                              backgroundImage: profileImageUrl != null
+                                                  ? NetworkImage(profileImageUrl!)
+                                                  : const AssetImage("assets/images/User.png") as ImageProvider,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: horizontalPadding),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  userName,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: screenSize.width * 0.055,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                    shadows: const [
+                                                      Shadow(
+                                                        color: Colors.black12,
+                                                        offset: Offset(0, 2),
+                                                        blurRadius: 4,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              Text(
+                                                userRole,
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: screenSize.width * 0.035,
+                                                  color: Colors.white.withOpacity(0.9),
+                                                ),
+                                              ),
+                                              SizedBox(height: verticalPadding * 0.6),
+                                              
+                                              // View detailed profile button
+                                              GestureDetector(
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => const PatientDetailProfileScreen(),
+                                                    ),
+                                                  );
+                                                },
+                                                child: Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: horizontalPadding * 0.8, 
+                                                    vertical: verticalPadding * 0.4
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black.withOpacity(0.1),
+                                                        blurRadius: 4,
+                                                        offset: const Offset(0, 2),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        LucideIcons.user,
+                                                        color: Color(0xFF3366CC),
+                                                        size: screenSize.width * 0.04,
+                                                      ),
+                                                      SizedBox(width: horizontalPadding * 0.4),
+                                                      FittedBox(
+                                                        fit: BoxFit.scaleDown,
+                                                        child: Text(
+                                                          "View Medical Profile",
+                                                          style: GoogleFonts.poppins(
+                                                            fontSize: screenSize.width * 0.03,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: const Color(0xFF3366CC),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Always show profile completion card
+                              _buildProfileCompletionCard(screenSize),
+                              
+                              SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                                   child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        "HealthCare App",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF3366CC),
+                                      SizedBox(height: verticalPadding * 1.25),
+                                      
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          "Settings",
+                                          style: GoogleFonts.poppins(
+                                            fontSize: screenSize.width * 0.05,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                            letterSpacing: 0.5,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Version 1.0.0",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600,
+                                      SizedBox(height: verticalPadding * 0.8),
+                                      
+                                      // Menu items
+                                      ...menuItems.map((item) => _buildMenuItem(item, screenSize)).toList(),
+                                      
+                                      // Logout button
+                                      _buildLogoutButton(screenSize),
+                                      
+                                      SizedBox(height: verticalPadding * 1.25),
+                                      
+                                      // App version info
+                                      Center(
+                                        child: Column(
+                                          children: [
+                                            Text(
+                                              "HealthCare App",
+                                              style: GoogleFonts.poppins(
+                                                fontSize: screenSize.width * 0.035,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF3366CC),
+                                              ),
+                                            ),
+                                            SizedBox(height: verticalPadding * 0.2),
+                                            Text(
+                                              "Version 1.0.0",
+                                              style: GoogleFonts.poppins(
+                                                fontSize: screenSize.width * 0.03,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                      SizedBox(height: verticalPadding),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 20),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  }
                 ),
               ),
               
               // Loading indicator at bottom
               if (isLoading || isRefreshing)
                 Positioned(
-                  bottom: 16,
+                  bottom: verticalPadding * 0.8,
                   left: 0,
                   right: 0,
                   child: Center(
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding * 0.8, 
+                        vertical: verticalPadding * 0.4
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(screenSize.width * 0.05),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1),
@@ -542,8 +579,8 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: screenSize.width * 0.04,
+                            height: screenSize.width * 0.04,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
@@ -551,11 +588,11 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                               ),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: horizontalPadding * 0.4),
                           Text(
                             isLoading ? "Loading profile..." : "Refreshing...",
                             style: GoogleFonts.poppins(
-                              fontSize: 12,
+                              fontSize: screenSize.width * 0.03,
                               color: Colors.grey.shade700,
                             ),
                           ),
@@ -571,12 +608,15 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     );
   }
 
-  Widget _buildMenuItem(MenuItem item) {
+  Widget _buildMenuItem(MenuItem item, Size screenSize) {
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: verticalPadding * 0.6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(screenSize.width * 0.05),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.03),
@@ -589,7 +629,7 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.05),
           onTap: () {
             if (item.screen != null) {
               Navigator.push(
@@ -599,36 +639,40 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
             }
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding, 
+              vertical: verticalPadding * 0.8
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 45,
-                  height: 45,
+                  width: screenSize.width * 0.11,
+                  height: screenSize.width * 0.11,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F7FF),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(screenSize.width * 0.035),
                   ),
                   child: Icon(
                     item.icon,
                     color: const Color(0xFF3366CC),
-                    size: 20,
+                    size: screenSize.width * 0.05,
                   ),
                 ),
-                const SizedBox(width: 15),
-                Text(
-                  item.title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
+                SizedBox(width: horizontalPadding * 0.75),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.038,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 Icon(
                   LucideIcons.chevronRight,
                   color: Colors.grey.shade400,
-                  size: 20,
+                  size: screenSize.width * 0.05,
                 ),
               ],
             ),
@@ -638,12 +682,18 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
     );
   }
 
-  Widget _buildLogoutButton() {
+  Widget _buildLogoutButton(Size screenSize) {
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     return Container(
-      margin: const EdgeInsets.only(top: 5, bottom: 20),
+      margin: EdgeInsets.only(
+        top: verticalPadding * 0.25, 
+        bottom: verticalPadding
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF5F5),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(screenSize.width * 0.05),
         boxShadow: [
           BoxShadow(
             color: Colors.red.withOpacity(0.08),
@@ -660,39 +710,43 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.05),
           onTap: () => _showLogoutDialog(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding, 
+              vertical: verticalPadding * 0.8
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 45,
-                  height: 45,
+                  width: screenSize.width * 0.11,
+                  height: screenSize.width * 0.11,
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFEBEB),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(screenSize.width * 0.035),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     LucideIcons.logOut,
                     color: Color(0xFFFF5252),
-                    size: 20,
+                    size: screenSize.width * 0.05,
                   ),
                 ),
-                const SizedBox(width: 15),
-                Text(
-                  "Logout",
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFFFF5252),
+                SizedBox(width: horizontalPadding * 0.75),
+                Expanded(
+                  child: Text(
+                    "Logout",
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.038,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFFFF5252),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                const Icon(
+                Icon(
                   LucideIcons.chevronRight,
                   color: Color(0xFFFF9E9E),
-                  size: 20,
+                  size: screenSize.width * 0.05,
                 ),
               ],
             ),
@@ -703,161 +757,189 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
   }
 
   void _showLogoutDialog() {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+        ),
+        contentPadding: EdgeInsets.all(horizontalPadding),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: screenSize.width * 0.18,
+              height: screenSize.width * 0.18,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEBEB),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                LucideIcons.logOut,
+                color: const Color(0xFFFF5252),
+                size: screenSize.width * 0.08,
+              ),
+            ),
+            SizedBox(height: verticalPadding),
+            Text(
+              "Logout",
+              style: GoogleFonts.poppins(
+                fontSize: screenSize.width * 0.055,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: verticalPadding * 0.5),
+            Text(
+              "Are you sure you want to logout?",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: screenSize.width * 0.038,
+                color: Colors.black54,
+              ),
+            ),
+            SizedBox(height: verticalPadding * 1.5),
+            Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFEBEB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.logOut,
-                    color: Color(0xFFFF5252),
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  "Log Out",
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "Are you sure you want to log out of your account?",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 25),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey.shade800,
-                          backgroundColor: Colors.grey.shade100,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.04),
+                      child: Ink(
+                        padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F1F1),
+                          borderRadius: BorderRadius.circular(screenSize.width * 0.04),
                         ),
-                        child: Text(
-                          "Cancel",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              "Cancel",
+                              style: GoogleFonts.poppins(
+                                fontSize: screenSize.width * 0.04,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black54,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          
-                          // Show loading indicator
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (BuildContext context) {
-                              return Dialog(
-                                backgroundColor: Colors.white,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      CircularProgressIndicator(
-                                        color: Color(0xFF3366CC),
+                  ),
+                ),
+                SizedBox(width: horizontalPadding * 0.6),
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        
+                        // Show loading indicator
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return Dialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.all(verticalPadding),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      color: const Color(0xFF3366CC),
+                                    ),
+                                    SizedBox(height: verticalPadding * 0.8),
+                                    Text(
+                                      'Logging out...',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: screenSize.width * 0.04,
                                       ),
-                                      SizedBox(height: 16),
-                                      Text('Logging out...'),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
-                          );
+                              ),
+                            );
+                          },
+                        );
+                        
+                        try {
+                          // Clear cache
+                          await CacheService.clearAllCache();
                           
                           // Sign out from Firebase
-                          try {
-                            await FirebaseAuth.instance.signOut();
-                            
-                            // Close loading dialog
-                            if (context.mounted) Navigator.pop(context);
-                            
-                            // Navigate to Onboarding3 screen and clear navigation stack
-                            if (context.mounted) {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (context) => const Onboarding3()),
-                                (route) => false, // Remove all previous routes
-                              );
-                            }
-                          } catch (e) {
-                            // Close loading dialog
-                            if (context.mounted) Navigator.pop(context);
-                            
-                            // Show error message
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('An error occurred: ${e.toString()}'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5252),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          elevation: 0,
+                          await FirebaseAuth.instance.signOut();
+                          
+                          if (!mounted) return;
+                          
+                          // Close loading dialog
+                          Navigator.pop(context);
+                          
+                          // Navigate to Onboarding screen and clear navigation stack
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const Onboarding3()),
+                            (route) => false,
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          
+                          // Close loading dialog
+                          Navigator.pop(context);
+                          
+                          // Show error message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error logging out: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.04),
+                      child: Ink(
+                        padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5252),
+                          borderRadius: BorderRadius.circular(screenSize.width * 0.04),
                         ),
-                        child: Text(
-                          "Log Out",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              "Logout",
+                              style: GoogleFonts.poppins(
+                                fontSize: screenSize.width * 0.04,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
   // New widget for profile completion card
-  Widget _buildProfileCompletionCard() {
+  Widget _buildProfileCompletionCard(Size screenSize) {
     return Container(
       margin: EdgeInsets.fromLTRB(16, 8, 16, 8),
       padding: EdgeInsets.all(12),
