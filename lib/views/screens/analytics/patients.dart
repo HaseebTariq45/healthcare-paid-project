@@ -497,6 +497,19 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       // Search filtering is now handled server-side in _loadPatients
       bool matchesFilters = true;
       
+      // Apply filter based on selected tab index
+      if (_selectedSortIndex > 0) {
+        bool isUpcoming = patient["appointment"]["status"].toString().toLowerCase() == "upcoming" || 
+                        patient["appointment"]["status"].toString().toLowerCase() == "confirmed" ||
+                        patient["appointment"]["status"].toString().toLowerCase() == "pending";
+        
+        if (_selectedSortIndex == 1) { // Upcoming tab selected
+          matchesFilters = matchesFilters && isUpcoming;
+        } else if (_selectedSortIndex == 2) { // Completed tab selected
+          matchesFilters = matchesFilters && !isUpcoming;
+        }
+      }
+      
       // Filter by location
       if (selectedFilters.contains("Karachi")) {
         matchesFilters = matchesFilters && 
@@ -1053,23 +1066,8 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
   Widget _buildFiltersSection() {
     return Column(
       children: [
-        Row(
-          children: [
-            Text(
-              "Filter by: ",
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            SizedBox(width: 8),
-          ],
-        ),
         SizedBox(height: 8),
         _buildSortOptions(),
-        SizedBox(height: 10),
-        _buildFilters(),
         SizedBox(height: 10),
       ],
     );
@@ -1145,10 +1143,10 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            "assets/images/empty.png",
-            height: 120,
-            width: 120,
+          Icon(
+            LucideIcons.userX,
+            size: 80,
+            color: Color(0xFF5E8EF7).withOpacity(0.7),
           ),
           const SizedBox(height: 16),
           Text(
@@ -1161,29 +1159,10 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
           ),
           const SizedBox(height: 8),
           Text(
-            "Try adjusting your search or filters",
+            "Try adjusting your search",
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Colors.grey.shade500,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                _searchController.clear();
-                selectedFilters.clear();
-              });
-            },
-            icon: Icon(Icons.refresh_rounded, size: 18),
-            label: Text("Reset Filters"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromRGBO(64, 124, 226, 1),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
             ),
           ),
         ],

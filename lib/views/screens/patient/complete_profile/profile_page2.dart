@@ -1990,10 +1990,21 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
   void initState() {
     super.initState();
     
-    // Initialize profile data from previous screen
+    // Print what we received
+    print("CompleteProfilePatient2Screen initialized with data:");
     if (widget.profileData != null) {
-      _profileData = widget.profileData!;
+      widget.profileData!.forEach((key, value) {
+        print("  $key: $value");
+      });
+      
+      // Initialize profile data from previous screen
+      _profileData = Map<String, dynamic>.from(widget.profileData!);
       _completionPercentage = _profileData['completionPercentage'] ?? 0.0;
+      
+      // Load any previously saved data from Firestore
+      _fetchUserMedicalData();
+    } else {
+      print("No profile data received from previous screen");
     }
     
     // Add listeners to all text controllers to update completion percentage
@@ -2001,27 +2012,34 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
     _heightController.addListener(_updateCompletionPercentage);
     _weightController.addListener(_updateCompletionPercentage);
     _notesController.addListener(_handleNotesChange);
-    
-    // For multi-select fields, we'll update in their respective selection methods
-    
-    // Load existing data if editing
-    if (_profileData['isEditing'] == true) {
-      _fetchUserMedicalData();
-    }
   }
 
   // Fetch user's medical data from Firestore
   Future<void> _fetchUserMedicalData() async {
+    print("Attempting to fetch user medical data from Firestore");
+    
     try {
-      final auth = FirebaseAuth.instance;
-      final firestore = FirebaseFirestore.instance;
-      final userId = auth.currentUser?.uid;
+      String? userId;
+      
+      // First try to get userId from profile data
+      if (_profileData.containsKey('userId') && _profileData['userId'] != null) {
+        userId = _profileData['userId'];
+        print("Using userId from profile data: $userId");
+      } else {
+        // Fall back to current user's ID
+        final auth = FirebaseAuth.instance;
+        userId = auth.currentUser?.uid;
+        print("Using userId from current auth: $userId");
+      }
       
       if (userId != null) {
+        final firestore = FirebaseFirestore.instance;
+        
         // Get patient document from Firestore
         final patientDoc = await firestore.collection('patients').doc(userId).get();
         
         if (patientDoc.exists) {
+          print("Found patient document in Firestore");
           final data = patientDoc.data() as Map<String, dynamic>;
           
           setState(() {
@@ -2035,27 +2053,43 @@ class _CompleteProfilePatient2ScreenState extends State<CompleteProfilePatient2S
             selectedBloodGroup = data['bloodGroup'];
             
             // Set diseases and allergies
-            if (data['diseases'] != null) {
+            if (data['diseases'] != null && data['diseases'] is List) {
               selectedDiseases = List<String>.from(data['diseases']);
             }
-            if (data['allergies'] != null) {
+            
+            if (data['allergies'] != null && data['allergies'] is List) {
               selectedAllergies = List<String>.from(data['allergies']);
             }
             
-            // Update medical reports if they exist
-            if (data['medicalReport1Url'] != null) {
-              // Store the URL in the profile data
+            // Store the medical report URLs if they exist
+            if (data['medicalReport1Url'] != null && data['medicalReport1Url'] is String) {
               _profileData['medicalReport1Url'] = data['medicalReport1Url'];
+              print("Found medical report 1 URL: ${data['medicalReport1Url']}");
             }
-            if (data['medicalReport2Url'] != null) {
-              // Store the URL in the profile data
+            
+            if (data['medicalReport2Url'] != null && data['medicalReport2Url'] is String) {
               _profileData['medicalReport2Url'] = data['medicalReport2Url'];
+              print("Found medical report 2 URL: ${data['medicalReport2Url']}");
             }
           });
           
+          // Debug output for verification
+          print("Loaded patient data from Firestore:");
+          print("Age: ${_ageController.text}");
+          print("Height: ${_heightController.text}");
+          print("Weight: ${_weightController.text}");
+          print("Notes: ${_notesController.text}");
+          print("Blood Group: $selectedBloodGroup");
+          print("Diseases: $selectedDiseases");
+          print("Allergies: $selectedAllergies");
+          
           // Recalculate completion percentage after loading data
           _calculateCompletionPercentage();
+        } else {
+          print("Patient document does not exist in Firestore");
         }
+      } else {
+        print("No userId available to fetch data");
       }
     } catch (e) {
       print('Error fetching medical data: $e');

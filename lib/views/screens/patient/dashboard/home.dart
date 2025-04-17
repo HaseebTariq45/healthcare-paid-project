@@ -1022,7 +1022,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                                 borderRadius: BorderRadius.circular(screenSize.width * 0.025),
                               ),
                               child: Text(
-                                "$profileCompletionPercentage%",
+                                "${profileCompletionPercentage.toInt()}%",
                                 style: GoogleFonts.poppins(
                                   fontSize: screenSize.width * 0.03,
                                   fontWeight: FontWeight.w600,
@@ -1339,45 +1339,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                           ),
                         ],
                       ),
-                      
-                      // Complete Profile button (conditional)
-                      if (profileStatus != "complete") ...[
-                        SizedBox(height: verticalPadding * 0.4),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CompleteProfilePatient1Screen(),
-                                ),
-                              );
-                            },
-                            icon: Icon(Icons.person_add, size: screenSize.width * 0.035),
-                            label: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                              "Complete Your Profile",
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w500,
-                                  fontSize: screenSize.width * 0.03,
-                                ),
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF3366CC).withOpacity(0.15),
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: verticalPadding * 0.5),
-                              minimumSize: Size(double.infinity, screenSize.height * 0.045),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(screenSize.width * 0.02),
-                              ),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),

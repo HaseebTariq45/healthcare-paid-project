@@ -37,6 +37,9 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
   // Selected city from dropdown
   String? _selectedCity;
   
+  // Selected gender from dropdown
+  String? _selectedGender;
+  
   // Store auth phone number
   String? _authPhoneNumber;
   
@@ -44,7 +47,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
   double _completionPercentage = 0.0;
   
   // Total number of fields in profile page 1
-  final int _totalFieldsPage1 = 5; // name, email, cnic, address, city
+  final int _totalFieldsPage1 = 6; // name, email, cnic, address, city, gender
   
   // List of Pakistani cities in alphabetical order
   final List<String> _pakistaniCities = [
@@ -85,6 +88,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       _addressController.text = widget.profileData!['address'] ?? '';
       _cnicController.text = widget.profileData!['cnic'] ?? '';
       _selectedCity = widget.profileData!['city'];
+      _selectedGender = widget.profileData!['gender'];
       
       // Initialize profile image if exists
       if (widget.profileData!['profileImagePath'] != null) {
@@ -134,6 +138,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     if (_addressController.text.isNotEmpty) filledFields++;
     if (_cnicController.text.isNotEmpty) filledFields++;
     if (_selectedCity != null) filledFields++;
+    if (_selectedGender != null) filledFields++;
     
     // Count profile image as a very important field
     if (_image != null) {
@@ -550,6 +555,211 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
     );
   }
 
+  // Gender dropdown widget
+  Widget _buildGenderDropdown() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3366CC).withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: _selectedGender != null 
+              ? const Color(0xFF3366CC)
+              : Colors.grey.shade300,
+          width: 1.5,
+        ),
+        gradient: _selectedGender != null 
+            ? LinearGradient(
+                colors: [
+                  Colors.white,
+                  const Color(0xFF3366CC).withOpacity(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              )
+            : null,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          popupMenuTheme: PopupMenuThemeData(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          canvasColor: Colors.white,
+          dividerColor: Colors.transparent,
+          shadowColor: const Color(0xFF3366CC).withOpacity(0.2),
+        ),
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButtonFormField<String>(
+            value: _selectedGender,
+            isExpanded: true,
+            isDense: false,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _selectedGender != null
+                    ? const Color(0xFF3366CC).withOpacity(0.15)
+                    : const Color(0xFF3366CC).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                LucideIcons.chevronDown,
+                color: _selectedGender != null
+                    ? const Color(0xFF3366CC)
+                    : const Color(0xFF3366CC).withOpacity(0.7),
+                size: 16,
+              ),
+            ),
+            dropdownColor: Colors.white,
+            menuMaxHeight: 150,
+            itemHeight: 50,
+            elevation: 8,
+            borderRadius: BorderRadius.circular(16),
+            decoration: InputDecoration(
+              hintText: "Select Gender",
+              hintStyle: GoogleFonts.poppins(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+              prefixIcon: Container(
+                padding: const EdgeInsets.all(12),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (_selectedGender != null)
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3366CC).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    Icon(
+                      LucideIcons.userCheck,
+                      color: const Color(0xFF3366CC),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+              suffixIcon: _selectedGender != null
+                  ? GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedGender = null;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 46),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.x,
+                          color: Colors.grey.shade700,
+                          size: 12,
+                        ),
+                      ),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            selectedItemBuilder: (BuildContext context) {
+              return ["Male", "Female"].map<Widget>((String gender) {
+                return Container(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    gender,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList();
+            },
+            items: ["Male", "Female"].map((String gender) {
+              return DropdownMenuItem<String>(
+                value: gender,
+                child: SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      // Checkbox indicator
+                      Container(
+                        width: 16,
+                        height: 16,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: _selectedGender == gender
+                              ? const Color(0xFF3366CC)
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: _selectedGender == gender
+                                ? const Color(0xFF3366CC)
+                                : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: _selectedGender == gender
+                            ? const Center(
+                                child: Icon(
+                                  Icons.check,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : null,
+                      ),
+                      
+                      // Gender option
+                      Expanded(
+                        child: Text(
+                          gender,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: _selectedGender == gender
+                                ? const Color(0xFF3366CC)
+                                : Colors.black87,
+                            fontWeight: _selectedGender == gender
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedGender = newValue;
+              });
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -874,6 +1084,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
                       controller: _emailController,
                     ),
                     _buildCnicField(),
+                    _buildGenderDropdown(),
                   ],
                 ),
               ),
@@ -1073,6 +1284,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
       'cnic': _cnicController.text,
       'address': _addressController.text,
       'city': _selectedCity,
+      'gender': _selectedGender,
       'profileImagePath': _image?.path,
       'completionPercentage': _completionPercentage,
       'hasProfileImage': _image != null,
@@ -1108,6 +1320,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           'cnic': _cnicController.text,
           'address': _addressController.text,
           'city': _selectedCity,
+          'gender': _selectedGender,
           'profileComplete': false, // Will be set to true after page 2
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -1130,6 +1343,15 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
           // Add the URL to the profile data for next page
           profileData['profileImageUrl'] = downloadUrl;
         }
+        
+        // Store the userId in the profile data
+        profileData['userId'] = userId;
+        
+        // Print debug info before navigation
+        print("Proceeding to next screen with profile data:");
+        profileData.forEach((key, value) {
+          print("  $key: $value");
+        });
       }
 
       // Always proceed to page 2
@@ -1175,6 +1397,7 @@ class _CompleteProfilePatient1ScreenState extends State<CompleteProfilePatient1S
             _addressController.text = userData['address'] ?? '';
             _cnicController.text = userData['cnic'] ?? '';
             _selectedCity = userData['city'];
+            _selectedGender = userData['gender'];
             
             // Use phone from Firestore if available, otherwise keep auth phone
             if (userData['phoneNumber'] != null && userData['phoneNumber'].isNotEmpty) {

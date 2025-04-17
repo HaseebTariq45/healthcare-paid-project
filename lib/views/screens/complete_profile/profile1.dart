@@ -16,6 +16,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   File? _profileImage;
   File? _cnicFront;
   File? _cnicBack;
+  String? _selectedGender;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -82,6 +83,45 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     );
   }
 
+  Widget _buildGenderDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedGender,
+          hint: Text(
+            "Select Gender",
+            style: GoogleFonts.poppins(
+              color: Colors.grey,
+            ),
+          ),
+          isExpanded: true,
+          icon: Icon(Icons.arrow_drop_down, color: Colors.grey),
+          items: ["Male", "Female"].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(
+                value,
+                style: GoogleFonts.poppins(),
+              ),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            setState(() {
+              _selectedGender = newValue;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,6 +175,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            _buildGenderDropdown(),
             _buildUploadBox("CNIC Front", "cnicFront", _cnicFront),
             _buildUploadBox("CNIC Back", "cnicBack", _cnicBack),
             const SizedBox(height: 30),
