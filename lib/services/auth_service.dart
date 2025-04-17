@@ -122,13 +122,18 @@ class AuthService {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? adminUserId = prefs.getString('admin_session');
     
-    if (adminUserId != null) {
-      print('***** FOUND ADMIN SESSION: $adminUserId *****');
+    // Only use admin session if current user ID matches admin user ID
+    if (adminUserId != null && (currentUser?.uid == adminUserId || _auth.currentUser?.uid == adminUserId)) {
+      print('***** FOUND VALID ADMIN SESSION: $adminUserId *****');
       final String? adminRoleStr = prefs.getString('user_role_$adminUserId');
       if (adminRoleStr == 'admin') {
         print('***** RETURNING ADMIN ROLE FOR ADMIN SESSION *****');
         return UserRole.admin;
       }
+    } else if (adminUserId != null && currentUser != null && currentUser!.uid != adminUserId) {
+      // Clear admin session if it doesn't match current user
+      print('***** CLEARING INVALID ADMIN SESSION *****');
+      await prefs.remove('admin_session');
     }
     
     // If not admin and not logged in, return unknown
@@ -137,12 +142,28 @@ class AuthService {
       return UserRole.unknown;
     }
     
+    // First try to get role from Firestore to ensure accuracy
+    try {
+      print('***** FETCHING USER ROLE FROM FIRESTORE FOR ${currentUser!.uid} *****');
+      final userRole = await _fetchUserRoleFromFirestore();
+      if (userRole != UserRole.unknown) {
+        // If we got a valid role, save it to prefs and return it
+        print('***** FOUND VALID ROLE FROM FIRESTORE: $userRole *****');
+        await _saveUserRole(userRole);
+        return userRole;
+      }
+    } catch (e) {
+      print('***** ERROR FETCHING FROM FIRESTORE: $e *****');
+      // Fall back to prefs if Firestore fails
+    }
+    
+    // Try to get role from prefs as fallback
     final String? roleStr = prefs.getString('user_role_${currentUser!.uid}');
     print('***** ROLE FROM PREFS: $roleStr for user ${currentUser!.uid} *****');
     
     if (roleStr == null) {
-      print('***** NO CACHED ROLE, FETCHING FROM FIRESTORE *****');
-      return await _fetchUserRoleFromFirestore();
+      print('***** NO CACHED ROLE, RETURNING UNKNOWN *****');
+      return UserRole.unknown;
     }
     
     UserRole role;
@@ -708,12 +729,65 @@ class AuthService {
 
   // Navigate user to correct screen based on role - simple and direct approach
   Future<Widget> getNavigationScreenForUser({required bool isProfileComplete}) async {
-    final userRole = await getUserRole();
-    print('***** SIMPLE NAVIGATION: Got user role: $userRole *****');
+    // Get current user role directly from Firestore for accuracy
+    final userRole = await _fetchUserRoleFromFirestore();
+    print('***** NAVIGATION: Got user role from Firestore: $userRole *****');
     
-    // Simple direct routing based on role
+    // If we couldn't get a valid role from Firestore, try SharedPreferences as fallback
+    if (userRole == UserRole.unknown) {
+      final fallbackRole = await getUserRole();
+      print('***** NAVIGATION: Using fallback role: $fallbackRole *****');
+      
+      // Simple direct routing based on role
+      if (fallbackRole == UserRole.doctor) {
+        print('***** NAVIGATION: Routing to DOCTOR home screen (fallback) *****');
+        if (!isProfileComplete) {
+          return DoctorProfilePage1Screen();
+        } else {
+          return BottomNavigationBarScreen(
+            key: BottomNavigationBarScreen.navigatorKey,
+            profileStatus: "complete",
+            userType: "Doctor"
+          );
+        }
+      } 
+      else if (fallbackRole == UserRole.patient) {
+        print('***** NAVIGATION: Routing to PATIENT home screen (fallback) *****');
+        if (!isProfileComplete) {
+          return CompleteProfilePatient1Screen();
+        } else {
+          return BottomNavigationBarPatientScreen(
+            key: BottomNavigationBarPatientScreen.navigatorKey,
+            profileStatus: "complete"
+          );
+        }
+      }
+      else if (fallbackRole == UserRole.ladyHealthWorker) {
+        print('***** NAVIGATION: Routing to LHW home screen (fallback) *****');
+        if (!isProfileComplete) {
+          return CompleteProfilePatient1Screen();
+        } else {
+          return BottomNavigationBarScreen(
+            key: BottomNavigationBarScreen.navigatorKey,
+            profileStatus: "complete",
+            userType: "LadyHealthWorker"
+          );
+        }
+      }
+      else if (fallbackRole == UserRole.admin) {
+        print('***** NAVIGATION: Routing to ADMIN DASHBOARD (fallback) *****');
+        return AdminDashboard();
+      }
+      else {
+        // Default/fallback
+        print('***** NAVIGATION: Unknown role, routing to onboarding (fallback) *****');
+        return SplashScreen();
+      }
+    }
+    
+    // Simple direct routing based on role from Firestore
     if (userRole == UserRole.doctor) {
-      print('***** SIMPLE NAVIGATION: Routing to DOCTOR home screen *****');
+      print('***** NAVIGATION: Routing to DOCTOR home screen *****');
       if (!isProfileComplete) {
         return DoctorProfilePage1Screen();
       } else {
@@ -725,7 +799,7 @@ class AuthService {
       }
     } 
     else if (userRole == UserRole.patient) {
-      print('***** SIMPLE NAVIGATION: Routing to PATIENT home screen *****');
+      print('***** NAVIGATION: Routing to PATIENT home screen *****');
       if (!isProfileComplete) {
         return CompleteProfilePatient1Screen();
       } else {
@@ -736,7 +810,7 @@ class AuthService {
       }
     }
     else if (userRole == UserRole.ladyHealthWorker) {
-      print('***** SIMPLE NAVIGATION: Routing to LHW home screen *****');
+      print('***** NAVIGATION: Routing to LHW home screen *****');
       if (!isProfileComplete) {
         return CompleteProfilePatient1Screen();
       } else {
@@ -748,12 +822,12 @@ class AuthService {
       }
     }
     else if (userRole == UserRole.admin) {
-      print('***** SIMPLE NAVIGATION: Routing to ADMIN DASHBOARD *****');
+      print('***** NAVIGATION: Routing to ADMIN DASHBOARD *****');
       return AdminDashboard();
     }
     else {
       // Default/fallback
-      print('***** SIMPLE NAVIGATION: Unknown role, routing to onboarding *****');
+      print('***** NAVIGATION: Unknown role, routing to onboarding *****');
       return SplashScreen();
     }
   }

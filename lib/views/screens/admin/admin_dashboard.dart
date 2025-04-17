@@ -481,153 +481,82 @@ class _AdminHomeState extends State<AdminHome> {
             
             SizedBox(height: 24),
             
-            // Revenue and Status
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            // Revenue (full width)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Row(
                       children: [
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.attach_money,
-                                color: Color(0xFF4CAF50),
-                                size: 20,
-                              ),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'Revenue',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                        Icon(
+                          Icons.attach_money,
+                          color: Color(0xFF4CAF50),
+                          size: 24,
                         ),
-                        Text(
-                          _isLoading 
-                              ? '-' 
-                              : _dashboardStats['revenueFormatted'] ?? 'Rs 0.00',
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF4CAF50),
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Total revenue from appointments',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Revenue',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                  Text(
+                    _isLoading 
+                        ? '-' 
+                        : _dashboardStats['revenueFormatted'] ?? 'Rs 0.00',
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF4CAF50),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.event_note,
-                                color: Color(0xFF3366CC),
-                                size: 20,
-                              ),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'Appointment Status',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          children: [
-                            _buildStatusCounterRow('Confirmed', 
-                              _isLoading ? 0 : _dashboardStats['confirmedAppointments'] ?? 0, 
-                              Color(0xFF3366CC)
-                            ),
-                            SizedBox(height: 8),
-                            _buildStatusCounterRow('Completed', 
-                              _isLoading ? 0 : _dashboardStats['completedAppointments'] ?? 0, 
-                              Color(0xFF4CAF50)
-                            ),
-                            SizedBox(height: 8),
-                            _buildStatusCounterRow('Cancelled', 
-                              _isLoading ? 0 : _dashboardStats['cancelledAppointments'] ?? 0, 
-                              Color(0xFFFF5722)
-                            ),
-                          ],
-                        ),
-                      ],
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Total revenue from appointments',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             
             SizedBox(height: 24),
             
             // Recent Activities
-                  Text(
-                    'Recent Activities',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
+            Text(
+              'Recent Activities',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
             SizedBox(height: 16),
             if (_isLoading)
               Center(

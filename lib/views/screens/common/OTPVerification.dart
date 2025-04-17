@@ -11,6 +11,7 @@ import 'package:healthcare/views/screens/doctor/complete_profile/doctor_profile_
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String text;
@@ -56,6 +57,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   int _focusedIndex = -1;
   // FocusNode for the hidden input
   final FocusNode _otpFocusNode = FocusNode();
+  // Add debounce timer for smooth updates
+  Timer? _debounceTimer;
+  // Track which boxes have been animated as verified
+  List<bool> _verifiedBoxes = List.generate(6, (_) => false);
 
   @override
   void initState() {
@@ -68,30 +73,39 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     _otpController.addListener(_onOtpChanged);
     
     // Auto-focus the OTP input field
-    Future.delayed(Duration(milliseconds: 500), () {
+    Future.delayed(Duration(milliseconds: 100), () {
       _otpFocusNode.requestFocus();
     });
   }
   
   void _onOtpChanged() {
-    final String otp = _otpController.text;
+    // Cancel any previous debounce timer
+    _debounceTimer?.cancel();
     
-    // Update individual controllers
-    for (int i = 0; i < 6; i++) {
-      if (i < otp.length) {
-        _controllers[i].text = otp[i];
-      } else {
-        _controllers[i].text = '';
+    // Create a new timer for smoother UI updates
+    _debounceTimer = Timer(Duration(milliseconds: 10), () {
+      if (!mounted) return;
+      
+      final String otp = _otpController.text;
+      
+      // Update individual controllers only if needed
+      for (int i = 0; i < 6; i++) {
+        final String newValue = i < otp.length ? otp[i] : '';
+        if (_controllers[i].text != newValue) {
+          _controllers[i].text = newValue;
+        }
       }
-    }
-    
-    // Set focused index
-    _focusedIndex = otp.length < 6 ? otp.length : 5;
-    
-    // Auto-verify when all 6 digits are entered
-    if (otp.length == 6 && !_isLoading && !_isVerificationSuccessful) {
-      _verifyOTP();
-    }
+      
+      // Set focused index
+      setState(() {
+        _focusedIndex = otp.length < 6 ? otp.length : 5;
+      });
+      
+      // Auto-verify when all 6 digits are entered
+      if (otp.length == 6 && !_isLoading && !_isVerificationSuccessful) {
+        _verifyOTP();
+      }
+    });
   }
 
   void startTimer() {
@@ -115,6 +129,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _debounceTimer?.cancel();
     for (var controller in _controllers) {
       controller.dispose();
     }
@@ -202,7 +217,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
       
       if (result['success']) {
         // Set flag for successful verification
-        _isVerificationSuccessful = true;
+        setState(() {
+          _isVerificationSuccessful = true;
+          _isLoading = false; // Stop loading first so animation is visible
+        });
         
         // Success notification
         ScaffoldMessenger.of(context).showSnackBar(
@@ -216,6 +234,9 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             duration: Duration(seconds: 2),
           ),
         );
+        
+        // Run the animation first, then proceed with registration/navigation
+        await _animateVerificationSuccess();
         
         // Check if this is a new user (from sign up) or existing user (login)
         if (widget.userType != null && widget.fullName != null) {
@@ -293,14 +314,31 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   }
 
   Future<void> _navigateBasedOnUserRole() async {
+    // Clear any cached session that might be causing issues
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('admin_session')) {
+      print('***** REMOVING CACHED ADMIN SESSION BEFORE NAVIGATION *****');
+      await prefs.remove('admin_session');
+    }
+    
+    // Force role refresh from Firestore
+    await _authService.clearRoleCache();
+    
     // Use the simplified direct navigation method
     final isProfileComplete = await _authService.isProfileComplete();
     
     try {
+      // Check user role to help with debugging
+      final userRole = await _authService.getUserRole();
+      print('***** NAVIGATING BASED ON USER ROLE: $userRole *****');
+      
       // Get the appropriate screen widget based on role
       final navigationScreen = await _authService.getNavigationScreenForUser(
         isProfileComplete: isProfileComplete
       );
+      
+      // Log what screen we're navigating to
+      print('***** NAVIGATING TO: ${navigationScreen.runtimeType} *****');
       
       setState(() {
         _isLoading = false;
@@ -319,6 +357,31 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         _errorMessage = 'Error determining user type. Please try again.';
       });
     }
+  }
+
+  // Add this new method for the verification animation
+  Future<void> _animateVerificationSuccess() async {
+    print("Starting verification animation");
+    // Use a Completer to make this method awaitable
+    Completer<void> completer = Completer<void>();
+    
+    // Animation delay between boxes (100ms for more visibility)
+    const animationDelay = 100;
+    
+    for (int i = 0; i < 6; i++) {
+      await Future.delayed(Duration(milliseconds: animationDelay));
+      if (mounted) {
+        setState(() {
+          print("Animating box $i");
+          _verifiedBoxes[i] = true;
+        });
+      }
+    }
+    
+    // Add a final delay to let the user see the completed animation
+    await Future.delayed(Duration(milliseconds: 500));
+    completer.complete();
+    return completer.future;
   }
 
   @override
@@ -366,7 +429,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             children: [
                 // Icon header
                 Container(
-                  margin: EdgeInsets.only(top: 30, bottom: 30),
+                  margin: EdgeInsets.only(top: 30, bottom: 20),
                   child: Center(
                     child: Container(
                       padding: EdgeInsets.all(24),
@@ -445,10 +508,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           child: TextField(
                             controller: _otpController,
                             focusNode: _otpFocusNode,
-                        keyboardType: TextInputType.number,
+                            keyboardType: TextInputType.number,
                             maxLength: 6,
-                        decoration: InputDecoration(
-                          counterText: "",
+                            decoration: InputDecoration(
+                              counterText: "",
                             ),
                           ),
                         ),
@@ -467,28 +530,23 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                             bool isFocused = _focusedIndex == index;
                             
                             return SizedBox(
-                              width: size.width * 0.11,
+                              width: 45,
                               child: Container(
-                                height: 64,
+                                height: 58,
                                 decoration: BoxDecoration(
-                                  color: isFilled 
-                                      ? Color(0xFFE1EDFF) 
-                                      : (isFocused ? Color(0xFFF0F7FF) : Colors.grey[50]),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: isFocused 
-                                      ? [
-                                          BoxShadow(
-                                            color: Color(0x204F80E1),
-                                            blurRadius: 8,
-                                            spreadRadius: 0,
-                                          ),
-                                        ] 
-                                      : null,
+                                  color: _verifiedBoxes[index] 
+                                      ? Color(0xFFE7F5EE) 
+                                      : (isFilled 
+                                          ? Color(0xFFE1EDFF) 
+                                          : Colors.grey[50]),
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     width: 1.5,
-                                    color: isFilled 
-                                        ? Color(0xFF3366CC) 
-                                        : (isFocused ? Color(0xFF3366CC).withOpacity(0.3) : Colors.grey.withOpacity(0.2)),
+                                    color: _verifiedBoxes[index]
+                                        ? Color(0xFF2E9066)
+                                        : (isFilled 
+                                            ? Color(0xFF3366CC) 
+                                            : (isFocused ? Color(0xFF3366CC).withOpacity(0.3) : Colors.grey.withOpacity(0.2))),
                                   ),
                                 ),
                                 alignment: Alignment.center,
@@ -498,25 +556,18 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                         style: GoogleFonts.poppins(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 22,
-                                          color: Color(0xFF223A6A),
+                                          color: _verifiedBoxes[index] 
+                                              ? Color(0xFF2E9066)
+                                              : Color(0xFF223A6A),
                                         ),
                                       )
-                                    : isFocused 
-                                        ? Container(
-                                            width: 14,
-                                            height: 14,
-                                            decoration: BoxDecoration(
-                                              color: Color(0xFF3366CC).withOpacity(0.6),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                          )
-                                        : null,
+                                    : null,
+                              ),
+                            );
+                          }),
+                        ),
                       ),
-                    );
-                  }),
-                ),
-              ),
-              
+                      
                       SizedBox(height: 24),
                       
                       // Error message
@@ -551,14 +602,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   ),
                                   SizedBox(width: 10),
                                   Expanded(
-                  child: Text(
-                    _errorMessage!,
-                    style: GoogleFonts.poppins(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         color: Colors.red.shade700,
-                    ),
-                  ),
-                ),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             )
@@ -568,88 +619,35 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       SizedBox(height: 36),
                       
                       // Timer and resend button
-              _start > 0
-                          ? Container(
-                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                              decoration: BoxDecoration(
-                                color: Color(0xFFF0F7FF),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(
-                                  color: Color(0x204F80E1),
-                                  width: 1,
-                                ),
+                      _start > 0
+                        ? Text(
+                            "Resend OTP in $formattedTime",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF3366CC),
+                            ),
+                          )
+                        : TextButton(
+                            onPressed: _isLoading ? null : _resendOTP,
+                            style: TextButton.styleFrom(
+                              foregroundColor: Color(0xFF3366CC),
+                            ),
+                            child: Text(
+                              "Resend OTP",
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.timer_outlined,
-                                    size: 18,
-                                    color: Color(0xFF3366CC),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                    "Resend OTP in $formattedTime",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF3366CC),
-                                    ),
-                                  ),
-                                ],
-                    ),
-                  )
-                  : TextButton(
-                    onPressed: _isLoading ? null : _resendOTP,
-                              style: TextButton.styleFrom(
-                                backgroundColor: Color(0xFFF0F7FF),
-                                padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                  side: BorderSide(
-                                    color: Color(0xFF3366CC).withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.refresh_rounded,
-                                    size: 18,
-                                    color: Color(0xFF3366CC),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                      "Resend OTP",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF3366CC),
-                      ),
-                                  ),
-                                ],
-                    ),
-                  ),
+                            ),
+                          ),
                       
                       SizedBox(height: 36),
                       
-              // Confirm OTP button
-              Container(
+                      // Confirm OTP button
+                      Container(
                         width: double.infinity,
                         height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x404F80E1),
-                              blurRadius: 12,
-                              offset: Offset(0, 6),
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
                         child: _isLoading
                           ? ElevatedButton(
                               onPressed: null,
@@ -688,51 +686,23 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           : ElevatedButton(
                               onPressed: _isVerificationSuccessful ? null : _verifyOTP,
                               style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                backgroundColor: Colors.transparent,
+                                backgroundColor: Color(0xFF3366CC),
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.transparent,
+                                disabledBackgroundColor: Color(0xFF3366CC).withOpacity(0.7),
                                 disabledForegroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: _isVerificationSuccessful 
-                                      ? [Color(0xFF3366CC).withOpacity(0.7), Color(0xFF4F80E1).withOpacity(0.7)]
-                                      : [Color(0xFF3366CC), Color(0xFF4F80E1)],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Container(
-                                  height: 56,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        _isVerificationSuccessful 
-                                          ? Icons.check_circle_outline_rounded
-                                          : Icons.lock_outlined,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        _isVerificationSuccessful 
-                                          ? "Verified!"
-                                          : "Verify & Proceed",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.5,
-                ),
-              ),
-            ],
-                                  ),
+                              child: Text(
+                                _isVerificationSuccessful 
+                                  ? "Verified!"
+                                  : "Verify & Proceed",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
@@ -743,44 +713,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 
                 // Security message
                 Container(
-                  margin: EdgeInsets.only(top: 30, bottom: 20),
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(40),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 10,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color(0x103366CC),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.shield_outlined,
-                          color: Color(0xFF3366CC),
-                          size: 16,
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        "Your verification is secure and encrypted",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  margin: EdgeInsets.only(top: 20, bottom: 20),
+                  child: Text(
+                    "Your verification is secure and encrypted",
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
