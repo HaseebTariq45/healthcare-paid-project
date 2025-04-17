@@ -199,56 +199,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Close the dialog first
+                      onPressed: () async {
+                        // Close the confirmation dialog first
                         Navigator.of(dialogContext).pop();
                         
-                        // Show loading indicator dialog
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (loadingContext) => Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                        try {
+                          // Perform logout directly without showing loading dialog
+                          await _authService.signOut();
+                        } catch (e) {
+                          print('Error during signout: $e');
+                          // Continue with navigation even if signout fails
+                        } finally {
+                          // Always navigate to onboarding screen, regardless of signout success/failure
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => const Onboarding3(),
                               ),
-                              child: const CircularProgressIndicator(),
-                            ),
-                          ),
-                        );
-                        
-                        // Use Future.delayed to ensure the loading indicator is shown
-                        Future.delayed(Duration(milliseconds: 100), () async {
-                          try {
-                            // Perform logout
-                            await _authService.signOut();
-                            
-                            // Navigate after signout completes
-                            if (context.mounted) {
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (context) => const Onboarding3(),
-                                ),
-                                (route) => false, // Remove all previous routes
-                              );
-                            }
-                          } catch (e) {
-                            // Close loading dialog if error occurs and context is still mounted
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                              
-                              // Show error
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error logging out: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
+                              (route) => false,
+                            );
                           }
-                        });
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5252),

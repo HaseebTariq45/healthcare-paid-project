@@ -1057,55 +1057,24 @@ class _MenuScreenState extends State<MenuScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
+                          // Close the dialog
                           Navigator.pop(context);
                           
-                          // Show loading indicator
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (BuildContext context) {
-                              return Dialog(
-                                backgroundColor: Colors.white,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: const [
-                                      CircularProgressIndicator(
-                                        color: Color(0xFF3366CC),
-                                      ),
-                                      SizedBox(height: 16),
-                                      Text('Logging out...'),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                          
-                          // Sign out
                           try {
+                            // Perform signout without showing any loading indicator
                             await _authService.signOut();
-                            
-                            // Close loading dialog
-                            Navigator.pop(context);
-                            
-                            // Navigate to Onboarding3 screen and clear navigation stack
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (context) => const Onboarding3()),
-                              (route) => false, // Remove all previous routes
-                            );
                           } catch (e) {
-                            // Close loading dialog
-                            Navigator.pop(context);
-                            
-                            // Show error message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('An error occurred: ${e.toString()}'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                            print('Error during signout: $e');
+                            // Continue with navigation even if signout fails
+                          } finally {
+                            // Always navigate to onboarding screen, regardless of signout success/failure
+                            if (context.mounted) {
+                              // Use pushReplacement instead of pushAndRemoveUntil to avoid stack issues
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (context) => const Onboarding3()),
+                                (route) => false,
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(

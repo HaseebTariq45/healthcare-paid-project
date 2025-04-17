@@ -842,68 +842,22 @@ class _PatientMenuScreenState extends State<PatientMenuScreen> {
                       onTap: () async {
                         Navigator.pop(context);
                         
-                        // Show loading indicator
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (BuildContext context) {
-                            return Dialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(screenSize.width * 0.05),
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(verticalPadding),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      color: const Color(0xFF3366CC),
-                                    ),
-                                    SizedBox(height: verticalPadding * 0.8),
-                                    Text(
-                                      'Logging out...',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: screenSize.width * 0.04,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                        
                         try {
-                          // Clear cache
+                          // Clear cache and sign out directly without showing a loading dialog
                           await CacheService.clearAllCache();
-                          
-                          // Sign out from Firebase
                           await FirebaseAuth.instance.signOut();
-                          
-                          if (!mounted) return;
-                          
-                          // Close loading dialog
-                          Navigator.pop(context);
-                          
-                          // Navigate to Onboarding screen and clear navigation stack
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (context) => const Onboarding3()),
-                            (route) => false,
-                          );
                         } catch (e) {
-                          if (!mounted) return;
-                          
-                          // Close loading dialog
-                          Navigator.pop(context);
-                          
-                          // Show error message
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error logging out: ${e.toString()}'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          print('Error during signout: $e');
+                          // Continue with navigation even if signout fails
+                        } finally {
+                          // Always navigate to onboarding screen, regardless of signout success/failure
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const Onboarding3()),
+                              (route) => false,
+                            );
+                          }
                         }
                       },
                       borderRadius: BorderRadius.circular(screenSize.width * 0.04),
