@@ -145,6 +145,18 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Size screenSize = MediaQuery.of(context).size;
+    final bool isSmallScreen = screenSize.width < 360;
+    
+    // Calculate responsive sizes
+    final double iconSize = screenSize.width * 0.15;
+    final double headingSize = screenSize.width * (isSmallScreen ? 0.055 : 0.065);
+    final double textSize = screenSize.width * (isSmallScreen ? 0.04 : 0.045);
+    final double smallTextSize = screenSize.width * (isSmallScreen ? 0.035 : 0.04);
+    final double padding = screenSize.width * 0.06;
+    final double smallPadding = screenSize.width * 0.04;
+    final double buttonHeight = screenSize.height * 0.065;
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -156,40 +168,46 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
           style: GoogleFonts.poppins(
             color: Colors.black,
             fontWeight: FontWeight.w600,
+            fontSize: textSize,
           ),
         ),
       ),
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(padding),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_isProcessing) ...[
-                  CircularProgressIndicator(
-                    color: Color(0xFF3366CC),
+                  SizedBox(
+                    width: iconSize * 0.8,
+                    height: iconSize * 0.8,
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF3366CC),
+                      strokeWidth: 4,
+                    ),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: padding),
                   Text(
                     'Processing Payment...',
                     style: GoogleFonts.poppins(
-                      fontSize: 20,
+                      fontSize: headingSize,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: smallPadding),
                   Text(
                     'Please wait while we process your payment.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: textSize,
                       color: Colors.grey[600],
                     ),
                   ),
                 ] else if (_isSuccess) ...[
                   Container(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(smallPadding),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
                       shape: BoxShape.circle,
@@ -197,71 +215,79 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
                     child: Icon(
                       LucideIcons.checkCheck,
                       color: Colors.green,
-                      size: 64,
+                      size: iconSize,
                     ),
                   ),
-                  SizedBox(height: 24),
-                  Text(
-                    'Payment Successful!',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
+                  SizedBox(height: padding),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Payment Successful!',
+                      style: GoogleFonts.poppins(
+                        fontSize: headingSize,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: smallPadding),
                   Text(
                     'Your appointment with ${widget.doctorName} has been confirmed.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: textSize,
                       color: Colors.grey[600],
                     ),
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: padding),
                   Container(
-                    padding: EdgeInsets.all(16),
+                    width: double.infinity,
+                    padding: EdgeInsets.all(smallPadding),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(smallPadding),
                     ),
                     child: Column(
                       children: [
-                        _buildInfoRow('Amount Paid', 'Rs. ${widget.amount}'),
-                        Divider(height: 24),
-                        _buildInfoRow('Payment Method', widget.paymentMethod),
-                        Divider(height: 24),
-                        _buildInfoRow('Status', 'Completed'),
+                        _buildInfoRow('Amount Paid', 'Rs. ${widget.amount}', smallTextSize),
+                        Divider(height: padding),
+                        _buildInfoRow('Payment Method', widget.paymentMethod, smallTextSize),
+                        Divider(height: padding),
+                        _buildInfoRow('Status', 'Completed', smallTextSize),
                       ],
                     ),
                   ),
-                  SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => PatientHomeScreen()),
-                        (route) => false,
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF3366CC),
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(height: padding),
+                  SizedBox(
+                    width: double.infinity,
+                    height: buttonHeight,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => PatientHomeScreen()),
+                          (route) => false,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF3366CC),
+                        padding: EdgeInsets.symmetric(vertical: smallPadding),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(smallPadding),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'Return Home',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                      child: Text(
+                        'Return Home',
+                        style: GoogleFonts.poppins(
+                          fontSize: textSize,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
                 ] else ...[
                   Container(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(smallPadding),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
                       shape: BoxShape.circle,
@@ -269,42 +295,49 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
                     child: Icon(
                       LucideIcons.alertCircle,
                       color: Colors.red,
-                      size: 64,
+                      size: iconSize,
                     ),
                   ),
-                  SizedBox(height: 24),
-                  Text(
-                    'Payment Failed',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.red,
+                  SizedBox(height: padding),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Payment Failed',
+                      style: GoogleFonts.poppins(
+                        fontSize: headingSize,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: smallPadding),
                   Text(
                     _errorMessage,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: textSize,
                       color: Colors.grey[600],
                     ),
                   ),
-                  SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _processPayment,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF3366CC),
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(height: padding),
+                  SizedBox(
+                    width: double.infinity,
+                    height: buttonHeight,
+                    child: ElevatedButton(
+                      onPressed: _processPayment,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF3366CC),
+                        padding: EdgeInsets.symmetric(vertical: smallPadding),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(smallPadding),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'Try Again',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                      child: Text(
+                        'Try Again',
+                        style: GoogleFonts.poppins(
+                          fontSize: textSize,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
@@ -317,21 +350,21 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, double fontSize) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: fontSize,
             color: Colors.grey[600],
           ),
         ),
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: fontSize,
             fontWeight: FontWeight.w600,
           ),
         ),

@@ -677,58 +677,76 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               Container(
                 color: Colors.black.withOpacity(0.5),
                 child: Center(
-                  child: Container(
-                    padding: EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 20,
-                          offset: Offset(0, 10),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final Size screenSize = MediaQuery.of(context).size;
+                      final double dialogWidth = screenSize.width * 0.85;
+                      final double dialogPadding = screenSize.width * 0.06;
+                      final double iconSize = screenSize.width * 0.11;
+                      final double progressSize = screenSize.width * 0.1;
+                      final double verticalSpacing = screenSize.height * 0.025;
+                      
+                      return Container(
+                        padding: EdgeInsets.all(dialogPadding),
+                        width: dialogWidth,
+                        constraints: BoxConstraints(
+                          maxWidth: 450, // Maximum width on larger devices
+                          minHeight: screenSize.height * 0.2,
                         ),
-                      ],
-                    ),
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF2754C3).withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2754C3)),
-                              strokeWidth: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 20,
+                              offset: Offset(0, 10),
                             ),
-                          ),
+                          ],
                         ),
-                        SizedBox(height: 24),
-                        Text(
-                          'Loading Appointment Details',
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(iconSize * 0.3),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2754C3).withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: SizedBox(
+                                width: progressSize,
+                                height: progressSize,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2754C3)),
+                                  strokeWidth: 3,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: verticalSpacing),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Loading Appointment Details',
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenSize.width * 0.045,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: verticalSpacing * 0.4),
+                            Text(
+                              'Please wait while we prepare the booking information...',
+                              style: GoogleFonts.poppins(
+                                fontSize: screenSize.width * 0.035,
+                                color: Colors.grey[600],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Please wait while we prepare the booking information...',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                      );
+                    }
                   ),
                 ),
               ),

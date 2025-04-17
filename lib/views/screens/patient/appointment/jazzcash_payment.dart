@@ -147,206 +147,243 @@ class _JazzCashPaymentScreenState extends State<JazzCashPaymentScreen> with Sing
             await showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (context) => Dialog(
-                insetPadding: EdgeInsets.symmetric(horizontal: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                elevation: 10,
-                shadowColor: Colors.black38,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 28, horizontal: 24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFFE00000),
-                            Color(0xFFFF4D4D),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                        shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 12,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                      ),
-                      child: Icon(
-                              LucideIcons.checkCheck,
-                        color: Color(0xFFE00000),
-                              size: 44,
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                          Text(
-                            "Payment Successful!",
-                            style: GoogleFonts.poppins(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                    Text(
-                            "Your appointment has been confirmed",
-                      style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              color: Colors.white.withOpacity(0.9),
-                      ),
+              builder: (context) {
+                final Size screenSize = MediaQuery.of(context).size;
+                final double horizontalPadding = screenSize.width * 0.06;
+                final double verticalPadding = screenSize.height * 0.03;
+                final double iconSize = screenSize.width * 0.12;
+                final double titleFontSize = screenSize.width * 0.055;
+                final double subtitleFontSize = screenSize.width * 0.035;
+                final double buttonHeight = screenSize.height * 0.06;
+                
+                return Dialog(
+                  insetPadding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.05),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(screenSize.width * 0.06),
+                  ),
+                  elevation: 10,
+                  shadowColor: Colors.black38,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: 450, // Maximum width on larger devices
                     ),
-                  ],
-                ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-                      ),
-                      child: Column(
-                        children: [
-                      Container(
-                            padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                              color: Color(0xFFFFF5F5),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 2),
-                                ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            vertical: verticalPadding,
+                            horizontal: horizontalPadding
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFFE00000),
+                                Color(0xFFFF4D4D),
                               ],
-                        ),
-                        child: Row(
-                          children: [
-                                Container(
-                                  padding: EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFE00000).withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                            ),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(screenSize.width * 0.06)),
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(screenSize.width * 0.035),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 12,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  LucideIcons.checkCheck,
+                                  color: Color(0xFFE00000),
+                                  size: iconSize,
+                                ),
+                              ),
+                              SizedBox(height: verticalPadding * 0.7),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  "Payment Successful!",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: titleFontSize,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
                                   ),
-                                  child: Icon(
-                              LucideIcons.creditCard,
-                                    size: 24,
-                              color: Color(0xFFE00000),
-                            ),
                                 ),
-                                SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              ),
+                              SizedBox(height: verticalPadding * 0.3),
+                              Text(
+                                "Your appointment has been confirmed",
+                                style: GoogleFonts.poppins(
+                                  fontSize: subtitleFontSize,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(horizontalPadding),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(bottom: Radius.circular(screenSize.width * 0.06)),
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(horizontalPadding * 0.7),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFFFF5F5),
+                                  borderRadius: BorderRadius.circular(screenSize.width * 0.04),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(screenSize.width * 0.025),
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFE00000).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                                      ),
+                                      child: Icon(
+                                        LucideIcons.creditCard,
+                                        size: screenSize.width * 0.06,
+                                        color: Color(0xFFE00000),
+                                      ),
+                                    ),
+                                    SizedBox(width: horizontalPadding * 0.5),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Amount Paid",
+                                            style: GoogleFonts.poppins(
+                                              fontSize: subtitleFontSize,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              "Rs. ${widget.appointmentDetails?['fee'] ?? '0'}",
+                                              style: GoogleFonts.poppins(
+                                                fontSize: screenSize.width * 0.045,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: verticalPadding),
+                              Row(
                                 children: [
-                                  Text(
-                                    "Amount Paid",
-                                    style: GoogleFonts.poppins(
-                                          fontSize: 13,
-                                          color: Colors.grey[600],
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: buttonHeight,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          PatientNavigationHelper.navigateToHome(context);
+                                          Future.delayed(Duration(milliseconds: 100), () {
+                                            PatientNavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
+                                          });
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Color(0xFFE00000),
+                                          foregroundColor: Colors.white,
+                                          padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.015),
+                                          elevation: 2,
+                                          shadowColor: Color(0xFFE00000).withOpacity(0.3),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(screenSize.width * 0.035),
+                                          ),
+                                        ),
+                                        icon: Icon(LucideIcons.wallet, size: screenSize.width * 0.045),
+                                        label: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            "View Payment",
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: screenSize.width * 0.035,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                        "Rs. ${widget.appointmentDetails?['fee'] ?? '0'}",
-                                    style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                          color: Colors.black87,
+                                  SizedBox(width: horizontalPadding * 0.5),
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: buttonHeight,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          Navigator.pop(context); // Close the dialog
+                                          // Navigate directly to appointments screen
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const AppointmentsScreen(),
+                                            ),
+                                            (route) => route.isFirst, // Keep only the first route
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          foregroundColor: Color(0xFF2754C3),
+                                          padding: EdgeInsets.symmetric(vertical: screenSize.height * 0.015),
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(screenSize.width * 0.035),
+                                            side: BorderSide(color: Color(0xFF2754C3).withOpacity(0.5), width: 1.5),
+                                          ),
+                                        ),
+                                        icon: Icon(LucideIcons.calendarCheck, size: screenSize.width * 0.045),
+                                        label: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            "View Booking",
+                                            style: GoogleFonts.poppins(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: screenSize.width * 0.035,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                          SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      PatientNavigationHelper.navigateToHome(context);
-                      Future.delayed(Duration(milliseconds: 100), () {
-                                      PatientNavigationHelper.navigateToTab(context, 2); // Navigate to Finances tab
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFFE00000),
-                      foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                      elevation: 2,
-                                    shadowColor: Color(0xFFE00000).withOpacity(0.3),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  icon: Icon(LucideIcons.wallet, size: 18),
-                                  label: Text(
-                                    "View Payment",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 14),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.pop(context); // Close the dialog
-                                    // Navigate directly to appointments screen
-                                    Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const AppointmentsScreen(),
-                                      ),
-                                      (route) => route.isFirst, // Keep only the first route
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Color(0xFF2754C3),
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      side: BorderSide(color: Color(0xFF2754C3).withOpacity(0.5), width: 1.5),
-                                    ),
-                                  ),
-                                  icon: Icon(LucideIcons.calendarCheck, size: 18),
-                                  label: Text(
-                                    "View Booking",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           } catch (e) {
             print('Error saving appointment and transaction: $e');

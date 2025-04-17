@@ -276,200 +276,261 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
             context: context,
             barrierDismissible: false,
             builder: (BuildContext dialogContext) {
-              return AlertDialog(
-                contentPadding: EdgeInsets.zero,
+              final Size screenSize = MediaQuery.of(context).size;
+              final double horizontalPadding = screenSize.width * 0.06;
+              final double verticalPadding = screenSize.height * 0.03;
+              final double iconSize = screenSize.width * 0.12;
+              final double titleFontSize = screenSize.width * 0.055;
+              final double subtitleFontSize = screenSize.width * 0.035;
+              final double buttonHeight = screenSize.height * 0.06;
+              
+              return Dialog(
+                insetPadding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.05),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(screenSize.width * 0.06),
                 ),
-                content: Container(
-                  width: MediaQuery.of(context).size.width * 0.8,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header with gradient
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF2754C3),
-                              Color(0xFF4B7BFB),
-                            ],
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                LucideIcons.checkCheck,
-                                color: Color(0xFF2754C3),
-                                size: 40,
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              "Payment Successful!",
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              "Your appointment has been confirmed",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
-                          ],
-                        ),
+                elevation: 10,
+                shadowColor: Colors.black38,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Calculate responsive dimensions based on available space
+                    final maxWidth = constraints.maxWidth;
+                    final maxHeight = constraints.maxHeight;
+                    final isSmallScreen = maxWidth < 360;
+                    
+                    // Adjust sizes based on available space
+                    final adjustedIconSize = maxWidth * 0.15;
+                    final adjustedTitleSize = maxWidth * (isSmallScreen ? 0.045 : 0.055);
+                    final adjustedSubtitleSize = maxWidth * (isSmallScreen ? 0.032 : 0.035);
+                    final adjustedButtonHeight = maxHeight * 0.08;
+                    
+                    return Container(
+                      width: double.infinity,
+                      constraints: BoxConstraints(
+                        maxWidth: 450,
+                        maxHeight: screenSize.height * 0.8,
                       ),
-                      
-                      // Content area
-                      Padding(
-                        padding: EdgeInsets.all(20),
+                      child: SingleChildScrollView(
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Amount box
                             Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Color(0xFFF5F7FF),
-                                borderRadius: BorderRadius.circular(16),
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(
+                                vertical: verticalPadding,
+                                horizontal: horizontalPadding
                               ),
-                              child: Row(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF2754C3),
+                                    Color(0xFF4B7BFB),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(screenSize.width * 0.06)),
+                              ),
+                              child: Column(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(10),
+                                    padding: EdgeInsets.all(maxWidth * 0.035),
                                     decoration: BoxDecoration(
-                                      color: Color(0xFF2754C3).withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      LucideIcons.creditCard,
-                                      size: 20,
-                                      color: Color(0xFF2754C3),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Amount Paid",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                        Text(
-                                          "Rs. ${widget.appointmentDetails?['fee'] ?? '0'}",
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 12,
+                                          offset: Offset(0, 4),
                                         ),
                                       ],
+                                    ),
+                                    child: Icon(
+                                      LucideIcons.checkCheck,
+                                      color: Color(0xFF2754C3),
+                                      size: adjustedIconSize,
+                                    ),
+                                  ),
+                                  SizedBox(height: verticalPadding * 0.7),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      "Payment Successful!",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: adjustedTitleSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: verticalPadding * 0.3),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      "Your appointment has been confirmed",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: adjustedSubtitleSize,
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      textAlign: TextAlign.center,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            
-                            SizedBox(height: 20),
+                            Container(
+                              padding: EdgeInsets.all(horizontalPadding),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(bottom: Radius.circular(screenSize.width * 0.06)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(maxWidth * 0.04),
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFF5F7FF),
+                                      borderRadius: BorderRadius.circular(maxWidth * 0.04),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.03),
+                                          blurRadius: 10,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(maxWidth * 0.025),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFF2754C3).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(maxWidth * 0.03),
+                                          ),
+                                          child: Icon(
+                                            LucideIcons.creditCard,
+                                            size: maxWidth * 0.06,
+                                            color: Color(0xFF2754C3),
+                                          ),
+                                        ),
+                                        SizedBox(width: maxWidth * 0.03),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Amount Paid",
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: adjustedSubtitleSize,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  "Rs. ${widget.appointmentDetails?['fee'] ?? '0'}",
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: adjustedTitleSize,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.black87,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: verticalPadding),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: adjustedButtonHeight,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () {
+                                              Navigator.pop(dialogContext);
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => PatientFinancesScreen(),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color(0xFF2754C3),
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.symmetric(vertical: maxHeight * 0.015),
+                                              elevation: 2,
+                                              shadowColor: Color(0xFF2754C3).withOpacity(0.3),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(maxWidth * 0.035),
+                                              ),
+                                            ),
+                                            icon: Icon(LucideIcons.wallet, size: maxWidth * 0.045),
+                                            label: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                "View Payment",
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: adjustedSubtitleSize,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: maxWidth * 0.03),
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: adjustedButtonHeight,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () {
+                                              Navigator.pop(dialogContext);
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => const AppointmentsScreen(),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              foregroundColor: Color(0xFF2754C3),
+                                              padding: EdgeInsets.symmetric(vertical: maxHeight * 0.015),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(maxWidth * 0.035),
+                                                side: BorderSide(color: Color(0xFF2754C3).withOpacity(0.5), width: 1.5),
+                                              ),
+                                            ),
+                                            icon: Icon(LucideIcons.calendarCheck, size: maxWidth * 0.045),
+                                            label: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                "View Booking",
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: adjustedSubtitleSize,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      
-                      // Buttons in separate container
-                      Padding(
-                        padding: EdgeInsets.only(left: 20, right: 20, bottom: 20),
-                        child: Column(
-                          children: [
-                            // First button
-                            Container(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(dialogContext);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PatientFinancesScreen(),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFF2754C3),
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                icon: Icon(LucideIcons.wallet, size: 18),
-                                label: Text(
-                                  "View Payment",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            
-                            SizedBox(height: 12),
-                            
-                            // Second button
-                            Container(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(dialogContext);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const AppointmentsScreen(),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Color(0xFF2754C3),
-                                  padding: EdgeInsets.symmetric(vertical: 12),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(color: Color(0xFF2754C3).withOpacity(0.5), width: 1.5),
-                                  ),
-                                ),
-                                icon: Icon(LucideIcons.calendarCheck, size: 18),
-                                label: Text(
-                                  "View Booking",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               );
             },

@@ -410,270 +410,192 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                contentPadding: EdgeInsets.zero,
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header with success icon
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF3366FF),
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.check,
-                              color: Color(0xFF3366FF),
-                              size: 32,
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            "Payment Successful",
-                            style: GoogleFonts.poppins(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Payment details
-                    Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          // Amount
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F8FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Color(0xFFD6E4FF)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFE5EDFF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.attach_money,
-                                    size: 24,
-                                    color: Color(0xFF3366FF),
-                                  ),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Amount Paid",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
-                                      Text(
-                                        "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1E293B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: 16),
-                          
-                          // Doctor details
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F8FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Color(0xFFD6E4FF)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFE5EDFF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.medical_services,
-                                    size: 24,
-                                    color: Color(0xFF3366FF),
-                                  ),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Doctor",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
-                                      Text(
-                                        "${widget.appointmentDetails?['doctorName'] ?? 'Doctor'}",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1E293B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: 16),
-                          
-                          // Payment method
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F8FF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Color(0xFFD6E4FF)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFE5EDFF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.credit_card,
-                                    size: 24,
-                                    color: Color(0xFF3366FF),
-                                  ),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Payment Method",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
-                                      Text(
-                                        selectedCard["name"],
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1E293B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          SizedBox(height: 24),
-                          
-                          Row(
+              builder: (context) {
+                final Size screenSize = MediaQuery.of(context).size;
+                
+                return Dialog(
+                  insetPadding: EdgeInsets.symmetric(horizontal: screenSize.width * 0.05),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final maxWidth = constraints.maxWidth;
+                      final maxHeight = constraints.maxHeight;
+                      final isSmallScreen = maxWidth < 360;
+                      
+                      final fontSize = {
+                        'small': maxWidth * (isSmallScreen ? 0.035 : 0.04),
+                        'medium': maxWidth * (isSmallScreen ? 0.04 : 0.045),
+                        'large': maxWidth * (isSmallScreen ? 0.05 : 0.055),
+                      };
+                      
+                      final padding = {
+                        'small': maxWidth * 0.03,
+                        'medium': maxWidth * 0.04,
+                        'large': maxWidth * 0.05,
+                      };
+                      
+                      return Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          maxWidth: 450,
+                          maxHeight: screenSize.height * 0.8,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    PatientNavigationHelper.navigateToHome(context);
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                                    side: BorderSide(
-                                      color: Color(0xFF3366FF),
-                                      width: 1.5,
+                              // Header with success icon
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.symmetric(vertical: padding['medium']!),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF3366FF),
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(screenSize.width * 0.05)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(maxWidth * 0.04),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.check,
+                                        color: Color(0xFF3366FF),
+                                        size: maxWidth * 0.08,
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                    SizedBox(height: padding['small']!),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        "Payment Successful",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: fontSize['large'],
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    "Go to Home",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 16,
-                                      color: Color(0xFF3366FF),
-                                    ),
-                                  ),
+                                  ],
                                 ),
                               ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    PatientNavigationHelper.navigateToHome(context);
-                                    Future.delayed(Duration(milliseconds: 100), () {
-                                      PatientNavigationHelper.navigateToTab(context, 2);
-                                    });
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFF3366FF),
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                              
+                              // Payment details
+                              Padding(
+                                padding: EdgeInsets.all(padding['large']!),
+                                child: Column(
+                                  children: [
+                                    // Amount
+                                    _buildPaymentInfoContainer(
+                                      "Amount Paid",
+                                      "${widget.appointmentDetails?['displayFee'] ?? widget.appointmentDetails?['fee'] ?? 'Rs. 2,000'}",
+                                      Icons.attach_money,
+                                      padding: padding,
+                                      fontSize: fontSize,
                                     ),
-                                  ),
-                                  child: Text(
-                                    "View History",
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 16,
+                                    
+                                    SizedBox(height: padding['small']!),
+                                    
+                                    // Doctor details
+                                    _buildPaymentInfoContainer(
+                                      "Doctor",
+                                      "${widget.appointmentDetails?['doctorName'] ?? 'Doctor'}",
+                                      Icons.medical_services,
+                                      padding: padding,
+                                      fontSize: fontSize,
                                     ),
-                                  ),
+                                    
+                                    SizedBox(height: padding['small']!),
+                                    
+                                    // Payment method
+                                    _buildPaymentInfoContainer(
+                                      "Payment Method",
+                                      selectedCard["name"],
+                                      Icons.credit_card,
+                                      padding: padding,
+                                      fontSize: fontSize,
+                                    ),
+                                    
+                                    SizedBox(height: padding['medium']!),
+                                    
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              PatientNavigationHelper.navigateToHome(context);
+                                            },
+                                            style: OutlinedButton.styleFrom(
+                                              padding: EdgeInsets.symmetric(vertical: maxHeight * 0.02),
+                                              side: BorderSide(
+                                                color: Color(0xFF3366FF),
+                                                width: 1.5,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(maxWidth * 0.03),
+                                              ),
+                                            ),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                "Go to Home",
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: fontSize['medium'],
+                                                  color: Color(0xFF3366FF),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: padding['small']!),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              PatientNavigationHelper.navigateToHome(context);
+                                              Future.delayed(Duration(milliseconds: 100), () {
+                                                PatientNavigationHelper.navigateToTab(context, 2);
+                                              });
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Color(0xFF3366FF),
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.symmetric(vertical: maxHeight * 0.02),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(maxWidth * 0.03),
+                                              ),
+                                            ),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                "View History",
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: fontSize['medium'],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             );
           }
         } catch (e) {
@@ -706,6 +628,57 @@ class _SavedCardsScreenState extends State<SavedCardsScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         margin: EdgeInsets.all(10),
+      ),
+    );
+  }
+
+  // Helper method to build payment info containers in the success dialog
+  Widget _buildPaymentInfoContainer(String title, String value, IconData icon, {required Map<String, double> padding, required Map<String, double> fontSize}) {
+    return Container(
+      padding: EdgeInsets.all(padding['medium']!),
+      decoration: BoxDecoration(
+        color: Color(0xFFF5F8FF),
+        borderRadius: BorderRadius.circular(padding['medium']!),
+        border: Border.all(color: Color(0xFFD6E4FF)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(padding['small']!),
+            decoration: BoxDecoration(
+              color: Color(0xFFE5EDFF),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: padding['large']!,
+              color: Color(0xFF3366FF),
+            ),
+          ),
+          SizedBox(width: padding['medium']!),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize['small'],
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize['medium'],
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

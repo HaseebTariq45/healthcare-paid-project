@@ -778,21 +778,21 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           return SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
+                        physics: const AlwaysScrollableScrollPhysics(),
                             child: ConstrainedBox(
                               constraints: BoxConstraints(
                                 minHeight: constraints.maxHeight,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildHeader(),
-                                  _buildBanner(),
-                                  _buildDiseaseCategories(),
-                                  _buildAppointmentsSection(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
+                            _buildBanner(),
+                            _buildDiseaseCategories(),
+                            _buildAppointmentsSection(),
                                   SizedBox(height: screenSize.height * 0.025),
-                                ],
-                              ),
+                          ],
+                        ),
                             ),
                           );
                         }
@@ -921,33 +921,33 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             children: [
               Flexible(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "Hello,",
-                        style: GoogleFonts.poppins(
+                    "Hello,",
+                    style: GoogleFonts.poppins(
                           fontSize: screenSize.width * 0.04,
-                          color: Colors.white.withOpacity(0.9),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      color: Colors.white.withOpacity(0.9),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                     ),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        userName,
-                        style: GoogleFonts.poppins(
+                    userName,
+                    style: GoogleFonts.poppins(
                           fontSize: screenSize.width * 0.07,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                          height: 1.2,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                      height: 1.2,
                         ),
-                      ),
                     ),
-                  ],
+                  ),
+                ],
                 ),
               ),
             ],
@@ -1002,11 +1002,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                           children: [
                             Flexible(
                               child: Text(
-                                "Profile Completion",
-                                style: GoogleFonts.poppins(
+                              "Profile Completion",
+                              style: GoogleFonts.poppins(
                                   fontSize: screenSize.width * 0.035,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1150,11 +1150,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                             SizedBox(width: horizontalPadding * 0.5),
                             Flexible(
                               child: Text(
-                                "No profile picture added",
-                                style: GoogleFonts.poppins(
+                              "No profile picture added",
+                              style: GoogleFonts.poppins(
                                   fontSize: screenSize.width * 0.035,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade600,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1237,15 +1237,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    userData.containsKey('bloodGroup') ? 
-                      "Your Blood Group: ${userData['bloodGroup']}" :
-                      "Complete Your Profile",
-                    style: GoogleFonts.poppins(
+                  userData.containsKey('bloodGroup') ? 
+                    "Your Blood Group: ${userData['bloodGroup']}" :
+                    "Complete Your Profile",
+                  style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.04,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
+                ),
                 ),
                 SizedBox(height: verticalPadding * 0.3),
                 Text(
@@ -1282,9 +1282,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                               label: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  "Book Online",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
+                                "Book Online",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
                                     fontSize: screenSize.width * 0.03,
                                   ),
                                 ),
@@ -1317,9 +1317,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                               label: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  "Book via Call",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w500,
+                                "Book via Call",
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
                                     fontSize: screenSize.width * 0.03,
                                   ),
                                 ),
@@ -1358,9 +1358,9 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                             label: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                "Complete Your Profile",
-                                style: GoogleFonts.poppins(
-                                  fontWeight: FontWeight.w500,
+                              "Complete Your Profile",
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w500,
                                   fontSize: screenSize.width * 0.03,
                                 ),
                               ),
@@ -1422,13 +1422,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              "Specialties",
-              style: GoogleFonts.poppins(
+            "Specialties",
+            style: GoogleFonts.poppins(
                 fontSize: screenSize.width * 0.045,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
+          ),
           ),
           SizedBox(height: verticalPadding),
           LayoutBuilder(
@@ -1437,18 +1437,18 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               final int crossAxisCount = screenSize.width > 600 ? 4 : 3;
               
               return GridView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  childAspectRatio: 0.8,
+              childAspectRatio: 0.8,
                   crossAxisSpacing: screenSize.width * 0.025,
                   mainAxisSpacing: screenSize.width * 0.025,
-                ),
-                itemCount: _diseaseCategories.length,
-                itemBuilder: (context, index) {
-                  final category = _diseaseCategories[index];
-                  return _buildDiseaseCategoryCard(category);
+            ),
+            itemCount: _diseaseCategories.length,
+            itemBuilder: (context, index) {
+              final category = _diseaseCategories[index];
+              return _buildDiseaseCategoryCard(category);
                 },
               );
             },
@@ -1587,28 +1587,28 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                category.name,
-                style: GoogleFonts.poppins(
+              category.name,
+              style: GoogleFonts.poppins(
                   fontSize: screenSize.width * 0.03,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             ),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                category.nameUrdu,
-                style: GoogleFonts.poppins(
+              category.nameUrdu,
+              style: GoogleFonts.poppins(
                   fontSize: screenSize.width * 0.025,
-                  color: Colors.grey.shade600,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1735,11 +1735,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    "My Appointments",
-                    style: GoogleFonts.poppins(
+                "My Appointments",
+                style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.045,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                     ),
                   ),
                 ),
@@ -1753,12 +1753,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 },
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(
-                    "See all",
-                    style: GoogleFonts.poppins(
+                child: Text(
+                  "See all",
+                  style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.035,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF3366CC),
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF3366CC),
                     ),
                   ),
                 ),
@@ -1788,14 +1788,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       alignment: Alignment.center,
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(
-                          "Upcoming",
-                          style: GoogleFonts.poppins(
+                      child: Text(
+                        "Upcoming",
+                        style: GoogleFonts.poppins(
                             fontSize: screenSize.width * 0.035,
-                            fontWeight: FontWeight.w500,
-                            color: _selectedCategoryIndex == 0
-                                ? Colors.white
-                                : Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                          color: _selectedCategoryIndex == 0
+                              ? Colors.white
+                              : Colors.grey.shade600,
                           ),
                         ),
                       ),
@@ -1819,14 +1819,14 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                       alignment: Alignment.center,
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(
-                          "Completed",
-                          style: GoogleFonts.poppins(
+                      child: Text(
+                        "Completed",
+                        style: GoogleFonts.poppins(
                             fontSize: screenSize.width * 0.035,
-                            fontWeight: FontWeight.w500,
-                            color: _selectedCategoryIndex == 1
-                                ? Colors.white
-                                : Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                          color: _selectedCategoryIndex == 1
+                              ? Colors.white
+                              : Colors.grey.shade600,
                           ),
                         ),
                       ),
@@ -1852,11 +1852,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "No ${_selectedCategoryIndex == 0 ? 'upcoming' : 'completed'} appointments",
-                        style: GoogleFonts.poppins(
+                      "No ${_selectedCategoryIndex == 0 ? 'upcoming' : 'completed'} appointments",
+                      style: GoogleFonts.poppins(
                           fontSize: screenSize.width * 0.04,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade600,
                         ),
                       ),
                     ),
@@ -1955,24 +1955,24 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            appointment['doctorName'],
-                            style: GoogleFonts.poppins(
+                          appointment['doctorName'],
+                          style: GoogleFonts.poppins(
                               fontSize: screenSize.width * 0.04,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                              letterSpacing: 0.2,
-                            ),
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            letterSpacing: 0.2,
                           ),
+                        ),
                         ),
                         SizedBox(height: verticalPadding * 0.1),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            appointment['specialty'],
-                            style: GoogleFonts.poppins(
+                          appointment['specialty'],
+                          style: GoogleFonts.poppins(
                               fontSize: screenSize.width * 0.035,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -1994,12 +1994,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(
-                        displayStatus,
-                        style: GoogleFonts.poppins(
+                    child: Text(
+                      displayStatus,
+                      style: GoogleFonts.poppins(
                           fontSize: screenSize.width * 0.03,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
                         ),
                       ),
                     ),
@@ -2121,23 +2121,23 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    label,
-                    style: GoogleFonts.poppins(
+                  label,
+                  style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.03,
-                      color: Colors.grey.shade600,
-                    ),
+                    color: Colors.grey.shade600,
                   ),
+                ),
                 ),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    value,
-                    style: GoogleFonts.poppins(
+                  value,
+                  style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.035,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -2182,13 +2182,13 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    "Exit App",
-                    style: GoogleFonts.poppins(
+                  "Exit App",
+                  style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.05,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
+                ),
                 ),
                 SizedBox(height: verticalPadding * 0.5),
                 Text(
