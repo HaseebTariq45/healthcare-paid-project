@@ -118,22 +118,32 @@ class AuthService {
 
   // Get user role from shared preferences (for quicker access)
   Future<UserRole> getUserRole() async {  
-    // Check for admin session first
+    // Always check Firebase Auth first to see if we have a currently authenticated user
+    final currentFirebaseUser = _auth.currentUser;
+    
+    // Get SharedPreferences for session data
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? adminUserId = prefs.getString('admin_session');
     
-    // Only use admin session if current user ID matches admin user ID
-    if (adminUserId != null && (currentUser?.uid == adminUserId || _auth.currentUser?.uid == adminUserId)) {
+    print('***** GETTING USER ROLE - Firebase User: ${currentFirebaseUser?.uid}, Admin Session: $adminUserId *****');
+    
+    // If we have a Firebase user but also an admin session and they don't match,
+    // it likely means we've switched from admin to normal user or vice versa
+    if (currentFirebaseUser != null && adminUserId != null && currentFirebaseUser.uid != adminUserId) {
+      print('***** MISMATCH BETWEEN FIREBASE USER AND ADMIN SESSION - CLEARING ADMIN SESSION *****');
+      await prefs.remove('admin_session');
+      await prefs.remove('admin_user_id');
+      await prefs.remove('admin_phone');
+    }
+    
+    // Only use admin session if there's no Firebase user (admin mode) or the IDs match
+    if (adminUserId != null && (currentFirebaseUser == null || currentFirebaseUser.uid == adminUserId)) {
       print('***** FOUND VALID ADMIN SESSION: $adminUserId *****');
       final String? adminRoleStr = prefs.getString('user_role_$adminUserId');
       if (adminRoleStr == 'admin') {
         print('***** RETURNING ADMIN ROLE FOR ADMIN SESSION *****');
         return UserRole.admin;
       }
-    } else if (adminUserId != null && currentUser != null && currentUser!.uid != adminUserId) {
-      // Clear admin session if it doesn't match current user
-      print('***** CLEARING INVALID ADMIN SESSION *****');
-      await prefs.remove('admin_session');
     }
     
     // If not admin and not logged in, return unknown
@@ -367,8 +377,20 @@ class AuthService {
     required String smsCode,
   }) async {
     try {
+      // Clear any existing admin session data when a new verification is attempted
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final bool isAdminVerification = verificationId.startsWith('admin-verification-id-');
+      
+      // If this is not an admin verification, clear any existing admin session
+      if (!isAdminVerification) {
+        print('***** NON-ADMIN VERIFICATION - CLEARING ANY EXISTING ADMIN SESSION *****');
+        await prefs.remove('admin_session');
+        await prefs.remove('admin_user_id');
+        await prefs.remove('admin_phone');
+      }
+      
       // Handle admin verification
-      if (verificationId.startsWith('admin-verification-id-')) {
+      if (isAdminVerification) {
         // Extract timestamp from stored admin verification data
         final String timestampPart = verificationId.split('-').last;
         final int timestamp = int.tryParse(timestampPart) ?? 0;
@@ -439,7 +461,6 @@ class AuthService {
             }
             
             // Store admin session info in SharedPreferences
-            final SharedPreferences prefs = await SharedPreferences.getInstance();
             await prefs.setString('admin_user_id', adminUserId);
             await prefs.setString('admin_phone', adminPhoneNumber);
             await prefs.setString('user_role_$adminUserId', 'admin');
@@ -644,9 +665,24 @@ class AuthService {
   Future<void> signOut() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+      
+      // Clear user-specific role cache
       if (currentUser != null) {
         await prefs.remove('user_role_${currentUser!.uid}');
       }
+      
+      // Clear admin session completely
+      await prefs.remove('admin_session');
+      await prefs.remove('admin_user_id');
+      await prefs.remove('admin_phone');
+      
+      // Clear any cached admin credentials
+      _cachedAdminCredentials = null;
+      _lastAdminCredentialsFetch = null;
+      
+      print('***** ALL SESSION DATA CLEARED DURING LOGOUT *****');
+      
+      // Sign out from Firebase Auth
       await _auth.signOut();
     } catch (e) {
       debugPrint('Error signing out: $e');

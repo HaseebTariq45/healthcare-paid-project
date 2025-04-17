@@ -322,6 +322,9 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
   // Fetch booked appointments for a specific doctor, hospital, and date
   Future<void> _fetchBookedAppointments(String doctorId, String hospitalId, String formattedDate) async {
     try {
+      List<String> bookedSlots = [];
+      
+      // 1. Check appointments collection
       final QuerySnapshot appointmentsSnapshot = await _firestore
           .collection('appointments')
           .where('doctorId', isEqualTo: doctorId)
@@ -332,11 +335,33 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
       
       debugPrint('Found ${appointmentsSnapshot.docs.length} existing appointments');
       
-      List<String> bookedSlots = [];
       for (var doc in appointmentsSnapshot.docs) {
         final appointmentData = doc.data() as Map<String, dynamic>;
         if (appointmentData['time'] != null && appointmentData['time'] is String) {
           bookedSlots.add(appointmentData['time']);
+        }
+      }
+      
+      // 2. Also check appointment_slots collection
+      final String slotPrefix = "${hospitalId}_${formattedDate}_";
+      final QuerySnapshot slotsSnapshot = await _firestore
+          .collection('appointment_slots')
+          .where('isBooked', isEqualTo: true)
+          .get();
+      
+      debugPrint('Found ${slotsSnapshot.docs.length} booked slots in appointment_slots collection');
+      
+      for (var doc in slotsSnapshot.docs) {
+        final slotData = doc.data() as Map<String, dynamic>;
+        final String slotId = doc.id;
+        
+        // Check if this slot belongs to our current doctor, hospital and date
+        if (slotId.startsWith(slotPrefix)) {
+          // Extract time from slotId (format: hospitalId_date_time)
+          final String time = slotId.substring(slotPrefix.length);
+          if (!bookedSlots.contains(time)) {
+            bookedSlots.add(time);
+          }
         }
       }
       

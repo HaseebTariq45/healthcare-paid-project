@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:healthcare/utils/navigation_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:healthcare/views/screens/admin/admin_dashboard.dart';
 
 class OTPVerificationScreen extends StatefulWidget {
   final String text;
@@ -86,25 +87,25 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     _debounceTimer = Timer(Duration(milliseconds: 10), () {
       if (!mounted) return;
       
-      final String otp = _otpController.text;
-      
+    final String otp = _otpController.text;
+    
       // Update individual controllers only if needed
-      for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 6; i++) {
         final String newValue = i < otp.length ? otp[i] : '';
         if (_controllers[i].text != newValue) {
           _controllers[i].text = newValue;
         }
-      }
-      
-      // Set focused index
+    }
+    
+    // Set focused index
       setState(() {
-        _focusedIndex = otp.length < 6 ? otp.length : 5;
+    _focusedIndex = otp.length < 6 ? otp.length : 5;
       });
-      
-      // Auto-verify when all 6 digits are entered
-      if (otp.length == 6 && !_isLoading && !_isVerificationSuccessful) {
-        _verifyOTP();
-      }
+    
+    // Auto-verify when all 6 digits are entered
+    if (otp.length == 6 && !_isLoading && !_isVerificationSuccessful) {
+      _verifyOTP();
+    }
     });
   }
 
@@ -209,6 +210,20 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     });
     
     try {
+      // First, ensure any previous sessions are cleared properly
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      
+      // Check if the verification ID indicates an admin login attempt
+      final bool isAdminAuthentication = verificationId.startsWith('admin-verification-id-');
+      
+      if (!isAdminAuthentication) {
+        // For non-admin login attempts, ensure all admin sessions are cleared
+        print('***** NON-ADMIN AUTHENTICATION ATTEMPT - CLEARING ADMIN SESSIONS *****');
+        await prefs.remove('admin_session');
+        await prefs.remove('admin_user_id');
+        await prefs.remove('admin_phone');
+      }
+      
       // Verify OTP with Firebase
       final result = await _authService.verifyOTP(
         verificationId: verificationId,
@@ -237,6 +252,23 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         
         // Run the animation first, then proceed with registration/navigation
         await _animateVerificationSuccess();
+        
+        // Special handling for admin users
+        if (result['isAdmin'] == true) {
+          print('***** ADMIN LOGIN CONFIRMED - NAVIGATING TO ADMIN DASHBOARD *****');
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => AdminDashboard()),
+            (route) => false,
+          );
+          return;
+        } else {
+          // For non-admin login, ensure no admin session persists
+          print('***** NON-ADMIN LOGIN CONFIRMED - ENSURING NO ADMIN SESSION *****');
+          await prefs.remove('admin_session');
+          await prefs.remove('admin_user_id');
+          await prefs.remove('admin_phone');
+        }
         
         // Check if this is a new user (from sign up) or existing user (login)
         if (widget.userType != null && widget.fullName != null) {
@@ -314,23 +346,50 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   }
 
   Future<void> _navigateBasedOnUserRole() async {
-    // Clear any cached session that might be causing issues
+    print('***** STARTING USER ROLE NAVIGATION *****');
+    
+    // Get FirebaseAuth current user
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final String? firebaseUid = firebaseUser?.uid;
+    
+    print('***** FIREBASE AUTH USER: $firebaseUid *****');
+    
+    // Check for admin session
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey('admin_session')) {
-      print('***** REMOVING CACHED ADMIN SESSION BEFORE NAVIGATION *****');
+    final String? adminSessionId = prefs.getString('admin_session');
+    
+    print('***** ADMIN SESSION ID: $adminSessionId *****');
+    
+    // Check for mismatch between Firebase user and admin session
+    if (firebaseUid != null && adminSessionId != null && firebaseUid != adminSessionId) {
+      print('***** MISMATCH DETECTED - FIREBASE USER AND ADMIN SESSION DON\'T MATCH *****');
+      print('***** CLEARING ADMIN SESSION DATA *****');
       await prefs.remove('admin_session');
+      await prefs.remove('admin_user_id');
+      await prefs.remove('admin_phone');
     }
     
     // Force role refresh from Firestore
     await _authService.clearRoleCache();
     
-    // Use the simplified direct navigation method
-    final isProfileComplete = await _authService.isProfileComplete();
+    // Get current user role after clearing cache
+    final userRole = await _authService.getUserRole();
+    print('***** USER ROLE AFTER CACHE CLEAR: $userRole *****');
     
+    // If user is admin, navigate directly to admin dashboard
+    if (userRole == UserRole.admin) {
+      print('***** USER IS ADMIN - NAVIGATING DIRECTLY TO ADMIN DASHBOARD *****');
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => AdminDashboard()),
+        (route) => false,
+      );
+      return;
+    }
+    
+    // For non-admin users, continue with standard navigation
     try {
-      // Check user role to help with debugging
-      final userRole = await _authService.getUserRole();
-      print('***** NAVIGATING BASED ON USER ROLE: $userRole *****');
+      final isProfileComplete = await _authService.isProfileComplete();
       
       // Get the appropriate screen widget based on role
       final navigationScreen = await _authService.getNavigationScreenForUser(
@@ -508,10 +567,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           child: TextField(
                             controller: _otpController,
                             focusNode: _otpFocusNode,
-                            keyboardType: TextInputType.number,
+                        keyboardType: TextInputType.number,
                             maxLength: 6,
-                            decoration: InputDecoration(
-                              counterText: "",
+                        decoration: InputDecoration(
+                          counterText: "",
                             ),
                           ),
                         ),
@@ -537,7 +596,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   color: _verifiedBoxes[index] 
                                       ? Color(0xFFE7F5EE) 
                                       : (isFilled 
-                                          ? Color(0xFFE1EDFF) 
+                                      ? Color(0xFFE1EDFF) 
                                           : Colors.grey[50]),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
@@ -545,7 +604,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                     color: _verifiedBoxes[index]
                                         ? Color(0xFF2E9066)
                                         : (isFilled 
-                                            ? Color(0xFF3366CC) 
+                                        ? Color(0xFF3366CC) 
                                             : (isFocused ? Color(0xFF3366CC).withOpacity(0.3) : Colors.grey.withOpacity(0.2))),
                                   ),
                                 ),
@@ -559,15 +618,15 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                           color: _verifiedBoxes[index] 
                                               ? Color(0xFF2E9066)
                                               : Color(0xFF223A6A),
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            );
-                          }),
-                        ),
+                                            ),
+                                          )
+                                        : null,
                       ),
-                      
+                    );
+                  }),
+                ),
+              ),
+              
                       SizedBox(height: 24),
                       
                       // Error message
@@ -602,14 +661,14 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                   ),
                                   SizedBox(width: 10),
                                   Expanded(
-                                    child: Text(
-                                      _errorMessage!,
-                                      style: GoogleFonts.poppins(
+                  child: Text(
+                    _errorMessage!,
+                    style: GoogleFonts.poppins(
                                         fontSize: 13,
                                         color: Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ),
+                    ),
+                  ),
+                ),
                                 ],
                               ),
                             )
@@ -619,33 +678,33 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       SizedBox(height: 36),
                       
                       // Timer and resend button
-                      _start > 0
+              _start > 0
                         ? Text(
-                            "Resend OTP in $formattedTime",
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF3366CC),
-                            ),
-                          )
-                        : TextButton(
-                            onPressed: _isLoading ? null : _resendOTP,
-                            style: TextButton.styleFrom(
+                    "Resend OTP in $formattedTime",
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF3366CC),
+                    ),
+                  )
+                  : TextButton(
+                    onPressed: _isLoading ? null : _resendOTP,
+                              style: TextButton.styleFrom(
                               foregroundColor: Color(0xFF3366CC),
                             ),
                             child: Text(
-                              "Resend OTP",
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
+                      "Resend OTP",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                       
                       SizedBox(height: 36),
                       
-                      // Confirm OTP button
-                      Container(
+              // Confirm OTP button
+              Container(
                         width: double.infinity,
                         height: 56,
                         child: _isLoading
@@ -696,13 +755,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                 ),
                               ),
                               child: Text(
-                                _isVerificationSuccessful 
-                                  ? "Verified!"
-                                  : "Verify & Proceed",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
+                                        _isVerificationSuccessful 
+                                          ? "Verified!"
+                                          : "Verify & Proceed",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
                                 ),
                               ),
                             ),
@@ -715,12 +774,12 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 Container(
                   margin: EdgeInsets.only(top: 20, bottom: 20),
                   child: Text(
-                    "Your verification is secure and encrypted",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                    ),
+                        "Your verification is secure and encrypted",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
                   ),
                 ),
               ],

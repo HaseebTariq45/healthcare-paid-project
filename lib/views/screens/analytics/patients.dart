@@ -691,12 +691,12 @@ class _PatientsScreenState extends State<PatientsScreen> with SingleTickerProvid
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withOpacity(0.4),
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withOpacity(0.4),
                             blurRadius: 8,
                             offset: Offset(0, 4),
                           ),
