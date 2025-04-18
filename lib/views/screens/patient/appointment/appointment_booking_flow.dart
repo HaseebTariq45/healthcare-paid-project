@@ -1847,10 +1847,18 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
 
   Widget _buildTimeSlot(String time) {
     final isSelected = time == _selectedTime;
-    final isPastTime = _selectedDate?.day == DateTime.now().day &&
-        _parseTimeOfDay(time).hour < TimeOfDay.now().hour ||
-        (_parseTimeOfDay(time).hour == TimeOfDay.now().hour &&
-        _parseTimeOfDay(time).minute < TimeOfDay.now().minute);
+    
+    // Use the same datetime comparison method as in _fetchTimeSlotsForDate
+    final now = DateTime.now();
+    final slotTime = _parseTimeOfDay(time);
+    
+    final isPastTime = _selectedDate != null && DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      slotTime.hour,
+      slotTime.minute,
+    ).isBefore(now);
     
     // Check if slot is already booked
     final isBooked = _bookedTimeSlots.contains(time);
@@ -2855,11 +2863,27 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   // Helper method to parse fee amount
   int _parseFeeAmount(String feeString) {
     try {
-      // Remove 'Rs. ' prefix and any commas, then parse to double and convert to int
-      return double.parse(feeString.replaceAll('Rs. ', '').replaceAll(',', '')).toInt();
+      // Remove 'Rs.', 'Rs', '₹' prefixes and any commas, then parse to double and convert to int
+      String cleanedString = feeString
+          .replaceAll('Rs.', '')
+          .replaceAll('Rs', '')
+          .replaceAll('₹', '')
+          .replaceAll(',', '')
+          .trim();
+      
+      return double.parse(cleanedString).toInt();
     } catch (e) {
-      print('Error parsing fee amount: $e');
-      return 2000; // Default to 2000 if parsing fails
+      print('Error parsing fee amount from "$feeString": $e');
+      
+      // Try extracting numbers only
+      RegExp regExp = RegExp(r'(\d+)');
+      Match? match = regExp.firstMatch(feeString);
+      if (match != null && match.group(1) != null) {
+        return int.parse(match.group(1)!);
+      }
+      
+      // If we still can't parse it, throw an exception to avoid using default values
+      throw Exception('Unable to parse fee amount from "$feeString"');
     }
   }
 
