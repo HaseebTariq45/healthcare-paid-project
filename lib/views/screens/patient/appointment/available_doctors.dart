@@ -101,13 +101,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        // Try to get user data from patients collection
-        var patientDoc = await _firestore.collection('patients').doc(user.uid).get();
-        
-        // If not found in patients, try users collection
-        if (!patientDoc.exists) {
-          patientDoc = await _firestore.collection('users').doc(user.uid).get();
-        }
+        // Get user data from patients collection
+        final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
         
         if (patientDoc.exists) {
           final data = patientDoc.data();
@@ -264,6 +259,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   Future<void> _applyFilters() async {
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
     
     try {
@@ -282,15 +278,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       if (selectedGender != null) {
         doctorsQuery = doctorsQuery.where('gender', isEqualTo: selectedGender);
       }
-      
-      // City filter needs to be applied post-query as it's based on hospital data
-      // We cannot directly filter by city in the doctors collection
-      
-      // Apply rating filter - this needs to be handled post-query
-      // since Firestore doesn't support range queries on different fields
+
+      // Apply city filter if enabled
+      if (showOnlyInMyCity && userCity != null) {
+        doctorsQuery = doctorsQuery.where('city', isEqualTo: userCity);
+      }
       
       final QuerySnapshot doctorsSnapshot = await doctorsQuery.get();
-      
       final List<Map<String, dynamic>> doctorsList = [];
       
       // Process each doctor document
@@ -305,19 +299,12 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             .get();
         
         final List<Map<String, dynamic>> hospitalsList = [];
-        bool isInUserCity = false;
         
         // For each hospital, get today's availability
         for (var hospitalDoc in hospitalsQuery.docs) {
           final hospitalData = hospitalDoc.data();
           final hospitalId = hospitalData['hospitalId'];
           final hospitalName = hospitalData['hospitalName'] ?? 'Unknown Hospital';
-          final hospitalCity = hospitalData['city'] ?? '';
-          
-          // Check if hospital is in user's city
-          if (userCity != null && hospitalCity.toLowerCase() == userCity!.toLowerCase()) {
-            isInUserCity = true;
-          }
           
           // Get today's date in YYYY-MM-DD format
           final today = DateTime.now();
@@ -341,15 +328,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           hospitalsList.add({
             'hospitalId': hospitalId,
             'hospitalName': hospitalName,
-            'city': hospitalCity,
             'availableToday': timeSlots.isNotEmpty,
             'timeSlots': timeSlots,
           });
-        }
-        
-        // Skip this doctor if we're filtering by city and they're not in the user's city
-        if (showOnlyInMyCity && !isInUserCity) {
-          continue;
         }
         
         // Determine overall availability
@@ -364,85 +345,74 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           'experience': doctorData['experience']?.toString() ?? "0 years",
           'fee': 'Rs ${doctorData['fee']?.toString() ?? "0"}',
           'location': hospitalsList.isNotEmpty ? hospitalsList.first['hospitalName'] : 'Multiple Hospitals',
-          'city': hospitalsList.isNotEmpty ? hospitalsList.first['city'] : '',
           'image': doctorData['profileImageUrl'] ?? "assets/images/User.png",
           'available': isAvailableToday,
           'hospitals': hospitalsList,
           'gender': doctorData['gender'] ?? 'Not specified',
-          'isInUserCity': isInUserCity,
+          'city': doctorData['city'] ?? '',
+          'isInUserCity': doctorData['city'] == userCity,
         });
       }
       
       // Apply client-side filters
       List<Map<String, dynamic>> result = List.from(doctorsList);
-    
-    // Apply search filter
-    if (_searchQuery.isNotEmpty) {
-      result = result.where((doctor) {
-        return doctor['name'].toString().toLowerCase().contains(_searchQuery) ||
-               doctor['specialty'].toString().toLowerCase().contains(_searchQuery) ||
-               doctor['location'].toString().toLowerCase().contains(_searchQuery);
-      }).toList();
-    }
-    
-    // Apply rating filter
-    if (selectedRating != null) {
-      final minRating = double.parse(selectedRating!.replaceAll('+', ''));
-      result = result.where((doctor) {
-        double rating;
-        try {
-          rating = double.parse(doctor['rating'].toString());
-        } catch (e) {
-          rating = 0.0;
-        }
-        return rating >= minRating;
-      }).toList();
-    }
-    
-    // Apply location filter
-    if (selectedLocation != null) {
-      result = result.where((doctor) {
-        // Check hospitals list for location match
-        if (doctor.containsKey('hospitals')) {
-          return doctor['hospitals'].any((hospital) => 
-            hospital['hospitalName'].toString().contains(selectedLocation!));
-        }
-        return doctor['location'].toString().contains(selectedLocation!);
-      }).toList();
-    }
-    
-    // Apply sorting
-    if (sortByPriceLowToHigh) {
-      result.sort((a, b) {
-        // Extract fee as numeric value (remove "Rs " and parse)
-        double aFee = 0.0;
-        double bFee = 0.0;
-        try {
-          aFee = double.parse(a['fee'].toString().replaceAll('Rs ', ''));
-          bFee = double.parse(b['fee'].toString().replaceAll('Rs ', ''));
-        } catch (e) {
-          // Handle parsing error
-        }
-        return aFee.compareTo(bFee);
-      });
-    } else {
-      // Sort by rating (highest first)
-      result.sort((a, b) {
-        double aRating = 0.0;
-        double bRating = 0.0;
-        try {
-          aRating = double.parse(a['rating'].toString());
-          bRating = double.parse(b['rating'].toString());
-        } catch (e) {
-          // Handle parsing error
-        }
-        return bRating.compareTo(aRating);
-      });
-    }
-    
+      
+      // Apply search filter
+      if (_searchQuery.isNotEmpty) {
+        result = result.where((doctor) {
+          return doctor['name'].toString().toLowerCase().contains(_searchQuery) ||
+                doctor['specialty'].toString().toLowerCase().contains(_searchQuery) ||
+                doctor['location'].toString().toLowerCase().contains(_searchQuery) ||
+                doctor['city'].toString().toLowerCase().contains(_searchQuery);
+        }).toList();
+      }
+      
+      // Apply rating filter
+      if (selectedRating != null) {
+        final minRating = double.parse(selectedRating!.replaceAll('+', ''));
+        result = result.where((doctor) {
+          double rating;
+          try {
+            rating = double.parse(doctor['rating'].toString());
+          } catch (e) {
+            rating = 0.0;
+          }
+          return rating >= minRating;
+        }).toList();
+      }
+      
+      // Apply sorting
+      if (sortByPriceLowToHigh) {
+        result.sort((a, b) {
+          // Extract fee as numeric value (remove "Rs " and parse)
+          double aFee = 0.0;
+          double bFee = 0.0;
+          try {
+            aFee = double.parse(a['fee'].toString().replaceAll('Rs ', ''));
+            bFee = double.parse(b['fee'].toString().replaceAll('Rs ', ''));
+          } catch (e) {
+            // Handle parsing error
+          }
+          return aFee.compareTo(bFee);
+        });
+      } else {
+        // Sort by rating (highest first)
+        result.sort((a, b) {
+          double aRating = 0.0;
+          double bRating = 0.0;
+          try {
+            aRating = double.parse(a['rating'].toString());
+            bRating = double.parse(b['rating'].toString());
+          } catch (e) {
+            // Handle parsing error
+          }
+          return bRating.compareTo(aRating);
+        });
+      }
+      
       if (mounted) {
-    setState(() {
-      filteredDoctors = result;
+        setState(() {
+          filteredDoctors = result;
           _isLoading = false;
         });
       }
@@ -483,6 +453,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context),
+                _buildFilterBar(context),
                 _buildSearchBar(context),
                 // Only show category tabs if not viewing a specific specialty
                 if (!viewingSpecificSpecialty)
@@ -1445,6 +1416,427 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // New widget for quick filter options
+  Widget _buildFilterBar(BuildContext context) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double width = screenSize.width;
+    final double height = screenSize.height;
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: height * 0.01),
+      color: const Color(0xFF3366CC),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            SizedBox(width: width * 0.05),
+            
+            // Rating filter
+            _buildQuickFilterChip(
+              context: context,
+              icon: Icons.star,
+              label: selectedRating == null ? "Rating" : "$selectedRating Rating",
+              isActive: selectedRating != null,
+              onTap: () {
+                _showRatingFilterSheet();
+              },
+            ),
+            
+            SizedBox(width: width * 0.02),
+            
+            // Gender filter
+            _buildQuickFilterChip(
+              context: context,
+              icon: selectedGender == "Male" 
+                ? Icons.male 
+                : selectedGender == "Female" 
+                  ? Icons.female 
+                  : Icons.person,
+              label: selectedGender ?? "Gender",
+              isActive: selectedGender != null,
+              onTap: () {
+                _showGenderFilterSheet();
+              },
+            ),
+            
+            SizedBox(width: width * 0.02),
+            
+            // City filter - only show if user's city is available
+            if (userCity != null)
+              _buildQuickFilterChip(
+                context: context,
+                icon: LucideIcons.mapPin,
+                label: showOnlyInMyCity ? "In $userCity" : "City",
+                isActive: showOnlyInMyCity,
+                onTap: () {
+                  setState(() {
+                    showOnlyInMyCity = !showOnlyInMyCity;
+                    _applyFilters();
+                  });
+                },
+              ),
+              
+            SizedBox(width: width * 0.02),
+            
+            // Price sorting
+            _buildQuickFilterChip(
+              context: context,
+              icon: sortByPriceLowToHigh ? LucideIcons.arrowDown : LucideIcons.arrowUp,
+              label: sortByPriceLowToHigh ? "Price: Low to High" : "Price: High to Low",
+              isActive: true,
+              onTap: () {
+                setState(() {
+                  sortByPriceLowToHigh = !sortByPriceLowToHigh;
+                  _applyFilters();
+                });
+              },
+            ),
+            
+            SizedBox(width: width * 0.02),
+            
+            // Clear all filters
+            if (selectedRating != null || selectedGender != null || showOnlyInMyCity)
+              _buildQuickFilterChip(
+                context: context,
+                icon: LucideIcons.x,
+                label: "Clear All",
+                isActive: true,
+                backgroundColor: Colors.red.shade400,
+                onTap: () {
+                  setState(() {
+                    selectedRating = null;
+                    selectedGender = null;
+                    showOnlyInMyCity = false;
+                    _applyFilters();
+                  });
+                },
+              ),
+              
+            SizedBox(width: width * 0.05),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget for individual filter chip in the filter bar
+  Widget _buildQuickFilterChip({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    Color? backgroundColor,
+  }) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double width = screenSize.width;
+    final double height = screenSize.height;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: width * 0.025,
+          vertical: height * 0.007,
+        ),
+        decoration: BoxDecoration(
+          color: isActive 
+              ? (backgroundColor ?? Colors.white) 
+              : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(width * 0.05),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: width * 0.035,
+              color: isActive 
+                  ? (backgroundColor != null ? Colors.white : const Color(0xFF3366CC)) 
+                  : Colors.white,
+            ),
+            SizedBox(width: width * 0.01),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: width * 0.03,
+                fontWeight: FontWeight.w500,
+                color: isActive 
+                    ? (backgroundColor != null ? Colors.white : const Color(0xFF3366CC)) 
+                    : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Show rating filter popup
+  void _showRatingFilterSheet() {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double width = screenSize.width;
+    final double height = screenSize.height;
+    
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(width * 0.05),
+          topRight: Radius.circular(width * 0.05),
+        ),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: EdgeInsets.all(width * 0.05),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Select Rating",
+                    style: GoogleFonts.poppins(
+                      fontSize: width * 0.045,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: height * 0.02),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      this.setState(() {
+                        selectedRating = null;
+                        _applyFilters();
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                      child: Row(
+                        children: [
+                          Text(
+                            "All Ratings",
+                            style: GoogleFonts.poppins(
+                              fontSize: width * 0.035,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Spacer(),
+                          if (selectedRating == null)
+                            Icon(
+                              Icons.check,
+                              color: const Color(0xFF3366CC),
+                              size: width * 0.05,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      this.setState(() {
+                        selectedRating = "4+";
+                        _applyFilters();
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                      child: Row(
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                "4+ ",
+                                style: GoogleFonts.poppins(
+                                  fontSize: width * 0.035,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: width * 0.04,
+                              ),
+                            ],
+                          ),
+                          Spacer(),
+                          if (selectedRating == "4+")
+                            Icon(
+                              Icons.check,
+                              color: const Color(0xFF3366CC),
+                              size: width * 0.05,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Show gender filter popup
+  void _showGenderFilterSheet() {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double width = screenSize.width;
+    final double height = screenSize.height;
+    
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(width * 0.05),
+          topRight: Radius.circular(width * 0.05),
+        ),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: EdgeInsets.all(width * 0.05),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Select Gender",
+                    style: GoogleFonts.poppins(
+                      fontSize: width * 0.045,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: height * 0.02),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      this.setState(() {
+                        selectedGender = null;
+                        _applyFilters();
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.person,
+                            color: Colors.grey.shade700,
+                            size: width * 0.05,
+                          ),
+                          SizedBox(width: width * 0.02),
+                          Text(
+                            "All",
+                            style: GoogleFonts.poppins(
+                              fontSize: width * 0.035,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Spacer(),
+                          if (selectedGender == null)
+                            Icon(
+                              Icons.check,
+                              color: const Color(0xFF3366CC),
+                              size: width * 0.05,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      this.setState(() {
+                        selectedGender = "Male";
+                        _applyFilters();
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.male,
+                            color: Colors.blue,
+                            size: width * 0.05,
+                          ),
+                          SizedBox(width: width * 0.02),
+                          Text(
+                            "Male",
+                            style: GoogleFonts.poppins(
+                              fontSize: width * 0.035,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Spacer(),
+                          if (selectedGender == "Male")
+                            Icon(
+                              Icons.check,
+                              color: const Color(0xFF3366CC),
+                              size: width * 0.05,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      this.setState(() {
+                        selectedGender = "Female";
+                        _applyFilters();
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.female,
+                            color: Colors.pink,
+                            size: width * 0.05,
+                          ),
+                          SizedBox(width: width * 0.02),
+                          Text(
+                            "Female",
+                            style: GoogleFonts.poppins(
+                              fontSize: width * 0.035,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Spacer(),
+                          if (selectedGender == "Female")
+                            Icon(
+                              Icons.check,
+                              color: const Color(0xFF3366CC),
+                              size: width * 0.05,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
