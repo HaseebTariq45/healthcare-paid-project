@@ -261,19 +261,22 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         }
         
         // Check if slot is in the past
-        if (date.year == DateTime.now().year && 
-            date.month == DateTime.now().month && 
-            date.day == DateTime.now().day) {
-          final slotTime = _parseTimeOfDay(slot);
-          final now = TimeOfDay.now();
-          if (slotTime.hour < now.hour || 
-              (slotTime.hour == now.hour && slotTime.minute < now.minute)) {
-            debugPrint('❌ Slot $slot is in the past');
-            return false;
-          }
+        final now = DateTime.now();
+        final slotTime = _parseTimeOfDay(slot);
+        final slotDateTime = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          slotTime.hour,
+          slotTime.minute,
+        );
+        
+        if (slotDateTime.isBefore(now)) {
+          debugPrint('❌ Slot $slot is in the past (${slotDateTime.toString()} < ${now.toString()})');
+          return false;
         }
         
-        debugPrint('✅ Slot $slot is available');
+        debugPrint('✅ Slot $slot is available (${slotDateTime.toString()} >= ${now.toString()})');
         return true;
       }).toList();
 
