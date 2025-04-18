@@ -23,6 +23,10 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
   bool _isLoading = false;
   bool _isInitializing = true;
   
+  // For day of week selection
+  final List<String> _daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  int _selectedDayIndex = DateTime.now().weekday - 1; // Default to current day of week
+  
   // For hospitals and availability
   final DoctorAvailabilityService _availabilityService = DoctorAvailabilityService();
   List<Map<String, dynamic>> _hospitals = [];
@@ -142,15 +146,24 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
   }
 
   void _loadTimeSlots() {
-    if (_selectedHospital == null || _selectedDay == null) return;
+    if (_selectedHospital == null) return;
     
     // Reset time slots
     setState(() {
       _selectedTimeSlots = {};
     });
     
+    // Convert selected day index to actual date for today's week
+    DateTime now = DateTime.now();
+    int todayWeekday = now.weekday; // 1-7 (Monday-Sunday)
+    int daysToAdd = _selectedDayIndex - (todayWeekday - 1);
+    if (daysToAdd < 0) daysToAdd += 7; // For past days, go to next week
+    
+    DateTime targetDate = now.add(Duration(days: daysToAdd));
+    _selectedDay = targetDate; // Update selectedDay for saving later
+    
     // Convert date to string format for lookup
-    String dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
+    String dateStr = DateFormatter.toYYYYMMDD(targetDate);
     
     // Check if doctor has availability for this date at this hospital
     if (_doctorSchedule.containsKey(_selectedHospital) && 
@@ -623,7 +636,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Select Date",
+              "Select Day of Week",
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -632,7 +645,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
             ),
             SizedBox(height: 8),
             Text(
-              "Choose the day when you'll be available",
+              "Choose the day when you'll be regularly available",
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: Color(0xFF666666),
@@ -651,59 +664,86 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
                   ),
                 ],
               ),
-              child: TableCalendar(
-                firstDay: DateTime.now(),
-                lastDay: DateTime.now().add(Duration(days: 90)),
-                focusedDay: _selectedDay,
-                selectedDayPredicate: (day) {
-                  return isSameDay(_selectedDay, day);
-                },
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _loadTimeSlots();
-                  });
-                },
-                calendarStyle: CalendarStyle(
-                  selectedDecoration: BoxDecoration(
-                    color: Color(0xFF2B8FEB),
-                    shape: BoxShape.circle,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2B8FEB).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            LucideIcons.calendar,
+                            color: Color(0xFF2B8FEB),
+                            size: 16,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          "Days of Week",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF333333),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  todayDecoration: BoxDecoration(
-                    color: Color(0xFF2B8FEB).withOpacity(0.2),
-                    shape: BoxShape.circle,
+                  SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: List.generate(_daysOfWeek.length, (index) {
+                        final isSelected = index == _selectedDayIndex;
+                        
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDayIndex = index;
+                              _loadTimeSlots();
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(right: 10),
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? Color(0xFF2B8FEB) : Colors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade300,
+                                width: 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Color(0xFF2B8FEB).withOpacity(0.2),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Text(
+                              _daysOfWeek[index],
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isSelected ? Colors.white : Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
                   ),
-                  selectedTextStyle: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  todayTextStyle: GoogleFonts.poppins(
-                    color: Color(0xFF2B8FEB),
-                    fontWeight: FontWeight.w600,
-                  ),
-                  defaultTextStyle: GoogleFonts.poppins(),
-                  weekendTextStyle: GoogleFonts.poppins(
-                    color: Colors.red.shade300,
-                  ),
-                  outsideTextStyle: GoogleFonts.poppins(
-                    color: Colors.grey.shade400,
-                  ),
-                ),
-                headerStyle: HeaderStyle(
-                  titleTextStyle: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  formatButtonVisible: false,
-                  leftChevronIcon: Icon(
-                    LucideIcons.chevronLeft,
-                    color: Color(0xFF2B8FEB),
-                  ),
-                  rightChevronIcon: Icon(
-                    LucideIcons.chevronRight,
-                    color: Color(0xFF2B8FEB),
-                  ),
-                ),
+                ],
               ),
             ),
             SizedBox(height: 16),
@@ -716,50 +756,26 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    LucideIcons.calendar,
+                    LucideIcons.info,
                     color: Color.fromRGBO(64, 124, 226, 1),
                     size: 16,
                   ),
                 ),
                 SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Selected date: ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF333333),
-                      ),
+                Expanded(
+                  child: Text(
+                    "This availability will be set for all ${_daysOfWeek[_selectedDayIndex]}s in the next 12 weeks",
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey.shade600,
                     ),
-                    _buildAvailabilityStatus(),
-                  ],
+                  ),
                 ),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAvailabilityStatus() {
-    if (_selectedHospital == null) return SizedBox.shrink();
-    
-    String dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
-    bool hasExistingSlots = _doctorSchedule.containsKey(_selectedHospital) && 
-                           _doctorSchedule[_selectedHospital]!.containsKey(dateStr);
-    
-    int slotCount = hasExistingSlots ? _doctorSchedule[_selectedHospital]![dateStr]!.length : 0;
-    
-    return Text(
-      hasExistingSlots 
-          ? "$slotCount time slot${slotCount > 1 ? 's' : ''} already set" 
-          : "No availability set for this day",
-      style: GoogleFonts.poppins(
-        fontSize: 12,
-        color: hasExistingSlots ? Color(0xFF2B8FEB) : Colors.grey.shade600,
       ),
     );
   }
@@ -979,12 +995,49 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
     });
     
     try {
-      final result = await _availabilityService.saveDoctorAvailability(
-        hospitalId: _selectedHospitalId!,
-        hospitalName: _selectedHospital!,
-        date: _selectedDay,
-        timeSlots: selectedTimes,
-      );
+      // Calculate all dates for the selected day of week in the next 12 weeks
+      List<Map<String, dynamic>> datesToSave = [];
+      DateTime now = DateTime.now();
+      
+      // Find the next occurrence of the selected day of week
+      int daysDifference = (_selectedDayIndex + 1) - now.weekday;
+      if (daysDifference <= 0) daysDifference += 7; // Go to next week if it's in the past
+      
+      DateTime nextOccurrence = now.add(Duration(days: daysDifference));
+      
+      // Add 12 occurrences (12 weeks) of the selected day
+      for (int i = 0; i < 12; i++) {
+        DateTime dateToAdd = nextOccurrence.add(Duration(days: 7 * i));
+        datesToSave.add({
+          'date': dateToAdd,
+          'dateStr': DateFormatter.toYYYYMMDD(dateToAdd),
+        });
+      }
+
+      // Save availability for all calculated dates
+      bool allSuccess = true;
+      String errorMessage = '';
+      
+      for (var dateInfo in datesToSave) {
+        final result = await _availabilityService.saveDoctorAvailability(
+          hospitalId: _selectedHospitalId!,
+          hospitalName: _selectedHospital!,
+          date: dateInfo['date'],
+          timeSlots: selectedTimes,
+        );
+        
+        if (!result['success']) {
+          allSuccess = false;
+          errorMessage = result['message'];
+          break;
+        }
+        
+        // Update local cache for each date
+        if (!_doctorSchedule.containsKey(_selectedHospital)) {
+          _doctorSchedule[_selectedHospital!] = {};
+        }
+        _doctorSchedule[_selectedHospital!]![dateInfo['dateStr']] = selectedTimes;
+      }
       
       if (!mounted) return;
       
@@ -992,16 +1045,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
         _isLoading = false;
       });
       
-      if (result['success']) {
-        // Update local cache
-        final dateStr = DateFormatter.toYYYYMMDD(_selectedDay);
-        
-        if (!_doctorSchedule.containsKey(_selectedHospital)) {
-          _doctorSchedule[_selectedHospital!] = {};
-        }
-        
-        _doctorSchedule[_selectedHospital!]![dateStr] = selectedTimes;
-        
+      if (allSuccess) {
         // Show success dialog
         bool? shouldReturn = await showDialog<bool>(
           context: context,
@@ -1036,7 +1080,7 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Your availability has been successfully updated.',
+                    'Your availability has been set for all ${_daysOfWeek[_selectedDayIndex]}s in the next 12 weeks.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
@@ -1074,12 +1118,14 @@ class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> wit
           },
         );
         
-        // Navigate back to Analytics screen if dialog was confirmed
+        // Navigate back if dialog was confirmed
         if (shouldReturn == true && mounted) {
           Navigator.of(context).pop();
         }
       } else {
-        _showErrorMessage(result['message']);
+        _showErrorMessage(errorMessage.isEmpty 
+            ? "Failed to save availability. Please try again." 
+            : errorMessage);
       }
     } catch (e) {
       if (!mounted) return;

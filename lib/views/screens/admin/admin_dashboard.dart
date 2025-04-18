@@ -54,13 +54,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final Size size = MediaQuery.of(context).size;
+    final double screenWidth = size.width;
+    final double screenHeight = size.height;
+    final bool isSmallScreen = screenWidth < 360;
+    final double padding = screenWidth * 0.04;
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Admin Dashboard',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontSize: screenWidth * 0.05,
           ),
         ),
         backgroundColor: Colors.white,
@@ -75,7 +81,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
-      body: _pages[_selectedIndex],
+      body: SafeArea(
+        child: _pages[_selectedIndex],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -99,11 +107,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
           selectedItemColor: Color(0xFF3366CC),
           unselectedItemColor: Colors.grey.shade600,
           selectedLabelStyle: GoogleFonts.poppins(
-            fontSize: 12,
+            fontSize: screenWidth * 0.03,
             fontWeight: FontWeight.w500,
           ),
           unselectedLabelStyle: GoogleFonts.poppins(
-            fontSize: 12,
+            fontSize: screenWidth * 0.03,
             fontWeight: FontWeight.w500,
           ),
           items: [
@@ -131,49 +139,53 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _showLogoutConfirmationDialog(BuildContext context) {
     final AuthService _authService = AuthService();
+    final Size size = MediaQuery.of(context).size;
+    final double screenWidth = size.width;
+    final double screenHeight = size.height;
+    final double padding = screenWidth * 0.05;
     
     showDialog(
       context: context,
       builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenWidth * 0.05),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(padding),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(15),
+                padding: EdgeInsets.all(screenWidth * 0.04),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFEBEB),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.logout,
                   color: Color(0xFFFF5252),
-                  size: 30,
+                  size: screenWidth * 0.075,
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: screenHeight * 0.025),
               Text(
                 "Logout",
                 style: GoogleFonts.poppins(
-                  fontSize: 20,
+                  fontSize: screenWidth * 0.05,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: screenHeight * 0.015),
               Text(
                 "Are you sure you want to logout from the admin dashboard?",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
-                  fontSize: 14,
+                  fontSize: screenWidth * 0.035,
                   color: Colors.grey.shade600,
                 ),
               ),
-              const SizedBox(height: 25),
+              SizedBox(height: screenHeight * 0.03),
               Row(
                 children: [
                   Expanded(
@@ -183,20 +195,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         foregroundColor: Colors.grey.shade800,
                         backgroundColor: Colors.grey.shade100,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.03),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
                       ),
                       child: Text(
                         "Cancel",
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: screenWidth * 0.035,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 15),
+                  SizedBox(width: screenWidth * 0.04),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
@@ -225,15 +237,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         backgroundColor: const Color(0xFFFF5252),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(screenWidth * 0.03),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
                         elevation: 0,
                       ),
                       child: Text(
                         "Logout",
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: screenWidth * 0.035,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -301,24 +313,30 @@ class _AdminHomeState extends State<AdminHome> {
 
   @override
   Widget build(BuildContext context) {
+    final Size size = MediaQuery.of(context).size;
+    final double screenWidth = size.width;
+    final double screenHeight = size.height;
+    final bool isSmallScreen = screenWidth < 360;
+    final double padding = screenWidth * 0.04;
+    
     return RefreshIndicator(
       onRefresh: _fetchDashboardData,
       child: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Admin Welcome Card
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(20),
+              padding: EdgeInsets.all(padding),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF3366CC), Color(0xFF6699FF)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(screenWidth * 0.04),
                 boxShadow: [
                   BoxShadow(
                     color: Color(0xFF3366CC).withOpacity(0.3),
@@ -333,18 +351,23 @@ class _AdminHomeState extends State<AdminHome> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Welcome, Administrator',
-                        style: GoogleFonts.poppins(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Welcome, Administrator',
+                            style: GoogleFonts.poppins(
+                              fontSize: screenWidth * 0.055,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                       if (_isLoading)
                         SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: screenWidth * 0.05,
+                          height: screenWidth * 0.05,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -352,61 +375,75 @@ class _AdminHomeState extends State<AdminHome> {
                         ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: screenHeight * 0.01),
                   Text(
                     'You have full access to manage the healthcare platform.',
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: screenWidth * 0.035,
                       color: Colors.white.withOpacity(0.9),
                     ),
                   ),
-                  SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildStatCard(
-                        'Doctors', 
-                        _isLoading ? '-' : _dashboardStats['doctorCount']?.toString() ?? '0', 
-                        Icons.medical_services, 
-                        Color(0xFF4CAF50)
-                      ),
-                      _buildStatCard(
-                        'Patients', 
-                        _isLoading ? '-' : _dashboardStats['patientCount']?.toString() ?? '0', 
-                        Icons.people, 
-                        Color(0xFFFFC107)
-                      ),
-                      _buildStatCard(
-                        'Appointments', 
-                        _isLoading ? '-' : _dashboardStats['appointmentCount']?.toString() ?? '0', 
-                        Icons.calendar_today, 
-                        Color(0xFFFF5722)
-                      ),
-                    ],
+                  SizedBox(height: screenHeight * 0.02),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double itemWidth = (constraints.maxWidth - screenWidth * 0.04) / 3;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildStatCard(
+                            'Doctors', 
+                            _isLoading ? '-' : _dashboardStats['doctorCount']?.toString() ?? '0', 
+                            Icons.medical_services, 
+                            Color(0xFF4CAF50),
+                            itemWidth,
+                            screenWidth,
+                            screenHeight
+                          ),
+                          _buildStatCard(
+                            'Patients', 
+                            _isLoading ? '-' : _dashboardStats['patientCount']?.toString() ?? '0', 
+                            Icons.people, 
+                            Color(0xFFFFC107),
+                            itemWidth,
+                            screenWidth,
+                            screenHeight
+                          ),
+                          _buildStatCard(
+                            'Appointments', 
+                            _isLoading ? '-' : _dashboardStats['appointmentCount']?.toString() ?? '0', 
+                            Icons.calendar_today, 
+                            Color(0xFFFF5722),
+                            itemWidth,
+                            screenWidth,
+                            screenHeight
+                          ),
+                        ],
+                      );
+                    }
                   ),
                 ],
               ),
             ),
             
-            SizedBox(height: 24),
+            SizedBox(height: screenHeight * 0.03),
             
             // Quick Actions
             Text(
               'Quick Actions',
               style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: screenWidth * 0.045,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.02),
             GridView.count(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.5,
+              crossAxisSpacing: padding,
+              mainAxisSpacing: padding,
+              childAspectRatio: isSmallScreen ? 1.3 : 1.5,
               children: [
                 _buildActionCard(
                   'View Analytics',
@@ -420,6 +457,8 @@ class _AdminHomeState extends State<AdminHome> {
                       });
                     }
                   },
+                  screenWidth,
+                  screenHeight
                 ),
                 _buildActionCard(
                   'Manage Appointments',
@@ -433,6 +472,8 @@ class _AdminHomeState extends State<AdminHome> {
                       });
                     }
                   },
+                  screenWidth,
+                  screenHeight
                 ),
                 _buildActionCard(
                   'Book via Call',
@@ -446,19 +487,21 @@ class _AdminHomeState extends State<AdminHome> {
                       });
                     }
                   },
+                  screenWidth,
+                  screenHeight
                 ),
               ],
             ),
             
-            SizedBox(height: 24),
+            SizedBox(height: screenHeight * 0.03),
             
             // Revenue (full width)
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(20),
+              padding: EdgeInsets.all(padding),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(screenWidth * 0.04),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -471,20 +514,20 @@ class _AdminHomeState extends State<AdminHome> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(bottom: 12),
+                    padding: EdgeInsets.only(bottom: screenHeight * 0.015),
                     child: Row(
                       children: [
                         Icon(
                           Icons.attach_money,
                           color: Color(0xFF4CAF50),
-                          size: 24,
+                          size: screenWidth * 0.06,
                         ),
-                        SizedBox(width: 8),
+                        SizedBox(width: screenWidth * 0.02),
                         Expanded(
                           child: Text(
                             'Revenue',
                             style: GoogleFonts.poppins(
-                              fontSize: 18,
+                              fontSize: screenWidth * 0.045,
                               fontWeight: FontWeight.w600,
                               color: Colors.black87,
                             ),
@@ -494,22 +537,24 @@ class _AdminHomeState extends State<AdminHome> {
                       ],
                     ),
                   ),
-                  Text(
-                    _isLoading 
-                        ? '-' 
-                        : _dashboardStats['revenueFormatted'] ?? 'Rs 0.00',
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4CAF50),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _isLoading 
+                          ? '-' 
+                          : _dashboardStats['revenueFormatted'] ?? 'Rs 0.00',
+                      style: GoogleFonts.poppins(
+                        fontSize: screenWidth * 0.07,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF4CAF50),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: screenHeight * 0.015),
                   Text(
                     'Total revenue from appointments',
                     style: GoogleFonts.poppins(
-                      fontSize: 14,
+                      fontSize: screenWidth * 0.035,
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -517,18 +562,18 @@ class _AdminHomeState extends State<AdminHome> {
               ),
             ),
             
-            SizedBox(height: 24),
+            SizedBox(height: screenHeight * 0.03),
             
             // Recent Activities
             Text(
               'Recent Activities',
               style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: screenWidth * 0.045,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.02),
             if (_isLoading)
               Center(
                 child: CircularProgressIndicator(
@@ -537,10 +582,10 @@ class _AdminHomeState extends State<AdminHome> {
               )
             else if (_recentActivities.isEmpty)
               Container(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(padding),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -555,26 +600,26 @@ class _AdminHomeState extends State<AdminHome> {
                       Icon(
                         Icons.info_outline,
                         color: Colors.grey.shade400,
-                        size: 40,
+                        size: screenWidth * 0.1,
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: screenHeight * 0.01),
                       Text(
                         'No recent activities found',
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: screenWidth * 0.035,
                           color: Colors.grey.shade600,
                         ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
               )
             else
               Container(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(padding),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.05),
@@ -590,7 +635,9 @@ class _AdminHomeState extends State<AdminHome> {
                     activity['time'] ?? 'Recently',
                     activity['icon'] ?? Icons.info,
                     activity['color'] ?? Colors.grey,
-            )).toList(),
+                    screenWidth,
+                    screenHeight
+                  )).toList(),
                 ),
               ),
           ],
@@ -599,35 +646,51 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
   
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title, 
+    String value, 
+    IconData icon, 
+    Color color,
+    double width,
+    double screenWidth,
+    double screenHeight
+  ) {
     return Container(
-      padding: EdgeInsets.all(12),
+      width: width,
+      padding: EdgeInsets.all(screenWidth * 0.03),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
             color: color,
-            size: 28,
+            size: screenWidth * 0.07,
           ),
-          SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          SizedBox(height: screenHeight * 0.005),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: screenWidth * 0.06,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
-          SizedBox(height: 4),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.white.withOpacity(0.9),
+          SizedBox(height: screenHeight * 0.005),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: screenWidth * 0.03,
+                color: Colors.white.withOpacity(0.9),
+              ),
             ),
           ),
         ],
@@ -635,14 +698,21 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
   
-  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    String title, 
+    IconData icon, 
+    Color color, 
+    VoidCallback onTap,
+    double screenWidth,
+    double screenHeight
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: EdgeInsets.all(screenWidth * 0.04),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -658,13 +728,13 @@ class _AdminHomeState extends State<AdminHome> {
             Icon(
               icon,
               color: color,
-              size: 28,
+              size: screenWidth * 0.07,
             ),
-            SizedBox(height: 8),
+            SizedBox(height: screenHeight * 0.01),
             Text(
               title,
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: screenWidth * 0.035,
                 fontWeight: FontWeight.w500,
                 color: Colors.black87,
               ),
@@ -677,11 +747,11 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
   
-  Widget _buildStatusCounter(String label, int count, Color color) {
+  Widget _buildStatusCounter(String label, int count, Color color, double screenWidth) {
     // This method is no longer used, but we'll keep it for backward compatibility
     return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
         child: Column(
           children: [
             FittedBox(
@@ -689,19 +759,19 @@ class _AdminHomeState extends State<AdminHome> {
               child: Text(
                 count.toString(),
                 style: GoogleFonts.poppins(
-                  fontSize: 20,
+                  fontSize: screenWidth * 0.05,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
             ),
-            SizedBox(height: 4),
+            SizedBox(height: screenWidth * 0.01),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 label,
                 style: GoogleFonts.poppins(
-                  fontSize: 12,
+                  fontSize: screenWidth * 0.03,
                   color: Colors.grey.shade600,
                 ),
                 textAlign: TextAlign.center,
@@ -713,7 +783,7 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
   
-  Widget _buildStatusCounterRow(String label, int count, Color color) {
+  Widget _buildStatusCounterRow(String label, int count, Color color, double screenWidth) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -721,17 +791,17 @@ class _AdminHomeState extends State<AdminHome> {
           child: Text(
             label,
             style: GoogleFonts.poppins(
-              fontSize: 12,
+              fontSize: screenWidth * 0.03,
               color: Colors.grey.shade700,
             ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        SizedBox(width: 4),
+        SizedBox(width: screenWidth * 0.01),
         Text(
           count.toString(),
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: screenWidth * 0.035,
             fontWeight: FontWeight.bold,
             color: color,
           ),
@@ -740,14 +810,22 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
   
-  Widget _buildActivityItem(String title, String description, String time, IconData icon, Color color) {
+  Widget _buildActivityItem(
+    String title, 
+    String description, 
+    String time, 
+    IconData icon, 
+    Color color,
+    double screenWidth,
+    double screenHeight
+  ) {
     return Column(
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: EdgeInsets.all(6),
+              padding: EdgeInsets.all(screenWidth * 0.015),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
@@ -755,10 +833,10 @@ class _AdminHomeState extends State<AdminHome> {
               child: Icon(
                 icon,
                 color: color,
-                size: 14,
+                size: screenWidth * 0.035,
               ),
             ),
-            SizedBox(width: 8),
+            SizedBox(width: screenWidth * 0.02),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -766,17 +844,17 @@ class _AdminHomeState extends State<AdminHome> {
                   Text(
                     title,
                     style: GoogleFonts.poppins(
-                      fontSize: 13,
+                      fontSize: screenWidth * 0.0325,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 2),
+                  SizedBox(height: screenHeight * 0.003),
                   Text(
                     description,
                     style: GoogleFonts.poppins(
-                      fontSize: 11,
+                      fontSize: screenWidth * 0.0275,
                       color: Colors.grey.shade600,
                     ),
                     maxLines: 2,
@@ -785,17 +863,17 @@ class _AdminHomeState extends State<AdminHome> {
                 ],
               ),
             ),
-            SizedBox(width: 4),
+            SizedBox(width: screenWidth * 0.01),
             Text(
               time,
               style: GoogleFonts.poppins(
-                fontSize: 9,
+                fontSize: screenWidth * 0.0225,
                 color: Colors.grey.shade500,
               ),
             ),
           ],
         ),
-        Divider(height: 24),
+        Divider(height: screenHeight * 0.03),
       ],
     );
   }

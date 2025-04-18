@@ -1182,6 +1182,12 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final double screenWidth = size.width;
+    final double screenHeight = size.height;
+    final bool isSmallScreen = screenWidth < 360;
+    final double padding = screenWidth * 0.04;
+    
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage Doctors'),
@@ -1193,45 +1199,48 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
           ],
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search doctors...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
-          ),
-          
-          Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildDoctorsList('available'),
-                      _buildDoctorsList('blocked'),
-                    ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(padding),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search doctors...',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(screenWidth * 0.025),
                   ),
-          ),
-        ],
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+            
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildDoctorsList('available', screenWidth, screenHeight),
+                        _buildDoctorsList('blocked', screenWidth, screenHeight),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
   
-  Widget _buildDoctorsList(String status) {
+  Widget _buildDoctorsList(String status, double screenWidth, double screenHeight) {
     final doctors = _getFilteredDoctors(status);
+    final double padding = screenWidth * 0.04;
     
     if (doctors.isEmpty) {
       return Center(
@@ -1240,25 +1249,25 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
           children: [
             Icon(
               Icons.person_off,
-              size: 80,
+              size: screenWidth * 0.2,
               color: Colors.grey.shade400,
             ),
-            SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.02),
             Text(
               'No doctors found',
               style: GoogleFonts.poppins(
-                fontSize: 18,
+                fontSize: screenWidth * 0.045,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey.shade700,
               ),
             ),
             if (_searchQuery.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 8.0),
+                padding: EdgeInsets.only(top: screenHeight * 0.01),
                 child: Text(
                   'Try a different search query',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: screenWidth * 0.035,
                     color: Colors.grey.shade600,
                   ),
                 ),
@@ -1269,26 +1278,32 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
     }
     
     return ListView.builder(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(padding),
       itemCount: doctors.length,
       itemBuilder: (context, index) {
-        return _buildDoctorCard(doctors[index]);
+        return _buildDoctorCard(doctors[index], screenWidth, screenHeight);
       },
     );
   }
   
-  Widget _buildDoctorCard(Map<String, dynamic> doctor) {
+  Widget _buildDoctorCard(Map<String, dynamic> doctor, double screenWidth, double screenHeight) {
     final String status = doctor['status'] ?? 'Unknown';
     final bool isActive = status == 'Active';
     final Color statusColor = isActive 
         ? const Color(0xFF4CAF50) 
         : const Color(0xFFF44336);
     
+    final double cardPadding = screenWidth * 0.04;
+    final double iconSize = screenWidth * 0.04;
+    final double avatarRadius = screenWidth * 0.08;
+    final double textSpacing = screenHeight * 0.01;
+    final bool isSmallScreen = screenWidth < 360;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 16.0),
+      margin: EdgeInsets.only(bottom: screenHeight * 0.02),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -1302,22 +1317,22 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
         crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(cardPadding),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Doctor Avatar
                 CircleAvatar(
-                  radius: 32,
+                  radius: avatarRadius,
                   backgroundColor: Colors.grey[200],
                   backgroundImage: doctor['profileImageUrl'] != null && doctor['profileImageUrl'].toString().isNotEmpty
                       ? NetworkImage(doctor['profileImageUrl']) as ImageProvider
                       : null,
                   child: doctor['profileImageUrl'] == null || doctor['profileImageUrl'].toString().isEmpty
-                      ? Icon(Icons.person, size: 32, color: Colors.grey[600])
+                      ? Icon(Icons.person, size: avatarRadius, color: Colors.grey[600])
                       : null,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: screenWidth * 0.04),
                 
                 // Doctor Info
                 Expanded(
@@ -1330,98 +1345,101 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
                         children: [
                           Expanded(
                             child: Text(
-                        doctor['name'] ?? 'Unknown Doctor',
-                        style: GoogleFonts.poppins(
-                                fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                              doctor['name'] ?? 'Unknown Doctor',
+                              style: GoogleFonts.poppins(
+                                fontSize: isSmallScreen ? screenWidth * 0.04 : screenWidth * 0.045,
+                                fontWeight: FontWeight.w600,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.025, 
+                              vertical: screenHeight * 0.005
+                            ),
                             decoration: BoxDecoration(
                               color: statusColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(screenWidth * 0.075),
                               border: Border.all(color: statusColor, width: 1),
                             ),
                             child: Text(
                               status,
-                        style: GoogleFonts.poppins(
-                                fontSize: 12,
+                              style: GoogleFonts.poppins(
+                                fontSize: isSmallScreen ? screenWidth * 0.03 : screenWidth * 0.035,
                                 color: statusColor,
-                          fontWeight: FontWeight.w500,
-                        ),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                        ),
-                    ],
-                  ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: textSpacing),
                       
                       // Specialty
                       Text(
                         doctor['specialty'] ?? 'General',
                         style: GoogleFonts.poppins(
-                          fontSize: 14,
+                          fontSize: screenWidth * 0.035,
                           color: Colors.grey[700],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: textSpacing),
                       
                       // Rating and Experience in a row
                       Row(
-                children: [
+                        children: [
                           // Rating
                           Icon(
                             Icons.star,
                             color: Colors.amber,
-                            size: 16,
+                            size: iconSize,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: screenWidth * 0.01),
                           Text(
                             '${doctor['rating'] ?? '0.0'} (${doctor['reviewCount'] ?? 0})',
                             style: GoogleFonts.poppins(
-                              fontSize: 12,
+                              fontSize: screenWidth * 0.03,
                               color: Colors.grey[800],
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: screenWidth * 0.04),
                           
                           // Experience
                           Icon(
                             Icons.work,
                             color: Colors.blue[700],
-                            size: 16,
+                            size: iconSize,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: screenWidth * 0.01),
                           Text(
                             '${doctor['experience'] ?? 'N/A'} experience',
                             style: GoogleFonts.poppins(
-                              fontSize: 12,
+                              fontSize: screenWidth * 0.03,
                               color: Colors.grey[800],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: textSpacing),
                       
                       // Location
                       Row(
-        children: [
+                        children: [
                           Icon(
                             Icons.location_on,
                             color: Colors.grey[600],
-                            size: 16,
+                            size: iconSize,
                           ),
-                          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
+                          SizedBox(width: screenWidth * 0.01),
+                          Expanded(
+                            child: Text(
                               doctor['city'] != null && doctor['city'] != 'N/A'
                                   ? '${doctor['city']}'
                                   : 'Location not specified',
-              style: GoogleFonts.poppins(
-                                fontSize: 12,
+                              style: GoogleFonts.poppins(
+                                fontSize: screenWidth * 0.03,
                                 color: Colors.grey[600],
                               ),
                               maxLines: 1,
@@ -1431,15 +1449,20 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
                         ],
                       ),
                     ],
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
           ),
           
           // Doctor Stats
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: EdgeInsets.fromLTRB(
+              cardPadding, 
+              0, 
+              cardPadding, 
+              screenHeight * 0.01
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -1447,18 +1470,21 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
                   Icons.event, 
                   '${doctor['appointmentCount'] ?? 0}',
                   'Appointments',
+                  screenWidth,
                 ),
                 if (doctor['fee'] != null && doctor['fee'] != 0)
                   _buildStatItem(
                     Icons.attach_money, 
                     'Rs. ${doctor['fee']}',
                     'Fee',
+                    screenWidth,
                   ),
                 if (doctor['profileComplete'] == true)
                   _buildStatItem(
                     Icons.check_circle, 
                     'Complete',
                     'Profile',
+                    screenWidth,
                     color: Colors.green,
                   )
                 else
@@ -1466,6 +1492,7 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
                     Icons.error, 
                     'Incomplete',
                     'Profile',
+                    screenWidth,
                     color: Colors.orange,
                   ),
               ],
@@ -1474,102 +1501,176 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
           
           // Action Buttons
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: cardPadding, 
+              vertical: screenHeight * 0.015
+            ),
             decoration: BoxDecoration(
               color: Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(screenWidth * 0.03),
+                bottomRight: Radius.circular(screenWidth * 0.03),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Contact Button
-          Expanded(
-            child: OutlinedButton.icon(
-                    onPressed: () {
-                      // Handle contact logic here
-                      _contactDoctor(doctor);
-                    },
-                    icon: const Icon(
-                      Icons.email,
-                      size: 16,
-                    ),
-                    label: const Text('Contact'),
-              style: OutlinedButton.styleFrom(
-                      foregroundColor: Theme.of(context).primaryColor,
-                      side: BorderSide(color: Theme.of(context).primaryColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-                const SizedBox(width: 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final buttonWidth = (constraints.maxWidth - screenWidth * 0.04) / 3;
+                final bool useIcons = isSmallScreen;
                 
-                // View Button (for both active and inactive doctors)
-          Expanded(
-            child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Handle view profile logic here
-                      _viewDoctorProfile(doctor);
-                    },
-                    icon: const Icon(
-                      Icons.visibility,
-                      size: 16,
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Contact Button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          // Handle contact logic here
+                          _contactDoctor(doctor);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).primaryColor,
+                          side: BorderSide(color: Theme.of(context).primaryColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.email,
+                                size: iconSize,
+                              ),
+                              if (!useIcons) SizedBox(width: screenWidth * 0.01),
+                              if (!useIcons)
+                                Text(
+                                  'Contact',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenWidth * 0.03,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    label: const Text('View'),
-              style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-                const SizedBox(width: 8),
+                    SizedBox(width: screenWidth * 0.02),
+                    
+                    // View Button (for both active and inactive doctors)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Handle view profile logic here
+                          _viewDoctorProfile(doctor);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.visibility,
+                                size: iconSize,
+                              ),
+                              if (!useIcons) SizedBox(width: screenWidth * 0.01),
+                              if (!useIcons)
+                                Text(
+                                  'View',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenWidth * 0.03,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.02),
       
-                // Toggle Active Status Button
-          Expanded(
-                  child: isActive
-                      ? ElevatedButton.icon(
-                          onPressed: () {
-                            _showBlockDoctorDialog(doctor);
-                          },
-                          icon: const Icon(
-                            Icons.person_off,
-                            size: 16,
-                          ),
-                          label: const Text('Block'),
-              style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[400],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-                        )
-                      : ElevatedButton.icon(
-                          onPressed: () {
-                            _activateDoctor(doctor);
-                          },
-                          icon: const Icon(
-                            Icons.person_add,
-                            size: 16,
-                          ),
-                          label: const Text('Activate'),
-              style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[400],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-              ],
+                    // Toggle Active Status Button
+                    Expanded(
+                      child: isActive
+                          ? ElevatedButton(
+                              onPressed: () {
+                                _showBlockDoctorDialog(doctor);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red[400],
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.person_off,
+                                      size: iconSize,
+                                    ),
+                                    if (!useIcons) SizedBox(width: screenWidth * 0.01),
+                                    if (!useIcons)
+                                      Text(
+                                        'Block',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: screenWidth * 0.03,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ElevatedButton(
+                              onPressed: () {
+                                _activateDoctor(doctor);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[400],
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.person_add,
+                                      size: iconSize,
+                                    ),
+                                    if (!useIcons) SizedBox(width: screenWidth * 0.01),
+                                    if (!useIcons)
+                                      Text(
+                                        'Activate',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: screenWidth * 0.03,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
+                );
+              }
             ),
           ),
         ],
@@ -1581,8 +1682,13 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
     IconData icon, 
     String value, 
     String label, 
+    double screenWidth,
     {Color color = Colors.blue}
   ) {
+    final double iconSize = screenWidth * 0.035;
+    final double fontSize = screenWidth * 0.035;
+    final double smallFontSize = screenWidth * 0.03;
+    
     return Column(
       children: [
         Row(
@@ -1590,14 +1696,14 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
           children: [
             Icon(
               icon,
-              size: 14,
+              size: iconSize,
               color: color,
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: screenWidth * 0.01),
             Text(
               value,
               style: GoogleFonts.poppins(
-                fontSize: 14,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey[800],
               ),
@@ -1607,7 +1713,7 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: 12,
+            fontSize: smallFontSize,
             color: Colors.grey[600],
           ),
         ),

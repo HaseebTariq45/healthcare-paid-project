@@ -446,6 +446,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final bool isSmallScreen = screenWidth < 360;
+    final basePadding = screenWidth * 0.04;
 
     final minutes = _start ~/ 60;
     final seconds = _start % 60;
@@ -460,7 +464,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
         title: Text(
           text,
           style: GoogleFonts.poppins(
-            fontSize: 18,
+            fontSize: screenWidth * 0.045,
             fontWeight: FontWeight.w600,
             color: Color(0xFF223A6A),
           ),
@@ -488,10 +492,13 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
             children: [
                 // Icon header
                 Container(
-                  margin: EdgeInsets.only(top: 30, bottom: 20),
+                  margin: EdgeInsets.only(
+                    top: screenHeight * 0.04, 
+                    bottom: screenHeight * 0.025
+                  ),
                   child: Center(
                     child: Container(
-                      padding: EdgeInsets.all(24),
+                      padding: EdgeInsets.all(screenWidth * 0.06),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
@@ -505,7 +512,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       ),
                       child: Icon(
                         Icons.sms_outlined,
-                        size: 44,
+                        size: screenWidth * 0.11,
                         color: Color(0xFF3366CC),
                       ),
                     ),
@@ -514,11 +521,11 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 
                 // Content area with white card effect
                 Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                  padding: EdgeInsets.all(24),
+                  margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  padding: EdgeInsets.all(screenWidth * 0.06),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.07),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.06),
@@ -532,17 +539,17 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       Text(
                         'Verification Code',
                         style: GoogleFonts.poppins(
-                          fontSize: 24,
+                          fontSize: screenWidth * 0.06,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF223A6A),
                         ),
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: screenHeight * 0.015),
                       RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: screenWidth * 0.035,
                             color: Colors.grey[700],
                           ),
                           children: [
@@ -557,7 +564,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           ],
                         ),
                       ),
-                      SizedBox(height: 36),
+                      SizedBox(height: screenHeight * 0.045),
                       
                       // Hidden OTP input for actual typing
                       SizedBox(
@@ -582,64 +589,77 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                           // Focus the hidden input when boxes are tapped
                           _otpFocusNode.requestFocus();
                         },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(6, (index) {
-                            bool isFilled = _controllers[index].text.isNotEmpty;
-                            bool isFocused = _focusedIndex == index;
-                            
-                            return SizedBox(
-                              width: 45,
-                              child: Container(
-                                height: 58,
-                                decoration: BoxDecoration(
-                                  color: _verifiedBoxes[index] 
-                                      ? Color(0xFFE7F5EE) 
-                                      : (isFilled 
-                                      ? Color(0xFFE1EDFF) 
-                                          : Colors.grey[50]),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    width: 1.5,
-                                    color: _verifiedBoxes[index]
-                                        ? Color(0xFF2E9066)
-                                        : (isFilled 
-                                        ? Color(0xFF3366CC) 
-                                            : (isFocused ? Color(0xFF3366CC).withOpacity(0.3) : Colors.grey.withOpacity(0.2))),
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: isFilled 
-                                    ? Text(
-                                        _controllers[index].text,
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 22,
-                                          color: _verifiedBoxes[index] 
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final double boxWidth = (constraints.maxWidth - (screenWidth * 0.03) * 5) / 6;
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: List.generate(6, (index) {
+                                bool isFilled = _controllers[index].text.isNotEmpty;
+                                bool isFocused = _focusedIndex == index;
+                                
+                                return SizedBox(
+                                  width: boxWidth,
+                                  child: AspectRatio(
+                                    aspectRatio: 1.0,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _verifiedBoxes[index] 
+                                            ? Color(0xFFE7F5EE) 
+                                            : (isFilled 
+                                            ? Color(0xFFE1EDFF) 
+                                                : Colors.grey[50]),
+                                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                                        border: Border.all(
+                                          width: 1.5,
+                                          color: _verifiedBoxes[index]
                                               ? Color(0xFF2E9066)
-                                              : Color(0xFF223A6A),
-                                            ),
-                                          )
-                                        : null,
+                                              : (isFilled 
+                                              ? Color(0xFF3366CC) 
+                                                  : (isFocused ? Color(0xFF3366CC).withOpacity(0.3) : Colors.grey.withOpacity(0.2))),
+                                        ),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: isFilled 
+                                          ? FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                _controllers[index].text,
+                                                style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: screenWidth * 0.055,
+                                                  color: _verifiedBoxes[index] 
+                                                      ? Color(0xFF2E9066)
+                                                      : Color(0xFF223A6A),
+                                                ),
+                                              ),
+                                            ) 
+                                         : null,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                            );
+                          },
+                        ),
                       ),
-                    );
-                  }),
-                ),
-              ),
               
-                      SizedBox(height: 24),
+                      SizedBox(height: screenHeight * 0.03),
                       
                       // Error message
                       AnimatedContainer(
                         duration: Duration(milliseconds: 300),
-                        height: _errorMessage != null ? 60 : 0,
+                        height: _errorMessage != null ? screenHeight * 0.075 : 0,
                         curve: Curves.easeInOut,
                         child: _errorMessage != null
                           ? Container(
-                              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.0125, 
+                                horizontal: screenWidth * 0.04
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(screenWidth * 0.03),
                                 border: Border.all(
                                   color: Colors.red.withOpacity(0.2),
                                   width: 1,
@@ -648,7 +668,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(6),
+                                    padding: EdgeInsets.all(screenWidth * 0.015),
                                     decoration: BoxDecoration(
                                       color: Colors.red.withOpacity(0.1),
                                       shape: BoxShape.circle,
@@ -656,57 +676,57 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                     child: Icon(
                                       Icons.error_outline,
                                       color: Colors.red,
-                                      size: 16,
+                                      size: screenWidth * 0.04,
                                     ),
                                   ),
-                                  SizedBox(width: 10),
+                                  SizedBox(width: screenWidth * 0.025),
                                   Expanded(
-                  child: Text(
-                    _errorMessage!,
-                    style: GoogleFonts.poppins(
-                                        fontSize: 13,
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: screenWidth * 0.0325,
                                         color: Colors.red.shade700,
-                    ),
-                  ),
-                ),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             )
                           : SizedBox.shrink(),
                       ),
                       
-                      SizedBox(height: 36),
+                      SizedBox(height: screenHeight * 0.045),
                       
                       // Timer and resend button
-              _start > 0
+                      _start > 0
                         ? Text(
-                    "Resend OTP in $formattedTime",
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF3366CC),
-                    ),
-                  )
-                  : TextButton(
-                    onPressed: _isLoading ? null : _resendOTP,
-                              style: TextButton.styleFrom(
+                            "Resend OTP in $formattedTime",
+                            style: GoogleFonts.poppins(
+                              fontSize: screenWidth * 0.035,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF3366CC),
+                            ),
+                          )
+                        : TextButton(
+                            onPressed: _isLoading ? null : _resendOTP,
+                            style: TextButton.styleFrom(
                               foregroundColor: Color(0xFF3366CC),
                             ),
                             child: Text(
-                      "Resend OTP",
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                              "Resend OTP",
+                              style: GoogleFonts.poppins(
+                                fontSize: screenWidth * 0.035,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                       
-                      SizedBox(height: 36),
+                      SizedBox(height: screenHeight * 0.045),
                       
-              // Confirm OTP button
-              Container(
+                      // Confirm OTP button
+                      Container(
                         width: double.infinity,
-                        height: 56,
+                        height: screenHeight * 0.07,
                         child: _isLoading
                           ? ElevatedButton(
                               onPressed: null,
@@ -717,25 +737,25 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                 disabledForegroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
                                 ),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   SizedBox(
-                                    width: 20,
-                                    height: 20,
+                                    width: screenWidth * 0.05,
+                                    height: screenWidth * 0.05,
                                     child: CircularProgressIndicator(
                                       color: Colors.white,
                                       strokeWidth: 2,
                                     ),
                                   ),
-                                  SizedBox(width: 12),
+                                  SizedBox(width: screenWidth * 0.03),
                                   Text(
                                     "Verifying...",
                                     style: GoogleFonts.poppins(
-                                      fontSize: 16,
+                                      fontSize: screenWidth * 0.04,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -751,17 +771,17 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                                 disabledForegroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
                                 ),
                               ),
                               child: Text(
-                                        _isVerificationSuccessful 
-                                          ? "Verified!"
-                                          : "Verify & Proceed",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.5,
+                                _isVerificationSuccessful 
+                                  ? "Verified!"
+                                  : "Verify & Proceed",
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenWidth * 0.04,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
@@ -772,14 +792,17 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 
                 // Security message
                 Container(
-                  margin: EdgeInsets.only(top: 20, bottom: 20),
+                  margin: EdgeInsets.only(
+                    top: screenHeight * 0.025, 
+                    bottom: screenHeight * 0.025
+                  ),
                   child: Text(
-                        "Your verification is secure and encrypted",
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
+                    "Your verification is secure and encrypted",
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.03,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],

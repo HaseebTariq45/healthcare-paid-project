@@ -35,6 +35,9 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   
+  // Add _bookedTimeSlots field
+  List<String> _bookedTimeSlots = [];
+  
   // Firestore and Auth instances
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -96,6 +99,15 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     );
     
     _animationController.forward();
+  }
+
+  @override
+  void didUpdateWidget(AppointmentBookingFlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Check if we need to fetch time slots when date or hospital changes
+    if (_selectedHospitalId != null && _selectedDate != null && _availableTimesForSelectedDate.isEmpty && !_loadingTimeSlots) {
+      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
+    }
   }
 
   @override
@@ -161,86 +173,138 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   // Fetch time slots for a specific date and hospital
   Future<void> _fetchTimeSlotsForDate(String hospitalId, DateTime date) async {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    
-    // Check if we already have this data cached
-    if (_dateTimeSlots.containsKey('$hospitalId-$dateStr')) {
-      setState(() {
-        _availableTimesForSelectedDate = _dateTimeSlots['$hospitalId-$dateStr'] ?? [];
-      });
-      return;
-    }
+    debugPrint('⌚ Fetching time slots for date: $dateStr');
+    debugPrint('🏥 Hospital ID: $hospitalId');
     
     setState(() {
       _loadingTimeSlots = true;
+      _errorMessage = null;
     });
     
     try {
-      final doctorId = _doctorData['id'];
+      final doctorId = widget.preSelectedDoctor != null 
+          ? widget.preSelectedDoctor!['id']
+          : _doctorData['id'];
       
-      // Query Firestore for availability
-      final availabilityQuery = await _firestore
+      debugPrint('👨‍⚕️ Doctor ID: $doctorId');
+
+      // First get all available slots from doctor_availability
+      final QuerySnapshot availabilitySnapshot = await _firestore
           .collection('doctor_availability')
           .where('doctorId', isEqualTo: doctorId)
           .where('hospitalId', isEqualTo: hospitalId)
           .where('date', isEqualTo: dateStr)
-          .limit(1)
           .get();
+
+      debugPrint('📝 Found ${availabilitySnapshot.docs.length} availability documents');
+
+      List<String> allTimeSlots = [];
+      List<String> bookedSlots = [];
       
-      List<String> timeSlots = [];
-      if (availabilityQuery.docs.isNotEmpty) {
-        final availabilityData = availabilityQuery.docs.first.data();
-        timeSlots = List<String>.from(availabilityData['timeSlots'] ?? []);
+      if (availabilitySnapshot.docs.isNotEmpty) {
+        final availabilityData = availabilitySnapshot.docs.first.data() as Map<String, dynamic>;
+        debugPrint('📄 Availability data: $availabilityData');
+        
+        if (availabilityData.containsKey('timeSlots')) {
+          allTimeSlots = List<String>.from(availabilityData['timeSlots']);
+          debugPrint('🕒 Raw time slots: $allTimeSlots');
+        }
       }
-      
-      // Now check for already booked slots
-      final bookedSlotsQuery = await _firestore
+
+      // 1. Check appointments collection
+      final QuerySnapshot appointmentsSnapshot = await _firestore
+          .collection('appointments')
+          .where('hospitalId', isEqualTo: hospitalId)
+          .where('date', isEqualTo: dateStr)
+          .where('status', whereIn: ['Confirmed', 'Pending', 'In Progress'])
+          .get();
+
+      debugPrint('🔒 Found ${appointmentsSnapshot.docs.length} booked appointments');
+
+      for (var doc in appointmentsSnapshot.docs) {
+        final appointmentData = doc.data() as Map<String, dynamic>;
+        if (appointmentData['time'] != null && appointmentData['time'] is String) {
+          bookedSlots.add(appointmentData['time']);
+          debugPrint('📅 Booked slot from appointments: ${appointmentData['time']}');
+        }
+      }
+
+      // 2. Also check appointment_slots collection
+      final String slotPrefix = "${hospitalId}_${dateStr}_";
+      final QuerySnapshot slotsSnapshot = await _firestore
           .collection('appointment_slots')
           .where('isBooked', isEqualTo: true)
           .get();
-
-      List<String> bookedSlots = [];
       
-      for (var doc in bookedSlotsQuery.docs) {
-        final slotId = doc.id; // Format: hospitalId_date_time
+      debugPrint('🔒 Found ${slotsSnapshot.docs.length} booked slots in appointment_slots collection');
+      
+      for (var doc in slotsSnapshot.docs) {
+        final String slotId = doc.id;
         
-        // Check if this slot belongs to the current hospital and date
-        if (slotId.startsWith('${hospitalId}_${dateStr}_')) {
-          // Extract the time part from the slotId (everything after the last underscore)
-          final lastUnderscoreIndex = slotId.lastIndexOf('_');
-          if (lastUnderscoreIndex != -1 && lastUnderscoreIndex < slotId.length - 1) {
-            final timeSlot = slotId.substring(lastUnderscoreIndex + 1);
-            bookedSlots.add(timeSlot);
+        // Check if this slot belongs to our current hospital and date
+        if (slotId.startsWith(slotPrefix)) {
+          // Extract time from slotId (format: hospitalId_date_time)
+          final String time = slotId.substring(slotPrefix.length);
+          if (!bookedSlots.contains(time)) {
+            bookedSlots.add(time);
+            debugPrint('📅 Booked slot from appointment_slots: $time');
           }
         }
       }
-      
-      // Remove booked slots from available slots
-      for (var bookedSlot in bookedSlots) {
-        timeSlots.remove(bookedSlot);
-      }
-      
-      // Cache the result
-      _dateTimeSlots['$hospitalId-$dateStr'] = timeSlots;
+
+      // Filter out booked and past slots
+      List<String> availableSlots = allTimeSlots.where((slot) {
+        // Check if slot is booked
+        if (bookedSlots.contains(slot)) {
+          debugPrint('❌ Slot $slot is already booked');
+          return false;
+        }
+        
+        // Check if slot is in the past
+        if (date.year == DateTime.now().year && 
+            date.month == DateTime.now().month && 
+            date.day == DateTime.now().day) {
+          final slotTime = _parseTimeOfDay(slot);
+          final now = TimeOfDay.now();
+          if (slotTime.hour < now.hour || 
+              (slotTime.hour == now.hour && slotTime.minute < now.minute)) {
+            debugPrint('❌ Slot $slot is in the past');
+            return false;
+          }
+        }
+        
+        debugPrint('✅ Slot $slot is available');
+        return true;
+      }).toList();
+
+      debugPrint('✅ Final available time slots: $availableSlots');
+      debugPrint('🚫 Booked slots: $bookedSlots');
+
+      // Cache the results
+      _dateTimeSlots['$hospitalId-$dateStr'] = availableSlots;
+      _bookedTimeSlots = bookedSlots;
       
       if (mounted) {
         setState(() {
-          _availableTimesForSelectedDate = timeSlots;
+          _availableTimesForSelectedDate = availableSlots;
           _loadingTimeSlots = false;
           
-          // Clear selected time if it's not available for this date
-          if (_selectedTime != null && !timeSlots.contains(_selectedTime)) {
+          // Clear selected time if it's not available
+          if (_selectedTime != null && !availableSlots.contains(_selectedTime)) {
             _selectedTime = null;
           }
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error fetching time slots: $e');
+      debugPrint('Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _errorMessage = 'Error loading time slots: $e';
           _loadingTimeSlots = false;
+          _availableTimesForSelectedDate = [];
         });
       }
-      debugPrint('Error fetching time slots: $e');
     }
   }
 
@@ -873,27 +937,32 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     try {
       // First check if the slot is still available
       final String dateStr = _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '';
-      final String slotAvailabilityId = '${_selectedHospitalId}_${dateStr}_${_selectedTime}';
       
-      // Check slot availability in a transaction to prevent race conditions
-      bool isSlotAvailable = await _firestore.runTransaction<bool>((transaction) async {
-        final slotDoc = await transaction.get(_firestore
-            .collection('appointment_slots')
-            .doc(slotAvailabilityId));
-            
-        if (slotDoc.exists) {
-          final slotData = slotDoc.data() as Map<String, dynamic>;
-          return !(slotData['isBooked'] ?? false);
-        }
-        return true; // Slot document doesn't exist means it's available
-      });
-
-      if (!isSlotAvailable) {
+      // Check if slot is already booked
+      if (_bookedTimeSlots.contains(_selectedTime)) {
         setState(() {
           _errorMessage = 'Sorry, this slot has just been booked by someone else. Please select another time slot.';
           _isLoading = false;
         });
+        // Refresh time slots
+        if (_selectedHospitalId != null && _selectedDate != null) {
+          _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
+        }
         return;
+      }
+
+      // Check if slot is in the past
+      if (_selectedDate?.day == DateTime.now().day) {
+        final selectedTimeOfDay = _parseTimeOfDay(_selectedTime!);
+        final now = TimeOfDay.now();
+        if (selectedTimeOfDay.hour < now.hour || 
+            (selectedTimeOfDay.hour == now.hour && selectedTimeOfDay.minute < now.minute)) {
+          setState(() {
+            _errorMessage = 'Cannot book an appointment for a time slot that has already passed.';
+            _isLoading = false;
+          });
+          return;
+        }
       }
 
       // Get hospital information
@@ -929,13 +998,13 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         'displayFee': widget.preSelectedDoctor != null ? widget.preSelectedDoctor!['fee'] : _doctorData['fee'] ?? 'Rs. 2000',
         'patientId': _auth.currentUser?.uid ?? '',
         'status': 'pending_payment',
-        'slotId': slotAvailabilityId,
+        'slotId': '${_selectedHospitalId}_${dateStr}_${_selectedTime}',
         'createdAt': FieldValue.serverTimestamp(),
         'hasFinancialTransaction': false, // Will be set to true after payment
       };
 
       // Place a temporary hold on the slot
-      await _firestore.collection('appointment_slots').doc(slotAvailabilityId).set({
+      await _firestore.collection('appointment_slots').doc('${_selectedHospitalId}_${dateStr}_${_selectedTime}').set({
         'isBooked': false,
         'tempHoldUntil': FieldValue.serverTimestamp(),
         'tempHoldBy': _auth.currentUser?.uid,
@@ -1010,7 +1079,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
             transaction.set(appointmentRef, appointmentDetails);
 
             // Update slot status
-            final slotRef = _firestore.collection('appointment_slots').doc(slotAvailabilityId);
+            final slotRef = _firestore.collection('appointment_slots').doc('${_selectedHospitalId}_${dateStr}_${_selectedTime}');
             transaction.set(slotRef, {
               'isBooked': true,
               'tempHoldUntil': null,
@@ -1048,7 +1117,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         }
       } else {
         // Payment failed or cancelled, release the hold on the slot
-        await _firestore.collection('appointment_slots').doc(slotAvailabilityId).delete();
+        await _firestore.collection('appointment_slots').doc('${_selectedHospitalId}_${dateStr}_${_selectedTime}').delete();
         
         setState(() {
           _errorMessage = 'Payment was not completed. Please try again.';
@@ -1258,17 +1327,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                     return Padding(
                       padding: EdgeInsets.only(bottom: spacing),
                       child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedLocation = hospitalName;
-                            _selectedHospitalId = hospitalId;
-                            
-                            // If date is selected, fetch time slots for this hospital and date
-                            if (_selectedDate != null) {
-                              _fetchTimeSlotsForDate(hospitalId, _selectedDate!);
-                            }
-                          });
-                        },
+                        onTap: () => _onHospitalSelected(hospitalId, hospitalName),
                         borderRadius: BorderRadius.circular(borderRadius),
                         child: Container(
                           padding: EdgeInsets.all(padding),
@@ -1499,11 +1558,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               selectedDayPredicate: (day) {
                 return isSameDay(_selectedDate, day);
               },
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDate = selectedDay;
-                });
-              },
+              onDaySelected: _onDateSelected,
               calendarStyle: CalendarStyle(
                 selectedDecoration: BoxDecoration(
                   color: Color(0xFF2B8FEB),
@@ -1615,25 +1670,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildTimeStep() {
-    // Fetch available time slots for selected doctor at selected hospital
-    if (_selectedHospitalId != null && _selectedDate != null && _availableTimesForSelectedDate.isEmpty && !_loadingTimeSlots) {
-      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
-    }
-    
-    // Get day of week for selected date
-    String? dayOfWeek;
-    if (_selectedDate != null) {
-      switch (_selectedDate!.weekday) {
-        case 1: dayOfWeek = 'Monday'; break;
-        case 2: dayOfWeek = 'Tuesday'; break;
-        case 3: dayOfWeek = 'Wednesday'; break;
-        case 4: dayOfWeek = 'Thursday'; break;
-        case 5: dayOfWeek = 'Friday'; break;
-        case 6: dayOfWeek = 'Saturday'; break;
-        case 7: dayOfWeek = 'Sunday'; break;
-      }
-    }
-    
     return AnimatedOpacity(
       duration: Duration(milliseconds: 300),
       opacity: _currentStep == (widget.preSelectedDoctor != null ? 2 : 3) ? 1.0 : 0.8,
@@ -1652,7 +1688,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           SizedBox(height: 8),
           Text(
             _selectedDate != null 
-                ? 'Select your preferred time slot for ${dayOfWeek}, ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                ? 'Select your preferred time slot for ${DateFormat('EEEE').format(_selectedDate!)}, ${DateFormat('d/M/y').format(_selectedDate!)}'
                 : 'Select your preferred time slot',
             style: GoogleFonts.poppins(
               fontSize: 14,
@@ -1687,7 +1723,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 ),
                 SizedBox(height: 16),
                 if (_loadingTimeSlots) ...[
-                  // Show loading indicator when fetching time slots
                   Center(
                     child: Column(
                       children: [
@@ -1706,7 +1741,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                     ),
                   ),
                 ] else if (_availableTimesForSelectedDate.isEmpty) ...[
-                  // Show empty state when no slots available
                   Center(
                     child: Column(
                       children: [
@@ -1738,7 +1772,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                     ),
                   ),
                 ] else ...[
-                  // Show time slots when available
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -1812,13 +1845,16 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   Widget _buildTimeSlot(String time) {
     final isSelected = time == _selectedTime;
     final isPastTime = _selectedDate?.day == DateTime.now().day &&
-        _parseTime(time).isBefore(DateTime.now());
+        _parseTimeOfDay(time).hour < TimeOfDay.now().hour ||
+        (_parseTimeOfDay(time).hour == TimeOfDay.now().hour &&
+        _parseTimeOfDay(time).minute < TimeOfDay.now().minute);
     
-    // Check if this slot is already booked
-    final dateStr = _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '';
-    final bookedSlots = _dateTimeSlots['$_selectedHospitalId-$dateStr-booked'] ?? [];
-    final isBooked = bookedSlots.contains(time);
-
+    // Check if slot is already booked
+    final isBooked = _bookedTimeSlots.contains(time);
+    
+    // Whether this slot is available
+    final isAvailable = !isPastTime && !isBooked;
+    
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.8, end: 1.0),
       duration: Duration(milliseconds: 200),
@@ -1826,40 +1862,35 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         return Transform.scale(
           scale: isSelected ? scale : 1.0,
           child: InkWell(
-            onTap: (isPastTime || isBooked)
-                ? null
-                : () {
+            onTap: isAvailable 
+                ? () {
                     setState(() {
                       _selectedTime = time;
                     });
-                  },
+                  }
+                : null,
             borderRadius: BorderRadius.circular(12),
             child: AnimatedContainer(
               duration: Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
               padding: EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 12,
               ),
               decoration: BoxDecoration(
-                color: isBooked 
-                    ? Colors.red.shade50
-                    : isPastTime
-                        ? Colors.grey.shade100
-                        : isSelected
-                            ? Color(0xFF2B8FEB)
-                            : Colors.white,
+                color: !isAvailable 
+                    ? Colors.grey.shade100
+                    : isSelected
+                        ? Color(0xFF2B8FEB)
+                        : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isBooked
-                      ? Colors.red.shade200
-                      : isPastTime
-                          ? Colors.grey.shade300
-                          : isSelected
-                              ? Color(0xFF2B8FEB)
-                              : Colors.grey.shade200,
+                  color: !isAvailable
+                      ? Colors.grey.shade300
+                      : isSelected
+                          ? Color(0xFF2B8FEB)
+                          : Colors.grey.shade200,
                 ),
-                boxShadow: isSelected
+                boxShadow: isSelected && isAvailable
                     ? [
                         BoxShadow(
                           color: Color(0xFF2B8FEB).withOpacity(0.2),
@@ -1872,22 +1903,20 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  isBooked 
-                    ? Icon(Icons.block, size: 14, color: Colors.red.shade400)
-                    : SizedBox.shrink(),
-                  if (isBooked) SizedBox(width: 4),
+                  if (isBooked) 
+                    Icon(Icons.block, size: 14, color: Colors.red.shade400),
+                  if (isBooked) 
+                    SizedBox(width: 4),
                   Text(
                     time,
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isBooked
-                          ? Colors.red.shade400
-                          : isPastTime
-                              ? Colors.grey.shade400
-                              : isSelected
-                                  ? Colors.white
-                                  : Colors.black87,
+                      color: !isAvailable
+                          ? Colors.grey.shade400
+                          : isSelected
+                              ? Colors.white
+                              : Colors.black87,
                     ),
                   ),
                 ],
@@ -1896,26 +1925,6 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           ),
         );
       },
-    );
-  }
-
-  DateTime _parseTime(String timeStr) {
-    final now = DateTime.now();
-    final time = timeStr.toUpperCase();
-    final isPM = time.contains('PM');
-    final timeParts = time.replaceAll(RegExp(r'[AP]M'), '').split(':');
-    var hour = int.parse(timeParts[0]);
-    final minute = int.parse(timeParts[1]);
-    
-    if (isPM && hour != 12) hour += 12;
-    if (!isPM && hour == 12) hour = 0;
-    
-    return DateTime(
-      now.year,
-      now.month,
-      now.day,
-      hour,
-      minute,
     );
   }
 
@@ -2848,6 +2857,74 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     } catch (e) {
       print('Error parsing fee amount: $e');
       return 2000; // Default to 2000 if parsing fails
+    }
+  }
+
+  // Update the date selection to trigger time slot fetch
+  void _onDateSelected(DateTime selectedDay, DateTime focusedDay) {
+    setState(() {
+      _selectedDate = selectedDay;
+      _selectedTime = null; // Clear selected time when date changes
+      _availableTimesForSelectedDate = []; // Clear available times
+    });
+
+    // If we have both hospital and date, fetch time slots
+    if (_selectedHospitalId != null && _selectedDate != null) {
+      debugPrint('🔄 Date changed, fetching new time slots');
+      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
+    }
+  }
+
+  // Update the hospital selection to trigger time slot fetch
+  void _onHospitalSelected(String hospitalId, String hospitalName) {
+    debugPrint('🏥 Selected Hospital:');
+    debugPrint('   - ID: $hospitalId');
+    debugPrint('   - Name: $hospitalName');
+    
+    setState(() {
+      _selectedHospitalId = hospitalId;
+      _selectedLocation = hospitalName;
+      _selectedTime = null; // Clear selected time when hospital changes
+      _availableTimesForSelectedDate = []; // Clear available times
+    });
+
+    // If we have both hospital and date, fetch time slots
+    if (_selectedHospitalId != null && _selectedDate != null) {
+      debugPrint('🔄 Hospital changed, fetching new time slots');
+      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
+    }
+  }
+
+  // Add _parseTimeOfDay method
+  TimeOfDay _parseTimeOfDay(String timeString) {
+    // Handle both 12-hour and 24-hour formats
+    try {
+      if (timeString.contains('AM') || timeString.contains('PM')) {
+        // 12-hour format (e.g., "9:00 AM" or "2:30 PM")
+        final isPM = timeString.contains('PM');
+        final timeParts = timeString.replaceAll(RegExp(r'[APM]'), '').trim().split(':');
+        var hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        
+        if (isPM && hour != 12) {
+          hour += 12;
+        } else if (!isPM && hour == 12) {
+          hour = 0;
+        }
+        
+        return TimeOfDay(hour: hour, minute: minute);
+      } else {
+        // 24-hour format (e.g., "14:30")
+        final timeParts = timeString.split(':');
+        return TimeOfDay(
+          hour: int.parse(timeParts[0]),
+          minute: int.parse(timeParts[1]),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error parsing time: $e');
+      // Return current time as fallback
+      return TimeOfDay.now();
     }
   }
 } 
