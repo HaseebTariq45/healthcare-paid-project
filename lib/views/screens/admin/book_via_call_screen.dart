@@ -1471,10 +1471,20 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                                   final isSelected = time == _selectedTimeSlot;
                                   
                                   // Check if this slot is in the past
-                                  final isPastTime = _selectedDate?.day == DateTime.now().day &&
-                                      _parseTimeOfDay(time).hour < TimeOfDay.now().hour ||
-                                      (_parseTimeOfDay(time).hour == TimeOfDay.now().hour &&
-                                      _parseTimeOfDay(time).minute < TimeOfDay.now().minute);
+                                  bool isPastTime = false;
+                                  
+                                  // Only check against current time if the selected date is today
+                                  if (_selectedDate.year == DateTime.now().year &&
+                                      _selectedDate.month == DateTime.now().month &&
+                                      _selectedDate.day == DateTime.now().day) {
+                                      
+                                    final timeOfDay = _parseTimeOfDay(time);
+                                    final now = TimeOfDay.now();
+                                    
+                                    isPastTime = timeOfDay.hour < now.hour || 
+                                              (timeOfDay.hour == now.hour && 
+                                               timeOfDay.minute < now.minute);
+                                  }
                                   
                                   // Check if slot is already booked
                                   final isBooked = _bookedTimeSlots.contains(time);
@@ -1539,7 +1549,7 @@ class _BookViaCallScreenState extends State<BookViaCallScreen> {
                               ),
                               SizedBox(height: 10),
                               Text(
-                                'Grayed out time slots are unavailable or already booked.',
+                                'Grayed out time slots are either already booked or in the past (for today\'s appointments only).',
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   fontStyle: FontStyle.italic,

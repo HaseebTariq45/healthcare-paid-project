@@ -195,7 +195,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           .where('hospitalId', isEqualTo: hospitalId)
           .where('date', isEqualTo: dateStr)
           .get();
-
+      
       debugPrint('📝 Found ${availabilitySnapshot.docs.length} availability documents');
 
       List<String> allTimeSlots = [];
@@ -235,7 +235,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
           .collection('appointment_slots')
           .where('isBooked', isEqualTo: true)
           .get();
-      
+
       debugPrint('🔒 Found ${slotsSnapshot.docs.length} booked slots in appointment_slots collection');
       
       for (var doc in slotsSnapshot.docs) {
@@ -960,11 +960,11 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
         final now = TimeOfDay.now();
         if (selectedTimeOfDay.hour < now.hour || 
             (selectedTimeOfDay.hour == now.hour && selectedTimeOfDay.minute < now.minute)) {
-          setState(() {
+        setState(() {
             _errorMessage = 'Cannot book an appointment for a time slot that has already passed.';
-            _isLoading = false;
-          });
-          return;
+          _isLoading = false;
+        });
+        return;
         }
       }
 
@@ -1865,7 +1865,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     
     // Whether this slot is available
     final isAvailable = !isPastTime && !isBooked;
-    
+
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.8, end: 1.0),
       duration: Duration(milliseconds: 200),
@@ -1889,17 +1889,17 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               ),
               decoration: BoxDecoration(
                 color: !isAvailable 
-                    ? Colors.grey.shade100
-                    : isSelected
-                        ? Color(0xFF2B8FEB)
-                        : Colors.white,
+                        ? Colors.grey.shade100
+                        : isSelected
+                            ? Color(0xFF2B8FEB)
+                            : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: !isAvailable
-                      ? Colors.grey.shade300
-                      : isSelected
-                          ? Color(0xFF2B8FEB)
-                          : Colors.grey.shade200,
+                          ? Colors.grey.shade300
+                          : isSelected
+                              ? Color(0xFF2B8FEB)
+                              : Colors.grey.shade200,
                 ),
                 boxShadow: isSelected && isAvailable
                     ? [
@@ -1924,10 +1924,10 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                       fontSize: 14,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                       color: !isAvailable
-                          ? Colors.grey.shade400
-                          : isSelected
-                              ? Colors.white
-                              : Colors.black87,
+                              ? Colors.grey.shade400
+                              : isSelected
+                                  ? Colors.white
+                                  : Colors.black87,
                     ),
                   ),
                 ],

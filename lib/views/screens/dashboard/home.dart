@@ -472,6 +472,68 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         
         print('Final hospital name: $hospitalName');
+
+        // Dynamic status calculation based on date and time
+        String status = data['status'] ?? "Pending";
+        DateTime now = DateTime.now();
+        
+        // Parse appointment date and time
+        DateTime? appointmentDateTime;
+        try {
+          String dateStr = data['date'] ?? "";
+          String timeStr = data['time'] ?? "";
+          
+          if (dateStr.isNotEmpty && timeStr.isNotEmpty) {
+            // Convert AM/PM time to 24-hour format
+            int hour = 0;
+            int minute = 0;
+            
+            if (timeStr.contains("AM") || timeStr.contains("PM")) {
+              // Parse 12-hour format time
+              final isPM = timeStr.contains("PM");
+              final timeParts = timeStr.replaceAll(RegExp(r'[APM]'), '').trim().split(':');
+              hour = int.parse(timeParts[0]);
+              minute = int.parse(timeParts[1]);
+              
+              // Convert to 24-hour format
+              if (isPM && hour != 12) {
+                hour += 12;
+              } else if (!isPM && hour == 12) {
+                hour = 0;
+              }
+            } else {
+              // Parse 24-hour format time
+              final timeParts = timeStr.split(':');
+              hour = int.parse(timeParts[0]);
+              minute = int.parse(timeParts[1]);
+            }
+            
+            // Parse date
+            final dateParts = dateStr.split('-');
+            if (dateParts.length == 3) {
+              final year = int.parse(dateParts[0]);
+              final month = int.parse(dateParts[1]);
+              final day = int.parse(dateParts[2]);
+              
+              appointmentDateTime = DateTime(year, month, day, hour, minute);
+            }
+          }
+        } catch (e) {
+          print('Error parsing appointment date/time: $e');
+        }
+        
+        // Determine dynamic status based on date/time
+        if (appointmentDateTime != null) {
+          // If appointment is in the past, mark as completed
+          if (appointmentDateTime.isBefore(now)) {
+            status = "Completed";
+          } else {
+            // If appointment is in the future, mark as confirmed/upcoming
+            if (status.toLowerCase() != "cancelled") {
+              status = "Confirmed";
+            }
+          }
+        }
         
         // Format appointment data
         appointments.add({
@@ -481,24 +543,25 @@ class _HomeScreenState extends State<HomeScreen> {
           'date': data['date'] ?? "No date",
           'time': data['time'] ?? "No time",
           'type': data['type'] ?? "In-person",
-          'status': data['status'] ?? "Pending",
+          'status': status, // Use dynamically determined status
           'reason': data['reason'] ?? "General checkup",
           'hospitalName': hospitalName,
           'fee': data['fee'] ?? "0",
           'syncedAt': DateTime.now().toIso8601String(),
+          'appointmentDateTime': appointmentDateTime?.toIso8601String(),
         });
       }
       
-      if (appointments.isNotEmpty) {
-        // Cache the appointments data
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_doctorAppointmentsCacheKey, json.encode(appointments));
+      if (mounted) {
+        setState(() {
+          _appointments = appointments;
+        });
+        print('Updated appointments with ${appointments.length} records from server');
         
-        if (mounted) {
-          setState(() {
-            _appointments = appointments;
-          });
-          print('Updated appointments with ${appointments.length} records from server');
+        // Cache the appointments data
+        if (appointments.isNotEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_doctorAppointmentsCacheKey, json.encode(appointments));
         }
       }
     } catch (e) {
@@ -984,22 +1047,67 @@ class _HomeScreenState extends State<HomeScreen> {
     double horizontalPadding, 
     double verticalSpacing
   ) {
-    // Filter appointments based on the selected category
+    // Filter appointments based on the selected category and current date/time
     List<Map<String, dynamic>> filteredAppointments = [];
     
     if (_appointments.isNotEmpty) {
+      // Get current date/time for comparison
+      final now = DateTime.now();
+      
       if (_selectedAppointmentCategoryIndex == 0) {
-        // Upcoming appointments
-        filteredAppointments = _appointments.where((appointment) => 
-          appointment['status']?.toString().toLowerCase() == 'upcoming' || 
-          appointment['status']?.toString().toLowerCase() == 'confirmed' ||
-          appointment['status']?.toString().toLowerCase() == 'pending'
-        ).toList();
+        // Upcoming appointments - filter by dynamic status and date/time
+        filteredAppointments = _appointments.where((appointment) {
+          // First check if appointment has been marked as completed by our dynamic logic
+          if (appointment['status']?.toString().toLowerCase() == 'completed') {
+            return false;
+          }
+          
+          // Then check if it's cancelled
+          if (appointment['status']?.toString().toLowerCase() == 'cancelled') {
+            return false;
+          }
+          
+          // Check appointment date/time if available
+          if (appointment.containsKey('appointmentDateTime') && 
+              appointment['appointmentDateTime'] != null) {
+            try {
+              final appointmentDateTime = DateTime.parse(appointment['appointmentDateTime']);
+              // Only include if appointment is in the future
+              return appointmentDateTime.isAfter(now);
+            } catch (e) {
+              print('Error parsing appointmentDateTime: $e');
+            }
+          }
+          
+          // If we can't determine from date/time, use status
+          return appointment['status']?.toString().toLowerCase() == 'upcoming' || 
+                 appointment['status']?.toString().toLowerCase() == 'confirmed' ||
+                 appointment['status']?.toString().toLowerCase() == 'pending';
+        }).toList();
       } else if (_selectedAppointmentCategoryIndex == 1) {
-        // Completed appointments
-        filteredAppointments = _appointments.where((appointment) => 
-          appointment['status']?.toString().toLowerCase() == 'completed'
-        ).toList();
+        // Completed appointments - filter by dynamic status and date/time
+        filteredAppointments = _appointments.where((appointment) {
+          // First check if appointment has been marked as completed
+          if (appointment['status']?.toString().toLowerCase() == 'completed') {
+            return true;
+          }
+          
+          // Then check appointment date/time if available
+          if (appointment.containsKey('appointmentDateTime') && 
+              appointment['appointmentDateTime'] != null) {
+            try {
+              final appointmentDateTime = DateTime.parse(appointment['appointmentDateTime']);
+              // Include if appointment is in the past (and not cancelled)
+              return appointmentDateTime.isBefore(now) && 
+                    appointment['status']?.toString().toLowerCase() != 'cancelled';
+            } catch (e) {
+              print('Error parsing appointmentDateTime: $e');
+            }
+          }
+          
+          // If we can't determine from date/time, fall back to status
+          return false;
+        }).toList();
       }
     }
     

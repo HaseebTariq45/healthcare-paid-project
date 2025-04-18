@@ -1425,8 +1425,12 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     return InkWell(
       onTap: () async {
         try {
-          // Check if we have cached data
-          if (_cachedDoctors.containsKey(category.name)) {
+          // Show a bottom sheet for gender selection
+          final String? selectedGender = await _showGenderFilterDialog();
+          if (selectedGender == null && !context.mounted) return;
+          
+          // Check if we have cached data and no gender filter
+          if (selectedGender == null && _cachedDoctors.containsKey(category.name)) {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -1474,7 +1478,11 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             },
           );
 
-          await _fetchDoctorsData(category.name, showLoading: true);
+          await _fetchDoctorsData(
+            category.name, 
+            showLoading: true,
+            genderFilter: selectedGender,
+          );
 
         } catch (e) {
           if (context.mounted) {
@@ -1579,14 +1587,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   // Add this new method for fetching doctors data
-  Future<void> _fetchDoctorsData(String specialty, {required bool showLoading}) async {
+  Future<void> _fetchDoctorsData(String specialty, {required bool showLoading, String? genderFilter}) async {
     try {
       // Fetch doctors from Firestore based on specialty
-      final QuerySnapshot doctorsSnapshot = await FirebaseFirestore.instance
+      Query doctorsQuery = FirebaseFirestore.instance
           .collection('doctors')
           .where('specialty', isEqualTo: specialty)
-          .where('isApproved', isEqualTo: true)
-          .get();
+          .where('isApproved', isEqualTo: true);
+      
+      // Apply gender filter if specified
+      if (genderFilter != null) {
+        doctorsQuery = doctorsQuery.where('gender', isEqualTo: genderFilter);
+      }
+
+      final QuerySnapshot doctorsSnapshot = await doctorsQuery.get();
 
       List<Map<String, dynamic>> doctors = [];
       
@@ -1637,6 +1651,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           'about': data['about'] ?? 'No information available',
           'languages': data['languages'] ?? ['English'],
           'services': data['services'] ?? [],
+          'gender': data['gender'] ?? 'Not specified',
         });
       }
 
@@ -1657,6 +1672,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               builder: (context) => DoctorsScreen(
                 specialty: specialty,
                 doctors: doctors,
+                initialGenderFilter: genderFilter,
               ),
             ),
           );
@@ -2216,6 +2232,163 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         );
       },
     ) ?? false;
+  }
+
+  // Add a gender filter dialog
+  Future<String?> _showGenderFilterDialog() async {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
+    return await showDialog<String?>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(horizontalPadding * 1.2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Filter Doctors",
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.045,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, size: screenSize.width * 0.05),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: verticalPadding),
+                Text(
+                  "Select Gender Preference",
+                  style: GoogleFonts.poppins(
+                    fontSize: screenSize.width * 0.04,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: verticalPadding),
+                
+                // All Doctors Button
+                _buildFilterOption(
+                  context: context,
+                  icon: Icons.people,
+                  title: "All Doctors",
+                  subtitle: "View all available doctors",
+                  color: Colors.purple,
+                  onTap: () => Navigator.pop(context, null),
+                ),
+                
+                SizedBox(height: verticalPadding * 0.7),
+                
+                // Male Doctors Button
+                _buildFilterOption(
+                  context: context,
+                  icon: Icons.male,
+                  title: "Male Doctors",
+                  subtitle: "View only male doctors",
+                  color: Colors.blue,
+                  onTap: () => Navigator.pop(context, "Male"),
+                ),
+                
+                SizedBox(height: verticalPadding * 0.7),
+                
+                // Female Doctors Button
+                _buildFilterOption(
+                  context: context,
+                  icon: Icons.female,
+                  title: "Female Doctors",
+                  subtitle: "View only female doctors",
+                  color: Colors.pink,
+                  onTap: () => Navigator.pop(context, "Female"),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildFilterOption({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final Size screenSize = MediaQuery.of(context).size;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all(screenSize.width * 0.03),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenSize.width * 0.025),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(screenSize.width * 0.02),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: screenSize.width * 0.06,
+                ),
+              ),
+              SizedBox(width: screenSize.width * 0.03),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.04,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.03,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                color: Colors.grey.shade400,
+                size: screenSize.width * 0.05,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -8,11 +8,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 class DoctorsScreen extends StatefulWidget {
   final String? specialty;
   final List<Map<String, dynamic>> doctors;
+  final String? initialGenderFilter;
 
   const DoctorsScreen({
     Key? key, 
     this.specialty,
     this.doctors = const [],
+    this.initialGenderFilter,
   }) : super(key: key);
 
   @override
@@ -34,6 +36,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   int _selectedCategoryIndex = 0;
   String? selectedRating;
   String? selectedLocation;
+  String? selectedGender;
   bool showOnlineOnly = false;
   bool sortByPriceLowToHigh = false;
   
@@ -47,6 +50,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     
     // Initialize filters
     filteredDoctors = [];
+    selectedGender = widget.initialGenderFilter; // Set initial gender filter
     
     // If a specific specialty is provided, set the category index accordingly
     if (widget.specialty != null && widget.specialty != "All") {
@@ -107,6 +111,11 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       // Apply specialty filter if specified
       if (widget.specialty != null && widget.specialty != "All") {
         doctorsQuery = doctorsQuery.where('specialty', isEqualTo: widget.specialty);
+      }
+      
+      // Apply gender filter if specified
+      if (selectedGender != null) {
+        doctorsQuery = doctorsQuery.where('gender', isEqualTo: selectedGender);
       }
       
       final QuerySnapshot doctorsSnapshot = await doctorsQuery.get();
@@ -172,6 +181,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           'image': doctorData['profileImageUrl'] ?? "assets/images/User.png",
           'available': isAvailableToday,
           'hospitals': hospitalsList,
+          'gender': doctorData['gender'] ?? 'Not specified',
         });
       }
       
@@ -253,6 +263,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             hospital['hospitalName'].toString().contains(selectedLocation!));
         }
         return doctor['location'].toString().contains(selectedLocation!);
+      }).toList();
+    }
+    
+    // Apply gender filter
+    if (selectedGender != null) {
+      result = result.where((doctor) {
+        return doctor['gender']?.toString() == selectedGender;
       }).toList();
     }
     
@@ -427,10 +444,32 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   }
 
   Widget _buildHeader() {
-    // Create a more descriptive title based on specialty
+    // Create a more descriptive title based on specialty and gender
     String headerTitle = "Available Doctors";
     if (widget.specialty != null && widget.specialty != "All") {
       headerTitle = "${widget.specialty} Specialists";
+      
+      // Add gender information if present
+      if (selectedGender != null) {
+        headerTitle = "$selectedGender ${widget.specialty} Specialists";
+      }
+    } else if (selectedGender != null) {
+      headerTitle = "$selectedGender Doctors";
+    }
+
+    // Get gender icon and color for badge - fixed nullable issues
+    IconData? genderIconTemp;
+    if (selectedGender == "Male") {
+      genderIconTemp = Icons.male;
+    } else if (selectedGender == "Female") {
+      genderIconTemp = Icons.female;
+    }
+    
+    Color genderColorTemp = Colors.grey;
+    if (selectedGender == "Male") {
+      genderColorTemp = Colors.blue;
+    } else if (selectedGender == "Female") {
+      genderColorTemp = Colors.pink;
     }
 
     return Container(
@@ -457,14 +496,48 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
               ),
           const SizedBox(width: 15),
           Expanded(
-            child: Text(
-              headerTitle,
-            style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              color: Colors.white,
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    headerTitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                if (selectedGender != null && genderIconTemp != null)
+                  Container(
+                    margin: EdgeInsets.only(left: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: genderColorTemp.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          genderIconTemp,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          selectedGender!,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-          ),
           ),
           Container(
             padding: const EdgeInsets.all(8),
@@ -609,6 +682,18 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     bool isAvailable = doctor["available"] ?? true;
     String fee = doctor["fee"] ?? "Rs 2000";
     String location = doctor["location"] ?? "Not specified";
+    String gender = doctor["gender"] ?? "Not specified";
+    
+    // Get the appropriate gender icon
+    IconData genderIcon = Icons.person;
+    Color genderColor = Colors.grey;
+    if (gender == "Male") {
+      genderIcon = Icons.male;
+      genderColor = Colors.blue;
+    } else if (gender == "Female") {
+      genderIcon = Icons.female;
+      genderColor = Colors.pink;
+    }
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -705,12 +790,44 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                           ],
                         ),
                       const SizedBox(height: 4),
-                        Text(
-                          doctor["specialty"],
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              doctor["specialty"],
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Display gender
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: genderColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    genderIcon,
+                                    size: 12,
+                                    color: genderColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    gender,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: genderColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       const SizedBox(height: 8),
                         Row(
@@ -748,33 +865,32 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                               fontWeight: FontWeight.w500,
                               color: Colors.green.shade700,
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                            Icon(
-                              LucideIcons.mapPin,
-                            color: Colors.red.shade400,
-                            size: 16,
-                            ),
-                          const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                              location,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
                         ),
-                      ],
-                    ),
+                        Spacer(),
+                            Icon(
+                            LucideIcons.mapPin,
+                            color: Colors.orange.shade600,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              location,
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                                  overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
         ),
       ),
     );
@@ -878,6 +994,44 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                         ),
                       ],
                     ),
+                  const SizedBox(height: 15),
+                  
+                  // Gender filter
+                  Text(
+                    "Gender",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: [
+                      _buildFilterChip(
+                        "All",
+                        selectedGender == null,
+                        () => setState(() {
+                          selectedGender = null;
+                        }),
+                      ),
+                      _buildFilterChip(
+                        "Male",
+                        selectedGender == "Male",
+                        () => setState(() {
+                          selectedGender = "Male";
+                        }),
+                      ),
+                      _buildFilterChip(
+                        "Female",
+                        selectedGender == "Female",
+                        () => setState(() {
+                          selectedGender = "Female";
+                        }),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 15),
                   
                   // Online/In-person filter
