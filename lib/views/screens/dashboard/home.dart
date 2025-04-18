@@ -810,7 +810,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Reports",
                         color: Color(0xFFF44336),
                         onTap: () {
-                          _onItemTapped(1); // Navigate to Analytics
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AnalyticsScreen(),
+                            ),
+                          );
                         },
                                             width: buttonWidth,
                       ),
@@ -819,7 +824,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Menu",
                         color: Color(0xFFFF9800),
                         onTap: () {
-                          _onItemTapped(3); // Navigate to Menu
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MenuScreen(role: userType),
+                            ),
+                          );
                         },
                                             width: buttonWidth,
                       ),

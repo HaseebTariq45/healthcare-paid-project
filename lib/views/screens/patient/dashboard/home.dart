@@ -2253,19 +2253,15 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       "Filter Doctors",
                       style: GoogleFonts.poppins(
-                        fontSize: screenSize.width * 0.045,
+                        fontSize: screenSize.width * 0.05,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close, size: screenSize.width * 0.05),
-                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
