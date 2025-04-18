@@ -4,6 +4,7 @@ import 'package:healthcare/views/screens/patient/appointment/appointment_booking
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
 class DoctorsScreen extends StatefulWidget {
   final String? specialty;
@@ -37,11 +38,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   String? selectedRating;
   String? selectedLocation;
   String? selectedGender;
-  bool showOnlineOnly = false;
   bool sortByPriceLowToHigh = false;
+  bool showOnlyInMyCity = false;
+  String? userCity; // Store the user's city for filtering
+  Color genderColor = Colors.grey;
   
   // Available filter categories
   final List<String> _categories = ["All", "Cardiology", "Neurology", "Dermatology", "Orthopedics", "ENT", "Pediatrics", "Gynecology", "Ophthalmology", "Dentistry", "Psychiatry", "Pulmonology", "Gastrology"];
+
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -64,6 +69,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       }
     }
     
+    // Fetch user's city
+    _fetchUserCity();
+    
     // Fetch doctors from Firestore
     _fetchDoctors();
   }
@@ -72,14 +80,48 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged() {
     setState(() {
       _searchQuery = _searchController.text.toLowerCase();
+    });
+    
+    // Debounce search to avoid too many Firestore calls
+    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
       _applyFilters();
     });
+  }
+
+  // Fetch the user's city from Firestore
+  Future<void> _fetchUserCity() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Try to get user data from patients collection
+        var patientDoc = await _firestore.collection('patients').doc(user.uid).get();
+        
+        // If not found in patients, try users collection
+        if (!patientDoc.exists) {
+          patientDoc = await _firestore.collection('users').doc(user.uid).get();
+        }
+        
+        if (patientDoc.exists) {
+          final data = patientDoc.data();
+          if (data != null && data['city'] != null) {
+            setState(() {
+              userCity = data['city'];
+              debugPrint('User city found: $userCity');
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching user city: $e');
+    }
   }
 
   // Fetch doctors from Firestore
@@ -218,10 +260,121 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     }
   }
 
-  // Apply all active filters to the doctors list
-  void _applyFilters() {
-    // Start with all doctors
-    List<Map<String, dynamic>> result = List.from(filteredDoctors);
+  // Apply all active filters to the doctors list and reload data from Firestore
+  Future<void> _applyFilters() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Create a base Query
+      Query doctorsQuery = _firestore.collection('doctors');
+      
+      // Apply specialty filter if specified from widget or selected category
+      if (widget.specialty != null && widget.specialty != "All") {
+        doctorsQuery = doctorsQuery.where('specialty', isEqualTo: widget.specialty);
+      } else if (_selectedCategoryIndex > 0) {
+        final selectedCategory = _categories[_selectedCategoryIndex];
+        doctorsQuery = doctorsQuery.where('specialty', isEqualTo: selectedCategory);
+      }
+      
+      // Apply gender filter directly in query
+      if (selectedGender != null) {
+        doctorsQuery = doctorsQuery.where('gender', isEqualTo: selectedGender);
+      }
+      
+      // City filter needs to be applied post-query as it's based on hospital data
+      // We cannot directly filter by city in the doctors collection
+      
+      // Apply rating filter - this needs to be handled post-query
+      // since Firestore doesn't support range queries on different fields
+      
+      final QuerySnapshot doctorsSnapshot = await doctorsQuery.get();
+      
+      final List<Map<String, dynamic>> doctorsList = [];
+      
+      // Process each doctor document
+      for (var doc in doctorsSnapshot.docs) {
+        final doctorData = doc.data() as Map<String, dynamic>;
+        final doctorId = doc.id;
+        
+        // Get doctor's hospitals and availability
+        final hospitalsQuery = await _firestore
+            .collection('doctor_hospitals')
+            .where('doctorId', isEqualTo: doctorId)
+            .get();
+        
+        final List<Map<String, dynamic>> hospitalsList = [];
+        bool isInUserCity = false;
+        
+        // For each hospital, get today's availability
+        for (var hospitalDoc in hospitalsQuery.docs) {
+          final hospitalData = hospitalDoc.data();
+          final hospitalId = hospitalData['hospitalId'];
+          final hospitalName = hospitalData['hospitalName'] ?? 'Unknown Hospital';
+          final hospitalCity = hospitalData['city'] ?? '';
+          
+          // Check if hospital is in user's city
+          if (userCity != null && hospitalCity.toLowerCase() == userCity!.toLowerCase()) {
+            isInUserCity = true;
+          }
+          
+          // Get today's date in YYYY-MM-DD format
+          final today = DateTime.now();
+          final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+          
+          // Query availability for this hospital and date
+          final availabilityQuery = await _firestore
+              .collection('doctor_availability')
+              .where('doctorId', isEqualTo: doctorId)
+              .where('hospitalId', isEqualTo: hospitalId)
+              .where('date', isEqualTo: dateStr)
+              .limit(1)
+              .get();
+          
+          List<String> timeSlots = [];
+          if (availabilityQuery.docs.isNotEmpty) {
+            final availabilityData = availabilityQuery.docs.first.data();
+            timeSlots = List<String>.from(availabilityData['timeSlots'] ?? []);
+          }
+          
+          hospitalsList.add({
+            'hospitalId': hospitalId,
+            'hospitalName': hospitalName,
+            'city': hospitalCity,
+            'availableToday': timeSlots.isNotEmpty,
+            'timeSlots': timeSlots,
+          });
+        }
+        
+        // Skip this doctor if we're filtering by city and they're not in the user's city
+        if (showOnlyInMyCity && !isInUserCity) {
+          continue;
+        }
+        
+        // Determine overall availability
+        final bool isAvailableToday = hospitalsList.any((hospital) => hospital['availableToday'] == true);
+        
+        // Create doctor map with all relevant information
+        doctorsList.add({
+          'id': doctorId,
+          'name': doctorData['fullName'] ?? doctorData['name'] ?? 'Unknown Doctor',
+          'specialty': doctorData['specialty'] ?? 'General Practitioner',
+          'rating': doctorData['rating']?.toString() ?? "0.0",
+          'experience': doctorData['experience']?.toString() ?? "0 years",
+          'fee': 'Rs ${doctorData['fee']?.toString() ?? "0"}',
+          'location': hospitalsList.isNotEmpty ? hospitalsList.first['hospitalName'] : 'Multiple Hospitals',
+          'city': hospitalsList.isNotEmpty ? hospitalsList.first['city'] : '',
+          'image': doctorData['profileImageUrl'] ?? "assets/images/User.png",
+          'available': isAvailableToday,
+          'hospitals': hospitalsList,
+          'gender': doctorData['gender'] ?? 'Not specified',
+          'isInUserCity': isInUserCity,
+        });
+      }
+      
+      // Apply client-side filters
+      List<Map<String, dynamic>> result = List.from(doctorsList);
     
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
@@ -229,14 +382,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
         return doctor['name'].toString().toLowerCase().contains(_searchQuery) ||
                doctor['specialty'].toString().toLowerCase().contains(_searchQuery) ||
                doctor['location'].toString().toLowerCase().contains(_searchQuery);
-      }).toList();
-    }
-    
-    // Apply category filter only if not already filtered by specialty from widget parameter
-    if (_selectedCategoryIndex > 0 && (widget.specialty == null || widget.specialty == "All")) { 
-      final selectedCategory = _categories[_selectedCategoryIndex];
-      result = result.where((doctor) {
-        return doctor['specialty'].toString() == selectedCategory;
       }).toList();
     }
     
@@ -264,18 +409,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
         }
         return doctor['location'].toString().contains(selectedLocation!);
       }).toList();
-    }
-    
-    // Apply gender filter
-    if (selectedGender != null) {
-      result = result.where((doctor) {
-        return doctor['gender']?.toString() == selectedGender;
-      }).toList();
-    }
-    
-    // Apply availability filter
-    if (showOnlineOnly) {
-      result = result.where((doctor) => doctor['available'] == true).toList();
     }
     
     // Apply sorting
@@ -307,9 +440,22 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       });
     }
     
+      if (mounted) {
     setState(() {
       filteredDoctors = result;
-    });
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Error filtering doctors: $e';
+          _isLoading = false;
+          filteredDoctors = [];
+        });
+      }
+      debugPrint('Error applying filters: $e');
+    }
   }
 
   @override
@@ -320,7 +466,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
       body: SafeArea(
-        child: Column(
+        child: Stack(
+          children: [
+            Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
@@ -436,6 +584,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                   )
                 : Expanded(
                     child: _buildDoctorsList(),
+                ),
+              ],
             ),
           ],
         ),
@@ -465,11 +615,10 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       genderIconTemp = Icons.female;
     }
     
-    Color genderColorTemp = Colors.grey;
     if (selectedGender == "Male") {
-      genderColorTemp = Colors.blue;
+      genderColor = Colors.blue;
     } else if (selectedGender == "Female") {
-      genderColorTemp = Colors.pink;
+      genderColor = Colors.pink;
     }
 
     return Container(
@@ -499,13 +648,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
             child: Row(
               children: [
                 Flexible(
-                  child: Text(
-                    headerTitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+            child: Text(
+              headerTitle,
+            style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
                   ),
                 ),
                 if (selectedGender != null && genderIconTemp != null)
@@ -513,7 +662,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     margin: EdgeInsets.only(left: 8),
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: genderColorTemp.withOpacity(0.3),
+                      color: genderColor.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -537,7 +686,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     ),
                   ),
               ],
-            ),
+          ),
           ),
           Container(
             padding: const EdgeInsets.all(8),
@@ -619,8 +768,9 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     onTap: () {
               setState(() {
                 _selectedCategoryIndex = index;
-                  _applyFilters();
               });
+              // Call the asynchronous filter method
+              _applyFilters();
             },
             child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -683,16 +833,15 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     String fee = doctor["fee"] ?? "Rs 2000";
     String location = doctor["location"] ?? "Not specified";
     String gender = doctor["gender"] ?? "Not specified";
+    bool isInUserCity = doctor["isInUserCity"] ?? false;
+    String city = doctor["city"] ?? "";
     
     // Get the appropriate gender icon
     IconData genderIcon = Icons.person;
-    Color genderColor = Colors.grey;
     if (gender == "Male") {
       genderIcon = Icons.male;
-      genderColor = Colors.blue;
     } else if (gender == "Female") {
       genderIcon = Icons.female;
-      genderColor = Colors.pink;
     }
     
     return Container(
@@ -708,8 +857,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           ),
         ],
         border: Border.all(
-          color: Colors.grey.shade100,
-          width: 1,
+          color: isInUserCity ? Colors.blue.shade300 : Colors.grey.shade100,
+          width: isInUserCity ? 2 : 1,
         ),
       ),
       child: Material(
@@ -869,18 +1018,42 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                         Spacer(),
                             Icon(
                             LucideIcons.mapPin,
-                            color: Colors.orange.shade600,
+                            color: isInUserCity ? Colors.blue.shade600 : Colors.orange.shade600,
                             size: 16,
                           ),
                           const SizedBox(width: 4),
                           Flexible(
-                            child: Text(
-                              location,
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                                  overflow: TextOverflow.ellipsis,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    location,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isInUserCity)
+                                  Container(
+                                    margin: EdgeInsets.only(left: 4),
+                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      "Local",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -1034,29 +1207,46 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                   ),
                   const SizedBox(height: 15),
                   
-                  // Online/In-person filter
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: showOnlineOnly,
-                        onChanged: (value) => setState(() {
-                          showOnlineOnly = value!;
-                        }),
-                        activeColor: const Color(0xFF3366CC),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                  // City filter
+                  if (userCity != null)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Location",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
                         ),
-                      ),
-                      Text(
-                        "Show online doctors only",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.black87,
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: showOnlyInMyCity,
+                              onChanged: (value) => setState(() {
+                                showOnlyInMyCity = value!;
+                              }),
+                              activeColor: const Color(0xFF3366CC),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                "Doctors in my city ($userCity)",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
+                        const SizedBox(height: 15),
+                      ],
+                    ),
                   
                   // Sort by price
                   Row(
@@ -1088,6 +1278,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
+                        // Call the asynchronous filter method
                         _applyFilters();
                     },
                     style: ElevatedButton.styleFrom(
