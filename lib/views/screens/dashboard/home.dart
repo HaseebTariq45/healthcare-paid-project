@@ -810,12 +810,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Reports",
                         color: Color(0xFFF44336),
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AnalyticsScreen(),
-                            ),
-                          );
+                          NavigationHelper.navigateToTab(context, 1); // Navigate to Analytics tab
                         },
                                             width: buttonWidth,
                       ),
@@ -824,12 +819,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: "Menu",
                         color: Color(0xFFFF9800),
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MenuScreen(role: userType),
-                            ),
-                          );
+                          NavigationHelper.navigateToTab(context, 3); // Navigate to Menu tab
                         },
                                             width: buttonWidth,
                       ),
