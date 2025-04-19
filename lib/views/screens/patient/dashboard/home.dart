@@ -430,6 +430,52 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   // Add this at the top with other class variables
   Map<String, List<Map<String, dynamic>>> _cachedDoctors = {};
 
+  // Cities for location filter
+  final List<String> _pakistanCities = [
+    'Islamabad',
+    'Karachi',
+    'Lahore',
+    'Faisalabad',
+    'Rawalpindi',
+    'Multan',
+    'Peshawar',
+    'Quetta',
+    'Sialkot',
+    'Gujranwala',
+    'Hyderabad',
+    'Bahawalpur',
+    'Sargodha',
+    'Sukkur',
+    'Larkana',
+    'Sheikhupura',
+    'Rahim Yar Khan',
+    'Jhang',
+    'Dera Ghazi Khan',
+    'Gujrat',
+    'Sahiwal',
+    'Wah Cantonment',
+    'Mardan',
+    'Kasur',
+    'Okara',
+    'Mingora',
+    'Nawabshah',
+    'Chiniot',
+    'Kotri',
+    'Kāmoke',
+    'Hafizabad',
+    'Sadiqabad',
+    'Mirpur Khas',
+    'Burewala',
+    'Kohat',
+    'Khanewal',
+    'Dera Ismail Khan',
+    'Abbottabad',
+    'Muzaffargarh',
+    'Mianwali',
+    'Jhelum',
+    'Attock',
+  ];
+
   // Add this method to format rating
   String _formatRating(double rating) {
     return rating.toStringAsFixed(1); // This will show only one decimal place
@@ -1073,6 +1119,77 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             ),
           
           SizedBox(height: verticalPadding),
+          
+          // "Find Doctors" Card
+          InkWell(
+            onTap: () => _showFindDoctorsDialog(),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding * 0.9, 
+                vertical: verticalPadding * 0.8
+              ),
+              decoration: BoxDecoration(
+                color: Color(0xFF204899),
+                borderRadius: BorderRadius.circular(screenSize.width * 0.045),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 12,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    height: screenSize.width * 0.12,
+                    width: screenSize.width * 0.12,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                    ),
+                    child: Icon(
+                      LucideIcons.search,
+                      color: Colors.white,
+                      size: screenSize.width * 0.06,
+                    ),
+                  ),
+                  SizedBox(width: horizontalPadding * 0.75),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Find Doctors",
+                          style: GoogleFonts.poppins(
+                            fontSize: screenSize.width * 0.04,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: verticalPadding * 0.1),
+                        Text(
+                          "Search for doctors by specialty and location",
+                          style: GoogleFonts.poppins(
+                            fontSize: screenSize.width * 0.035,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    LucideIcons.chevronRight,
+                    color: Colors.white,
+                    size: screenSize.width * 0.05,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          SizedBox(height: verticalPadding),
           Container(
             padding: EdgeInsets.symmetric(
               horizontal: horizontalPadding * 0.9, 
@@ -1587,7 +1704,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   // Add this new method for fetching doctors data
-  Future<void> _fetchDoctorsData(String specialty, {required bool showLoading, String? genderFilter}) async {
+  Future<void> _fetchDoctorsData(String specialty, {required bool showLoading, String? genderFilter, String? cityFilter}) async {
     try {
       // Fetch doctors from Firestore based on specialty
       Query doctorsQuery = FirebaseFirestore.instance
@@ -1599,7 +1716,8 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
       if (genderFilter != null) {
         doctorsQuery = doctorsQuery.where('gender', isEqualTo: genderFilter);
       }
-
+      
+      // Get the query snapshot
       final QuerySnapshot doctorsSnapshot = await doctorsQuery.get();
 
       List<Map<String, dynamic>> doctors = [];
@@ -1636,23 +1754,40 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           }
         }
 
-        doctors.add({
-          'id': doc.id,
-          'name': data['fullName'] ?? 'Dr. Unknown',
-          'specialty': data['specialty'] ?? specialty,
-          'rating': averageRating.toStringAsFixed(1),
-          'experience': data['experience'] ?? '0 years',
-          'fee': data['consultationFee']?.toString() ?? 'Not specified',
-          'location': hospitals.isNotEmpty ? hospitals.first : 'Location not specified',
-          'image': data['profileImageUrl'] ?? 'assets/images/User.png',
-          'available': data['isAvailable'] ?? true,
-          'hospitals': hospitals,
-          'education': data['education'] ?? [],
-          'about': data['about'] ?? 'No information available',
-          'languages': data['languages'] ?? ['English'],
-          'services': data['services'] ?? [],
-          'gender': data['gender'] ?? 'Not specified',
-        });
+        // Check city filter
+        bool includeDoctor = true;
+        if (cityFilter != null) {
+          // If doctor's city matches the filter
+          bool cityMatch = (data['city'] != null && 
+              data['city'].toString().toLowerCase() == cityFilter.toLowerCase());
+          
+          // Or if any of doctor's hospitals are in that city
+          bool hospitalMatch = hospitals.any((hospital) => 
+              hospital.toLowerCase().contains(cityFilter.toLowerCase()));
+          
+          includeDoctor = cityMatch || hospitalMatch;
+        }
+        
+        if (includeDoctor) {
+          doctors.add({
+            'id': doc.id,
+            'name': data['fullName'] ?? 'Dr. Unknown',
+            'specialty': data['specialty'] ?? specialty,
+            'rating': averageRating.toStringAsFixed(1),
+            'experience': data['experience'] ?? '0 years',
+            'fee': data['consultationFee']?.toString() ?? 'Not specified',
+            'location': hospitals.isNotEmpty ? hospitals.first : 'Location not specified',
+            'image': data['profileImageUrl'] ?? 'assets/images/User.png',
+            'available': data['isAvailable'] ?? true,
+            'hospitals': hospitals,
+            'education': data['education'] ?? [],
+            'about': data['about'] ?? 'No information available',
+            'languages': data['languages'] ?? ['English'],
+            'services': data['services'] ?? [],
+            'gender': data['gender'] ?? 'Not specified',
+            'city': data['city'],
+          });
+        }
       }
 
       // Update cache
@@ -1712,33 +1847,62 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                "My Appointments",
-                style: GoogleFonts.poppins(
+                  "My Appointments",
+                  style: GoogleFonts.poppins(
                       fontSize: screenSize.width * 0.045,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
                     ),
                   ),
                 ),
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AppointmentsScreen()),
-                  );
-                },
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                child: Text(
-                  "See all",
-                  style: GoogleFonts.poppins(
-                      fontSize: screenSize.width * 0.035,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF3366CC),
+              Row(
+                children: [
+                  // Find Doctors Button
+                  OutlinedButton.icon(
+                    onPressed: () => _showFindDoctorsDialog(),
+                    icon: Icon(
+                      Icons.search,
+                      size: screenSize.width * 0.04,
+                      color: Color(0xFF3366CC),
+                    ),
+                    label: Text(
+                      "Find Doctors",
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.035,
+                        color: Color(0xFF3366CC),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Color(0xFF3366CC)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.02,
+                        vertical: screenSize.height * 0.005,
+                      ),
                     ),
                   ),
-                ),
+                  SizedBox(width: screenSize.width * 0.02),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => AppointmentsScreen()),
+                      );
+                    },
+                    child: Text(
+                      "See All",
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.035,
+                        color: Color(0xFF3366CC),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2255,7 +2419,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "Filter Doctors",
@@ -2264,6 +2428,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
@@ -2319,6 +2487,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     );
   }
   
+  // Build a filter option button for the gender selection dialog
   Widget _buildFilterOption({
     required BuildContext context,
     required IconData icon,
@@ -2329,63 +2498,376 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }) {
     final Size screenSize = MediaQuery.of(context).size;
     
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(screenSize.width * 0.03),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.all(screenSize.width * 0.03),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade200),
-            borderRadius: BorderRadius.circular(screenSize.width * 0.03),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(screenSize.width * 0.025),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(screenSize.width * 0.02),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: screenSize.width * 0.06,
-                ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenSize.width * 0.04,
+          vertical: screenSize.height * 0.015,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: screenSize.width * 0.11,
+              width: screenSize.width * 0.11,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              SizedBox(width: screenSize.width * 0.03),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: Icon(
+                icon,
+                color: color,
+                size: screenSize.width * 0.06,
+              ),
+            ),
+            SizedBox(width: screenSize.width * 0.04),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.038,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.034,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // City list for filter
+  final List<String> _cities = [
+    'Islamabad',
+    'Lahore',
+    'Karachi',
+    'Peshawar',
+    'Quetta',
+    'Multan',
+    'Faisalabad',
+    'Rawalpindi',
+    'Gujranwala',
+    'Sialkot',
+    'Hyderabad',
+  ];
+  
+  // Method to show multi-step find doctors dialog
+  Future<void> _showFindDoctorsDialog() async {
+    // Step 1: Show specialty selection dialog
+    final DiseaseCategory? selectedSpecialty = await _showSpecialtySelectionDialog();
+    if (selectedSpecialty == null) return; // User cancelled
+    
+    // Step 2: Show city selection dialog
+    final String? selectedCity = await _showCitySelectionDialog();
+    if (selectedCity == null) return; // User cancelled
+    
+    // Step 3: Show gender selection dialog
+    final String? selectedGender = await _showGenderSelectionDialog();
+    if (selectedGender == null && !context.mounted) return; // User cancelled
+    
+    if (!context.mounted) return;
+    
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3366CC)),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  "Finding doctors...",
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Fetch doctors based on criteria
+      await _fetchDoctorsData(
+        selectedSpecialty.name, 
+        showLoading: true,
+        genderFilter: selectedGender,
+        cityFilter: selectedCity
+      );
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error finding doctors: $e'),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
+    }
+  }
+  
+  // Show specialty selection dialog
+  Future<DiseaseCategory?> _showSpecialtySelectionDialog() async {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
+    return await showDialog<DiseaseCategory?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+          ),
+          child: Container(
+            width: screenSize.width * 0.9,
+            padding: EdgeInsets.all(horizontalPadding),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      title,
+                      "Select Specialty",
                       style: GoogleFonts.poppins(
-                        fontSize: screenSize.width * 0.04,
-                        fontWeight: FontWeight.w500,
+                        fontSize: screenSize.width * 0.05,
+                        fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
                     ),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.poppins(
-                        fontSize: screenSize.width * 0.03,
-                        color: Colors.grey.shade600,
-                      ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
-              ),
-              Icon(
-                LucideIcons.chevronRight,
-                color: Colors.grey.shade400,
-                size: screenSize.width * 0.05,
-              ),
-            ],
+                SizedBox(height: verticalPadding),
+                Container(
+                  height: screenSize.height * 0.5, // Fixed height for scrollable content
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: _diseaseCategories.map((specialty) {
+                        return ListTile(
+                          leading: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: specialty.color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              specialty.icon,
+                              color: specialty.color,
+                            ),
+                          ),
+                          title: Text(
+                            specialty.name,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: Text(
+                            specialty.nameUrdu,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          onTap: () => Navigator.pop(context, specialty),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+  
+  // Show city selection dialog
+  Future<String?> _showCitySelectionDialog() async {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
+    return await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+          ),
+          child: Container(
+            width: screenSize.width * 0.9,
+            padding: EdgeInsets.all(horizontalPadding),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Select City",
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.05,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: verticalPadding),
+                Container(
+                  height: screenSize.height * 0.4, // Fixed height for scrollable content
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: _pakistanCities.map((city) {
+                        return ListTile(
+                          leading: Icon(
+                            LucideIcons.building,
+                            color: Color(0xFF3366CC),
+                          ),
+                          title: Text(
+                            city,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          onTap: () => Navigator.pop(context, city),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  // Show gender selection dialog
+  Future<String?> _showGenderSelectionDialog() async {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double horizontalPadding = screenSize.width * 0.05;
+    final double verticalPadding = screenSize.height * 0.02;
+    
+    return await showDialog<String?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(horizontalPadding * 1.2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Select Doctor Gender",
+                      style: GoogleFonts.poppins(
+                        fontSize: screenSize.width * 0.05,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: verticalPadding),
+                
+                // All Doctors Button
+                _buildFilterOption(
+                  context: context,
+                  icon: Icons.people,
+                  title: "All Doctors",
+                  subtitle: "View all available doctors",
+                  color: Colors.purple,
+                  onTap: () => Navigator.pop(context, null),
+                ),
+                
+                SizedBox(height: verticalPadding * 0.7),
+                
+                // Male Doctors Button
+                _buildFilterOption(
+                  context: context,
+                  icon: Icons.male,
+                  title: "Male Doctors",
+                  subtitle: "View only male doctors",
+                  color: Colors.blue,
+                  onTap: () => Navigator.pop(context, "Male"),
+                ),
+                
+                SizedBox(height: verticalPadding * 0.7),
+                
+                // Female Doctors Button
+                _buildFilterOption(
+                  context: context,
+                  icon: Icons.female,
+                  title: "Female Doctors",
+                  subtitle: "View only female doctors",
+                  color: Colors.pink,
+                  onTap: () => Navigator.pop(context, "Female"),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
