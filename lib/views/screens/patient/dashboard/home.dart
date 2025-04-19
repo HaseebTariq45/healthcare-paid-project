@@ -1544,22 +1544,43 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
         try {
           // Show a bottom sheet for gender selection
           final String? selectedGender = await _showGenderFilterDialog();
-          if (selectedGender == null && !context.mounted) return;
-          
-          // Check if we have cached data and no gender filter
-          if (selectedGender == null && _cachedDoctors.containsKey(category.name)) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DoctorsScreen(
-                  specialty: category.name,
-                  doctors: _cachedDoctors[category.name]!,
-                ),
-              ),
-            );
-            // Fetch fresh data in background
-            _fetchDoctorsData(category.name, showLoading: false);
+          // Check if dialog was dismissed with close button or back button
+          if (selectedGender == null) {
+            // Just return without doing anything - this means user canceled the dialog
             return;
+          }
+          
+          // Check if we have cached data
+          if (_cachedDoctors.containsKey(category.name)) {
+            // Filter doctors based on gender if needed
+            List<Map<String, dynamic>> filteredDoctors = _cachedDoctors[category.name]!;
+            
+            if (selectedGender != null && selectedGender != "All") {
+              filteredDoctors = filteredDoctors
+                .where((doctor) => doctor['gender'] == selectedGender)
+                .toList();
+            }
+            
+            // If we have cached data, show it immediately
+            if (context.mounted && filteredDoctors.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DoctorsScreen(
+                    specialty: category.name,
+                    doctors: filteredDoctors,
+                    initialGenderFilter: selectedGender == "All" ? null : selectedGender,
+                  ),
+                ),
+              );
+              // Fetch fresh data in background
+              _fetchDoctorsData(
+                category.name, 
+                showLoading: false, 
+                genderFilter: selectedGender == "All" ? null : selectedGender
+              );
+              return;
+            }
           }
 
           // Show loading dialog only for first load
@@ -1598,7 +1619,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           await _fetchDoctorsData(
             category.name, 
             showLoading: true,
-            genderFilter: selectedGender,
+            genderFilter: selectedGender == "All" ? null : selectedGender,
           );
 
         } catch (e) {
@@ -1858,34 +1879,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
               Row(
                 children: [
-                  // Find Doctors Button
-                  OutlinedButton.icon(
-                    onPressed: () => _showFindDoctorsDialog(),
-                    icon: Icon(
-                      Icons.search,
-                      size: screenSize.width * 0.04,
-                      color: Color(0xFF3366CC),
-                    ),
-                    label: Text(
-                      "Find Doctors",
-                      style: GoogleFonts.poppins(
-                        fontSize: screenSize.width * 0.035,
-                        color: Color(0xFF3366CC),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Color(0xFF3366CC)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenSize.width * 0.02,
-                        vertical: screenSize.height * 0.005,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: screenSize.width * 0.02),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
@@ -2407,7 +2400,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     
     return await showDialog<String?>(
       context: context,
-      barrierDismissible: false, // Prevent dismissal when clicking outside
+      barrierDismissible: true, // Allow dismissal when clicking outside
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -2431,7 +2424,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                     IconButton(
                       icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, null),
                     ),
                   ],
                 ),
@@ -2446,110 +2439,188 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 ),
                 SizedBox(height: verticalPadding),
                 
-                // All Doctors Button
-                _buildFilterOption(
-                  context: context,
-                  icon: Icons.people,
-                  title: "All Doctors",
-                  subtitle: "View all available doctors",
-                  color: Colors.purple,
-                  onTap: () => Navigator.pop(context, null),
+                // All Doctors Button - Direct Material button instead of custom widget
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context, "All"),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.04,
+                        vertical: screenSize.height * 0.015,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            height: screenSize.width * 0.11,
+                            width: screenSize.width * 0.11,
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.people,
+                              color: Colors.purple,
+                              size: screenSize.width * 0.06,
+                            ),
+                          ),
+                          SizedBox(width: screenSize.width * 0.04),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "All Doctors",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.038,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  "View all available doctors",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.034,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 
                 SizedBox(height: verticalPadding * 0.7),
                 
-                // Male Doctors Button
-                _buildFilterOption(
-                  context: context,
-                  icon: Icons.male,
-                  title: "Male Doctors",
-                  subtitle: "View only male doctors",
-                  color: Colors.blue,
-                  onTap: () => Navigator.pop(context, "Male"),
+                // Male Doctors Button - Direct Material button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context, "Male"),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.04,
+                        vertical: screenSize.height * 0.015,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            height: screenSize.width * 0.11,
+                            width: screenSize.width * 0.11,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.male,
+                              color: Colors.blue,
+                              size: screenSize.width * 0.06,
+                            ),
+                          ),
+                          SizedBox(width: screenSize.width * 0.04),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Male Doctors",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.038,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  "View only male doctors",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.034,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 
                 SizedBox(height: verticalPadding * 0.7),
                 
-                // Female Doctors Button
-                _buildFilterOption(
-                  context: context,
-                  icon: Icons.female,
-                  title: "Female Doctors",
-                  subtitle: "View only female doctors",
-                  color: Colors.pink,
-                  onTap: () => Navigator.pop(context, "Female"),
+                // Female Doctors Button - Direct Material button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context, "Female"),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.04,
+                        vertical: screenSize.height * 0.015,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            height: screenSize.width * 0.11,
+                            width: screenSize.width * 0.11,
+                            decoration: BoxDecoration(
+                              color: Colors.pink.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.female,
+                              color: Colors.pink,
+                              size: screenSize.width * 0.06,
+                            ),
+                          ),
+                          SizedBox(width: screenSize.width * 0.04),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Female Doctors",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.038,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  "View only female doctors",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.034,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
-    );
-  }
-  
-  // Build a filter option button for the gender selection dialog
-  Widget _buildFilterOption({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final Size screenSize = MediaQuery.of(context).size;
-    
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: screenSize.width * 0.04,
-          vertical: screenSize.height * 0.015,
-        ),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: screenSize.width * 0.11,
-              width: screenSize.width * 0.11,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: screenSize.width * 0.06,
-              ),
-            ),
-            SizedBox(width: screenSize.width * 0.04),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: screenSize.width * 0.038,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: screenSize.width * 0.034,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -2674,7 +2745,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                     IconButton(
                       icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, null),
                     ),
                   ],
                 ),
@@ -2776,7 +2847,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                         ),
                         IconButton(
                           icon: Icon(Icons.close),
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.pop(context, null),
                         ),
                       ],
                     ),
@@ -2852,7 +2923,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     
     return await showDialog<String?>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true, // Allow dismissal when clicking outside
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -2876,7 +2947,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     ),
                     IconButton(
                       icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, null),
                     ),
                   ],
                 ),
@@ -2889,7 +2960,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                   title: "All Doctors",
                   subtitle: "View all available doctors",
                   color: Colors.purple,
-                  onTap: () => Navigator.pop(context, null),
+                  onTap: () => Navigator.pop(context, "All"),
                 ),
                 
                 SizedBox(height: verticalPadding * 0.7),
@@ -2920,6 +2991,72 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
           ),
         );
       },
+    );
+  }
+
+  // Build a filter option button for the gender selection dialog
+  Widget _buildFilterOption({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final Size screenSize = MediaQuery.of(context).size;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenSize.width * 0.04,
+          vertical: screenSize.height * 0.015,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: screenSize.width * 0.11,
+              width: screenSize.width * 0.11,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: screenSize.width * 0.06,
+              ),
+            ),
+            SizedBox(width: screenSize.width * 0.04),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.038,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: screenSize.width * 0.034,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
