@@ -515,18 +515,35 @@ class PhoneBookingScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              // Launch phone dialer
-              final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-              if (await canLaunchUrl(phoneUri)) {
-                await launchUrl(phoneUri);
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Could not launch phone dialer'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+              
+              // Launch phone dialer using a more reliable approach
+              final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber.replaceAll(' ', ''));
+              try {
+                // First try with launchUrl
+                bool launched = await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+                
+                // If launchUrl returns false or throws an exception, try with a different approach
+                if (!launched) {
+                  final String telUrl = 'tel:${phoneNumber.replaceAll(' ', '')}';
+                  await launchUrl(Uri.parse(telUrl));
+                }
+              } catch (e) {
+                print('Error launching phone app: $e');
+                
+                // Try one more time with a simpler approach
+                try {
+                  final String telUrl = 'tel:${phoneNumber.replaceAll(' ', '')}';
+                  await launchUrl(Uri.parse(telUrl), mode: LaunchMode.platformDefault);
+                } catch (e) {
+                  print('Failed to launch phone app again: $e');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Could not launch phone dialer. Error: $e'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
               }
             },
