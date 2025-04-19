@@ -2133,6 +2133,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     
     return await showDialog<bool>(
       context: context,
+      barrierDismissible: false, // Prevent dismissal when clicking outside
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -2242,6 +2243,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     
     return await showDialog<String?>(
       context: context,
+      barrierDismissible: false, // Prevent dismissal when clicking outside
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -2395,7 +2397,7 @@ void showPopup(BuildContext context) {
   
   showDialog(
     context: context,
-    barrierDismissible: false,
+    barrierDismissible: false, // Already set correctly
     builder: (BuildContext context) {
       return Stack(
         children: [
