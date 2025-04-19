@@ -4,6 +4,7 @@ import 'package:healthcare/services/admin_service.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'package:healthcare/views/screens/admin/admin_dashboard.dart';
 
 class ManagePatients extends StatefulWidget {
   const ManagePatients({Key? key}) : super(key: key);
@@ -387,380 +388,392 @@ class _ManagePatientsState extends State<ManagePatients> {
     final double padding = screenWidth * 0.04;
     final bool isSmallScreen = screenWidth < 360;
     
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Manage Patients',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: screenWidth * 0.05,
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate back to admin dashboard and select the home tab
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AdminDashboard(),
           ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadPatients,
-            tooltip: 'Refresh',
+        );
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Manage Patients',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: screenWidth * 0.05,
+            ),
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Search bar
-            Padding(
-              padding: EdgeInsets.all(padding),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search patients...',
-                  prefixIcon: Icon(Icons.search),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _filterPatients();
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    borderSide: BorderSide(color: Theme.of(context).primaryColor),
-                  ),
-                  contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.018),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                    _filterPatients();
-                  });
-                },
-              ),
-            ),
-            
-            // Filter and sort options
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding),
-              child: Row(
-                children: [
-                  // Status filter dropdown
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Status',
-                        contentPadding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                        ),
-                      ),
-                      value: _selectedStatusFilter,
-                      items: _statusFilters.map((status) {
-                        return DropdownMenuItem(
-                          value: status,
-                          child: Text(
-                            status, 
-                            style: GoogleFonts.poppins(
-                              fontSize: isSmallScreen ? screenWidth * 0.035 : screenWidth * 0.04,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedStatusFilter = value;
-                            _filterPatients();
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                  SizedBox(width: screenWidth * 0.03),
-                  // Sort dropdown
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'Sort By',
-                        contentPadding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                        ),
-                      ),
-                      value: _selectedSortOption,
-                      items: _sortOptions.map((option) {
-                        return DropdownMenuItem(
-                          value: option,
-                          child: Text(
-                            option,
-                            style: GoogleFonts.poppins(
-                              fontSize: isSmallScreen ? screenWidth * 0.035 : screenWidth * 0.04,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedSortOption = value;
-                            _sortPatients();
-                          });
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            SizedBox(height: screenHeight * 0.01),
-            
-            // Patient list
-            Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error_outline, size: screenWidth * 0.15, color: Colors.red),
-                              SizedBox(height: screenHeight * 0.02),
-                              Text(
-                                _errorMessage!,
-                                style: GoogleFonts.poppins(fontSize: screenWidth * 0.04),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: screenHeight * 0.02),
-                              ElevatedButton(
-                                onPressed: _loadPatients,
-                                child: Text('Try Again'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : _filteredPatients.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey),
-                                  SizedBox(height: screenHeight * 0.02),
-                                  Text(
-                                    'No patients found',
-                                    style: GoogleFonts.poppins(fontSize: screenWidth * 0.04),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: _loadPatients,
-                              child: ListView.builder(
-                                padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.5),
-                                itemCount: _filteredPatients.length,
-                                itemBuilder: (context, index) {
-                                  final patient = _filteredPatients[index];
-                                  final isActive = patient['status'] == 'Active';
-                                  final createdAt = patient['createdAt'] != null 
-                                      ? DateFormat('MMM d, yyyy').format((patient['createdAt'] as Timestamp).toDate())
-                                      : 'Unknown';
-                                  final lastLogin = patient['updatedAt'] != null 
-                                      ? DateFormat('MMM d, yyyy').format((patient['updatedAt'] as Timestamp).toDate())
-                                      : 'Unknown';
-                                  
-                                  return Container(
-                                    margin: EdgeInsets.only(bottom: screenHeight * 0.015),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(screenWidth * 0.04),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.05),
-                                          blurRadius: 10,
-                                          offset: Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: EdgeInsets.all(padding),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              // Patient avatar
-                                              CircleAvatar(
-                                                radius: screenWidth * 0.08,
-                                                backgroundColor: Colors.blue.shade100,
-                                                backgroundImage: patient['profileImageUrl'] != null
-                                                    ? NetworkImage(patient['profileImageUrl'])
-                                                    : null,
-                                                child: patient['profileImageUrl'] == null
-                                                    ? Text(
-                                                        patient['name'].toString().substring(0, 1),
-                                                        style: TextStyle(
-                                                          fontSize: screenWidth * 0.07,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: Color(0xFF3366CC),
-                                                        ),
-                                                      )
-                                                    : null,
-                                              ),
-                                              SizedBox(width: screenWidth * 0.04),
-                                              // Patient info
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: Text(
-                                                            patient['name'] ?? 'Unknown',
-                                                            style: GoogleFonts.poppins(
-                                                              fontSize: isSmallScreen ? screenWidth * 0.045 : screenWidth * 0.05,
-                                                              fontWeight: FontWeight.w600,
-                                                              color: Color(0xFF333333),
-                                                            ),
-                                                            maxLines: 1,
-                                                            overflow: TextOverflow.ellipsis,
-                                                          ),
-                                                        ),
-                                                        Container(
-                                                          padding: EdgeInsets.symmetric(
-                                                            horizontal: screenWidth * 0.025, 
-                                                            vertical: screenHeight * 0.005
-                                                          ),
-                                                          decoration: BoxDecoration(
-                                                            color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                                                            borderRadius: BorderRadius.circular(screenWidth * 0.05),
-                                                            border: Border.all(
-                                                              color: isActive ? Colors.green.shade300 : Colors.red.shade300,
-                                                            ),
-                                                          ),
-                                                          child: Text(
-                                                            isActive ? 'Active' : 'Inactive',
-                                                            style: GoogleFonts.poppins(
-                                                              fontSize: screenWidth * 0.03,
-                                                              fontWeight: FontWeight.w500,
-                                                              color: isActive ? Colors.green.shade700 : Colors.red.shade700,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    SizedBox(height: screenHeight * 0.015),
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: Column(
-                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: [
-                                                              _buildInfoRow(
-                                                                Icons.email, 
-                                                                patient['email'] ?? 'No email',
-                                                                screenWidth
-                                                              ),
-                                                              SizedBox(height: screenHeight * 0.008),
-                                                              _buildInfoRow(
-                                                                Icons.phone, 
-                                                                patient['phoneNumber'] ?? 'No phone',
-                                                                screenWidth
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                        Expanded(
-                                                          child: Column(
-                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: [
-                                                              _buildInfoRow(
-                                                                Icons.event_note,
-                                                                'Appointments: ${patient['appointmentCount'] ?? 0}',
-                                                                screenWidth
-                                                              ),
-                                                              SizedBox(height: screenHeight * 0.008),
-                                                              _buildInfoRow(
-                                                                Icons.person,
-                                                                '${patient['gender'] ?? 'Unknown'}, ${patient['age'] ?? 'Unknown age'}',
-                                                                screenWidth
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    SizedBox(height: screenHeight * 0.008),
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: _buildInfoRow(
-                                                            Icons.access_time,
-                                                            'Joined: $createdAt',
-                                                            screenWidth
-                                                          ),
-                                                        ),
-                                                        Expanded(
-                                                          child: _buildInfoRow(
-                                                            Icons.login,
-                                                            'Last Activity: $lastLogin',
-                                                            screenWidth
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        // Action buttons - Divider and Delete button section
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.shade50,
-                                            borderRadius: BorderRadius.only(
-                                              bottomLeft: Radius.circular(screenWidth * 0.04),
-                                              bottomRight: Radius.circular(screenWidth * 0.04),
-                                            ),
-                                          ),
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: screenHeight * 0.015, 
-                                            horizontal: padding
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.end,
-                                            children: [
-                                              _buildDeleteButton(
-                                                patientId: patient['id'], 
-                                                patientName: patient['name'],
-                                                screenWidth: screenWidth,
-                                                screenHeight: screenHeight
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.refresh),
+              onPressed: _loadPatients,
+              tooltip: 'Refresh',
             ),
           ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Search bar
+              Padding(
+                padding: EdgeInsets.all(padding),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search patients...',
+                    prefixIcon: Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _filterPatients();
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.018),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                      _filterPatients();
+                    });
+                  },
+                ),
+              ),
+              
+              // Filter and sort options
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: padding),
+                child: Row(
+                  children: [
+                    // Status filter dropdown
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Status',
+                          contentPadding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                          ),
+                        ),
+                        value: _selectedStatusFilter,
+                        items: _statusFilters.map((status) {
+                          return DropdownMenuItem(
+                            value: status,
+                            child: Text(
+                              status, 
+                              style: GoogleFonts.poppins(
+                                fontSize: isSmallScreen ? screenWidth * 0.035 : screenWidth * 0.04,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedStatusFilter = value;
+                              _filterPatients();
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    // Sort dropdown
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Sort By',
+                          contentPadding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                          ),
+                        ),
+                        value: _selectedSortOption,
+                        items: _sortOptions.map((option) {
+                          return DropdownMenuItem(
+                            value: option,
+                            child: Text(
+                              option,
+                              style: GoogleFonts.poppins(
+                                fontSize: isSmallScreen ? screenWidth * 0.035 : screenWidth * 0.04,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedSortOption = value;
+                              _sortPatients();
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: screenHeight * 0.01),
+              
+              // Patient list
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : _errorMessage != null
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline, size: screenWidth * 0.15, color: Colors.red),
+                                SizedBox(height: screenHeight * 0.02),
+                                Text(
+                                  _errorMessage!,
+                                  style: GoogleFonts.poppins(fontSize: screenWidth * 0.04),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: screenHeight * 0.02),
+                                ElevatedButton(
+                                  onPressed: _loadPatients,
+                                  child: Text('Try Again'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _filteredPatients.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey),
+                                    SizedBox(height: screenHeight * 0.02),
+                                    Text(
+                                      'No patients found',
+                                      style: GoogleFonts.poppins(fontSize: screenWidth * 0.04),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _loadPatients,
+                                child: ListView.builder(
+                                  padding: EdgeInsets.symmetric(vertical: padding, horizontal: padding * 0.5),
+                                  itemCount: _filteredPatients.length,
+                                  itemBuilder: (context, index) {
+                                    final patient = _filteredPatients[index];
+                                    final isActive = patient['status'] == 'Active';
+                                    final createdAt = patient['createdAt'] != null 
+                                        ? DateFormat('MMM d, yyyy').format((patient['createdAt'] as Timestamp).toDate())
+                                        : 'Unknown';
+                                    final lastLogin = patient['updatedAt'] != null 
+                                        ? DateFormat('MMM d, yyyy').format((patient['updatedAt'] as Timestamp).toDate())
+                                        : 'Unknown';
+                                    
+                                    return Container(
+                                      margin: EdgeInsets.only(bottom: screenHeight * 0.015),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.05),
+                                            blurRadius: 10,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.all(padding),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // Patient avatar
+                                                CircleAvatar(
+                                                  radius: screenWidth * 0.08,
+                                                  backgroundColor: Colors.blue.shade100,
+                                                  backgroundImage: patient['profileImageUrl'] != null
+                                                      ? NetworkImage(patient['profileImageUrl'])
+                                                      : null,
+                                                  child: patient['profileImageUrl'] == null
+                                                      ? Text(
+                                                          patient['name'].toString().substring(0, 1),
+                                                          style: TextStyle(
+                                                            fontSize: screenWidth * 0.07,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Color(0xFF3366CC),
+                                                          ),
+                                                        )
+                                                      : null,
+                                                ),
+                                                SizedBox(width: screenWidth * 0.04),
+                                                // Patient info
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: Text(
+                                                              patient['name'] ?? 'Unknown',
+                                                              style: GoogleFonts.poppins(
+                                                                fontSize: isSmallScreen ? screenWidth * 0.045 : screenWidth * 0.05,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: Color(0xFF333333),
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                          Container(
+                                                            padding: EdgeInsets.symmetric(
+                                                              horizontal: screenWidth * 0.025, 
+                                                              vertical: screenHeight * 0.005
+                                                            ),
+                                                            decoration: BoxDecoration(
+                                                              color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                                              borderRadius: BorderRadius.circular(screenWidth * 0.05),
+                                                              border: Border.all(
+                                                                color: isActive ? Colors.green.shade300 : Colors.red.shade300,
+                                                              ),
+                                                            ),
+                                                            child: Text(
+                                                              isActive ? 'Active' : 'Inactive',
+                                                              style: GoogleFonts.poppins(
+                                                                fontSize: screenWidth * 0.03,
+                                                                fontWeight: FontWeight.w500,
+                                                                color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      SizedBox(height: screenHeight * 0.015),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                _buildInfoRow(
+                                                                  Icons.email, 
+                                                                  patient['email'] ?? 'No email',
+                                                                  screenWidth
+                                                                ),
+                                                                SizedBox(height: screenHeight * 0.008),
+                                                                _buildInfoRow(
+                                                                  Icons.phone, 
+                                                                  patient['phoneNumber'] ?? 'No phone',
+                                                                  screenWidth
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                _buildInfoRow(
+                                                                  Icons.event_note,
+                                                                  'Appointments: ${patient['appointmentCount'] ?? 0}',
+                                                                  screenWidth
+                                                                ),
+                                                                SizedBox(height: screenHeight * 0.008),
+                                                                _buildInfoRow(
+                                                                  Icons.person,
+                                                                  '${patient['gender'] ?? 'Unknown'}, ${patient['age'] ?? 'Unknown age'}',
+                                                                  screenWidth
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      SizedBox(height: screenHeight * 0.008),
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: _buildInfoRow(
+                                                              Icons.access_time,
+                                                              'Joined: $createdAt',
+                                                              screenWidth
+                                                            ),
+                                                          ),
+                                                          Expanded(
+                                                            child: _buildInfoRow(
+                                                              Icons.login,
+                                                              'Last Activity: $lastLogin',
+                                                              screenWidth
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Action buttons - Divider and Delete button section
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade50,
+                                              borderRadius: BorderRadius.only(
+                                                bottomLeft: Radius.circular(screenWidth * 0.04),
+                                                bottomRight: Radius.circular(screenWidth * 0.04),
+                                              ),
+                                            ),
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: screenHeight * 0.015, 
+                                              horizontal: padding
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.end,
+                                              children: [
+                                                _buildDeleteButton(
+                                                  patientId: patient['id'], 
+                                                  patientName: patient['name'],
+                                                  screenWidth: screenWidth,
+                                                  screenHeight: screenHeight
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+              ),
+            ],
+          ),
         ),
       ),
     );

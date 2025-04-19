@@ -60,78 +60,92 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final bool isSmallScreen = screenWidth < 360;
     final double padding = screenWidth * 0.04;
     
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Admin Dashboard',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: screenWidth * 0.05,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout, color: Color(0xFF3366CC)),
-            tooltip: 'Logout',
-            onPressed: () {
-              _showLogoutConfirmationDialog(context);
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: _pages[_selectedIndex],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: Offset(0, -5),
+    return WillPopScope(
+      onWillPop: () async {
+        // If we're already on the home screen, show exit confirmation
+        if (_selectedIndex == 0) {
+          return await _showExitConfirmationDialog(context);
+        } else {
+          // If we're on another screen, navigate back to home
+          setState(() {
+            _selectedIndex = 0;
+          });
+          return false; // Prevent default back button behavior
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Admin Dashboard',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: screenWidth * 0.05,
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _getBottomNavIndex(_selectedIndex),
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = _getPageIndex(index);
-            });
-          },
-          type: BottomNavigationBarType.fixed,
+          ),
           backgroundColor: Colors.white,
-          selectedItemColor: Color(0xFF3366CC),
-          unselectedItemColor: Colors.grey.shade600,
-          selectedLabelStyle: GoogleFonts.poppins(
-            fontSize: screenWidth * 0.03,
-            fontWeight: FontWeight.w500,
-          ),
-          unselectedLabelStyle: GoogleFonts.poppins(
-            fontSize: screenWidth * 0.03,
-            fontWeight: FontWeight.w500,
-          ),
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.medical_services),
-              label: 'Doctors',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.people),
-              label: 'Patients',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: 'Settings',
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.logout, color: Color(0xFF3366CC)),
+              tooltip: 'Logout',
+              onPressed: () {
+                _showLogoutConfirmationDialog(context);
+              },
             ),
           ],
+        ),
+        body: SafeArea(
+          child: _pages[_selectedIndex],
+        ),
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, -5),
+              ),
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _getBottomNavIndex(_selectedIndex),
+            onTap: (index) {
+              setState(() {
+                _selectedIndex = _getPageIndex(index);
+              });
+            },
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            selectedItemColor: Color(0xFF3366CC),
+            unselectedItemColor: Colors.grey.shade600,
+            selectedLabelStyle: GoogleFonts.poppins(
+              fontSize: screenWidth * 0.03,
+              fontWeight: FontWeight.w500,
+            ),
+            unselectedLabelStyle: GoogleFonts.poppins(
+              fontSize: screenWidth * 0.03,
+              fontWeight: FontWeight.w500,
+            ),
+            items: [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.dashboard),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.medical_services),
+                label: 'Doctors',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.people),
+                label: 'Patients',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings),
+                label: 'Settings',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -258,6 +272,107 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       ),
     );
+  }
+
+  // Add exit confirmation dialog
+  Future<bool> _showExitConfirmationDialog(BuildContext context) async {
+    final Size size = MediaQuery.of(context).size;
+    final double screenWidth = size.width;
+    final double screenHeight = size.height;
+    
+    return await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenWidth * 0.05),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth * 0.05),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                decoration: BoxDecoration(
+                  color: Color(0xFFE3F2FD),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.exit_to_app,
+                  color: Color(0xFF3366CC),
+                  size: screenWidth * 0.075,
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.025),
+              Text(
+                "Exit App",
+                style: GoogleFonts.poppins(
+                  fontSize: screenWidth * 0.05,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.015),
+              Text(
+                "Are you sure you want to exit the application?",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: screenWidth * 0.035,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.03),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey.shade800,
+                        backgroundColor: Colors.grey.shade100,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: GoogleFonts.poppins(
+                          fontSize: screenWidth * 0.035,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: screenWidth * 0.04),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF3366CC),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        "Exit",
+                        style: GoogleFonts.poppins(
+                          fontSize: screenWidth * 0.035,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ) ?? false;
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:healthcare/views/screens/admin/admin_dashboard.dart';
 
 class SystemSettings extends StatefulWidget {
   const SystemSettings({Key? key}) : super(key: key);
@@ -20,311 +21,323 @@ class _SystemSettingsState extends State<SystemSettings> {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'System Settings',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate back to admin dashboard and select the home tab
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AdminDashboard(),
           ),
+        );
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'System Settings',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
         ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // System Status
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _maintenanceMode ? Color(0xFFFF5722).withOpacity(0.1) : Color(0xFF4CAF50).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    _maintenanceMode ? Icons.warning : Icons.check_circle,
-                    color: _maintenanceMode ? Color(0xFFFF5722) : Color(0xFF4CAF50),
-                    size: 28,
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _maintenanceMode ? 'Maintenance Mode' : 'System Online',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: _maintenanceMode ? Color(0xFFFF5722) : Color(0xFF4CAF50),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // System Status
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _maintenanceMode ? Color(0xFFFF5722).withOpacity(0.1) : Color(0xFF4CAF50).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _maintenanceMode ? Icons.warning : Icons.check_circle,
+                      color: _maintenanceMode ? Color(0xFFFF5722) : Color(0xFF4CAF50),
+                      size: 28,
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _maintenanceMode ? 'Maintenance Mode' : 'System Online',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: _maintenanceMode ? Color(0xFFFF5722) : Color(0xFF4CAF50),
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          _maintenanceMode
-                              ? 'The system is currently in maintenance mode. Only admins can access the platform.'
-                              : 'The system is online and fully operational.',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.black87,
+                          SizedBox(height: 4),
+                          Text(
+                            _maintenanceMode
+                                ? 'The system is currently in maintenance mode. Only admins can access the platform.'
+                                : 'The system is online and fully operational.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 24),
+              
+              // General Settings
+              Text(
+                'General Settings',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildSettingSwitch(
+                'Maintenance Mode',
+                'Put the system in maintenance mode',
+                _maintenanceMode,
+                (value) {
+                  setState(() {
+                    _maintenanceMode = value;
+                  });
+                  _showSettingUpdatedSnackBar('Maintenance mode');
+                },
+                icon: LucideIcons.wrench,
+                color: Color(0xFFFF5722),
+              ),
+              _buildSettingSwitch(
+                'Push Notifications',
+                'Enable system-wide push notifications',
+                _enableNotifications,
+                (value) {
+                  setState(() {
+                    _enableNotifications = value;
+                  });
+                  _showSettingUpdatedSnackBar('Push notifications');
+                },
+                icon: LucideIcons.bell,
+                color: Color(0xFF3366CC),
+              ),
+              _buildSettingSwitch(
+                'Patient Registration',
+                'Allow new patients to register',
+                _enablePatientRegistration,
+                (value) {
+                  setState(() {
+                    _enablePatientRegistration = value;
+                  });
+                  _showSettingUpdatedSnackBar('Patient registration');
+                },
+                icon: LucideIcons.userPlus,
+                color: Color(0xFF4CAF50),
+              ),
+              _buildSettingSwitch(
+                'Doctor Registration',
+                'Allow new doctors to register',
+                _enableDoctorRegistration,
+                (value) {
+                  setState(() {
+                    _enableDoctorRegistration = value;
+                  });
+                  _showSettingUpdatedSnackBar('Doctor registration');
+                },
+                icon: LucideIcons.userPlus,
+                color: Color(0xFF2196F3),
+              ),
+              
+              SizedBox(height: 24),
+              
+              // Appearance Settings
+              Text(
+                'Appearance',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildThemeSetting(),
+              
+              SizedBox(height: 24),
+              
+              // Payment Settings
+              Text(
+                'Payment Settings',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildSliderSetting(),
+              
+              SizedBox(height: 16),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  contentPadding: EdgeInsets.all(16),
+                  leading: Container(
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFFC107).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      LucideIcons.wallet,
+                      color: Color(0xFFFFC107),
+                      size: 24,
+                    ),
+                  ),
+                  title: Text(
+                    'Configure Payment Methods',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Manage available payment gateways and options',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  trailing: Icon(LucideIcons.chevronRight),
+                  onTap: () => _showPaymentMethodsBottomSheet(),
+                ),
+              ),
+              
+              SizedBox(height: 24),
+              
+              // System Backup
+              Text(
+                'System Maintenance',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.all(16),
+                      leading: Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF3366CC).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
+                        child: Icon(
+                          LucideIcons.database,
+                          color: Color(0xFF3366CC),
+                          size: 24,
+                        ),
+                      ),
+                      title: Text(
+                        'Backup Database',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Create a full backup of the system database',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      trailing: Icon(LucideIcons.download),
+                      onTap: () => _showBackupDialog(),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            
-            SizedBox(height: 24),
-            
-            // General Settings
-            Text(
-              'General Settings',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildSettingSwitch(
-              'Maintenance Mode',
-              'Put the system in maintenance mode',
-              _maintenanceMode,
-              (value) {
-                setState(() {
-                  _maintenanceMode = value;
-                });
-                _showSettingUpdatedSnackBar('Maintenance mode');
-              },
-              icon: LucideIcons.wrench,
-              color: Color(0xFFFF5722),
-            ),
-            _buildSettingSwitch(
-              'Push Notifications',
-              'Enable system-wide push notifications',
-              _enableNotifications,
-              (value) {
-                setState(() {
-                  _enableNotifications = value;
-                });
-                _showSettingUpdatedSnackBar('Push notifications');
-              },
-              icon: LucideIcons.bell,
-              color: Color(0xFF3366CC),
-            ),
-            _buildSettingSwitch(
-              'Patient Registration',
-              'Allow new patients to register',
-              _enablePatientRegistration,
-              (value) {
-                setState(() {
-                  _enablePatientRegistration = value;
-                });
-                _showSettingUpdatedSnackBar('Patient registration');
-              },
-              icon: LucideIcons.userPlus,
-              color: Color(0xFF4CAF50),
-            ),
-            _buildSettingSwitch(
-              'Doctor Registration',
-              'Allow new doctors to register',
-              _enableDoctorRegistration,
-              (value) {
-                setState(() {
-                  _enableDoctorRegistration = value;
-                });
-                _showSettingUpdatedSnackBar('Doctor registration');
-              },
-              icon: LucideIcons.userPlus,
-              color: Color(0xFF2196F3),
-            ),
-            
-            SizedBox(height: 24),
-            
-            // Appearance Settings
-            Text(
-              'Appearance',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildThemeSetting(),
-            
-            SizedBox(height: 24),
-            
-            // Payment Settings
-            Text(
-              'Payment Settings',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildSliderSetting(),
-            
-            SizedBox(height: 16),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: ListTile(
-                contentPadding: EdgeInsets.all(16),
-                leading: Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFFC107).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    LucideIcons.wallet,
-                    color: Color(0xFFFFC107),
-                    size: 24,
-                  ),
+                    Divider(height: 1),
+                    ListTile(
+                      contentPadding: EdgeInsets.all(16),
+                      leading: Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFF5722).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          LucideIcons.trash2,
+                          color: Color(0xFFFF5722),
+                          size: 24,
+                        ),
+                      ),
+                      title: Text(
+                        'Clear System Cache',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Remove temporary files to improve performance',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      trailing: Icon(LucideIcons.trash),
+                      onTap: () => _showClearCacheDialog(),
+                    ),
+                  ],
                 ),
-                title: Text(
-                  'Configure Payment Methods',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                ),
-                subtitle: Text(
-                  'Manage available payment gateways and options',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                trailing: Icon(LucideIcons.chevronRight),
-                onTap: () => _showPaymentMethodsBottomSheet(),
               ),
-            ),
-            
-            SizedBox(height: 24),
-            
-            // System Backup
-            Text(
-              'System Maintenance',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: 16),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.all(16),
-                    leading: Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF3366CC).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        LucideIcons.database,
-                        color: Color(0xFF3366CC),
-                        size: 24,
-                      ),
+              
+              SizedBox(height: 32),
+              
+              // Reset button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: Icon(LucideIcons.refreshCcw, color: Colors.red),
+                  label: Text('Reset All Settings'),
+                  onPressed: () => _showResetConfirmDialog(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: BorderSide(color: Colors.red),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    title: Text(
-                      'Backup Database',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Create a full backup of the system database',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    trailing: Icon(LucideIcons.download),
-                    onTap: () => _showBackupDialog(),
-                  ),
-                  Divider(height: 1),
-                  ListTile(
-                    contentPadding: EdgeInsets.all(16),
-                    leading: Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFFF5722).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        LucideIcons.trash2,
-                        color: Color(0xFFFF5722),
-                        size: 24,
-                      ),
-                    ),
-                    title: Text(
-                      'Clear System Cache',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Remove temporary files to improve performance',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    trailing: Icon(LucideIcons.trash),
-                    onTap: () => _showClearCacheDialog(),
-                  ),
-                ],
-              ),
-            ),
-            
-            SizedBox(height: 32),
-            
-            // Reset button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: Icon(LucideIcons.refreshCcw, color: Colors.red),
-                label: Text('Reset All Settings'),
-                onPressed: () => _showResetConfirmDialog(),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: BorderSide(color: Colors.red),
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

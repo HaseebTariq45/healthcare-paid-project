@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:healthcare/views/screens/admin/admin_dashboard.dart';
 
 // Create a DoctorProfileScreen class
 class DoctorProfileScreen extends StatefulWidget {
@@ -1188,51 +1189,63 @@ class _ManageDoctorsState extends State<ManageDoctors> with SingleTickerProvider
     final bool isSmallScreen = screenWidth < 360;
     final double padding = screenWidth * 0.04;
     
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Manage Doctors'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: 'Available'),
-            Tab(text: 'Blocked'),
-          ],
+    return WillPopScope(
+      onWillPop: () async {
+        // Navigate back to admin dashboard and select the home tab
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AdminDashboard(),
+          ),
+        );
+        return false; // Prevent default back button behavior
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Manage Doctors'),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(text: 'Available'),
+              Tab(text: 'Blocked'),
+            ],
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(padding),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search doctors...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-              ),
-            ),
-            
-            Expanded(
-              child: _isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildDoctorsList('available', screenWidth, screenHeight),
-                        _buildDoctorsList('blocked', screenWidth, screenHeight),
-                      ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(padding),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search doctors...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.025),
                     ),
-            ),
-          ],
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                ),
+              ),
+              
+              Expanded(
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildDoctorsList('available', screenWidth, screenHeight),
+                          _buildDoctorsList('blocked', screenWidth, screenHeight),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
