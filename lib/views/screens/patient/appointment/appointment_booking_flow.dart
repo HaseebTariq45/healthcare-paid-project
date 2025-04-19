@@ -34,6 +34,10 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   String? _errorMessage;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late PageController _pageController;
+  
+  // Add step transition animations
+  bool _animatingStep = false;
   
   // Add _bookedTimeSlots field
   List<String> _bookedTimeSlots = [];
@@ -88,15 +92,17 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 400),
+      duration: Duration(milliseconds: 600),
     );
     
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeInOut,
+        curve: Curves.easeOutCubic,
       ),
     );
+    
+    _pageController = PageController(initialPage: 0);
     
     _animationController.forward();
   }
@@ -320,6 +326,26 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     "Emergency Consultation",
   ];
 
+  // Create a wrapper for step content with better animations
+  Widget _animatedStepContent(Widget content, int stepIndex) {
+    bool isCurrentStep = _currentStep == stepIndex;
+    
+    return AnimatedOpacity(
+      duration: Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      opacity: isCurrentStep ? 1.0 : 0.7,
+      child: AnimatedPadding(
+        duration: Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.only(
+          left: isCurrentStep ? 0 : 10,
+          right: isCurrentStep ? 0 : 10,
+        ),
+        child: content,
+      ),
+    );
+  }
+  
   List<Step> _buildSteps() {
     // When doctor is pre-selected (coming from specialty)
     if (widget.preSelectedDoctor != null) {
@@ -340,7 +366,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   ),
                 )
               : null,
-          content: _buildLocationStep(),
+          content: _animatedStepContent(_buildLocationStep(), 0),
           isActive: _currentStep >= 0,
           state: _currentStep > 0 ? StepState.complete : StepState.indexed,
         ),
@@ -360,7 +386,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   ),
                 )
               : null,
-          content: _buildDateStep(),
+          content: _animatedStepContent(_buildDateStep(), 1),
           isActive: _currentStep >= 1,
           state: _currentStep > 1 ? StepState.complete : StepState.indexed,
         ),
@@ -380,7 +406,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   ),
                 )
               : null,
-          content: _buildTimeStep(),
+          content: _animatedStepContent(_buildTimeStep(), 2),
           isActive: _currentStep >= 2,
           state: _currentStep > 2 ? StepState.complete : StepState.indexed,
         ),
@@ -391,16 +417,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               fontWeight: FontWeight.w600,
             ),
           ),
-          subtitle: _selectedReason != null
-              ? Text(
-                  _selectedReason!,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                )
-              : null,
-          content: _buildDetailsStep(),
+          content: _animatedStepContent(_buildDetailsStep(), 3),
           isActive: _currentStep >= 3,
           state: _currentStep > 3 ? StepState.complete : StepState.indexed,
         ),
@@ -426,7 +443,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   ),
                 )
               : null,
-          content: _buildDoctorStep(),
+          content: _animatedStepContent(_buildDoctorStep(), 0),
           isActive: _currentStep >= 0,
           state: _currentStep > 0 ? StepState.complete : StepState.indexed,
         ),
@@ -446,7 +463,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   ),
                 )
               : null,
-          content: _buildLocationStep(),
+          content: _animatedStepContent(_buildLocationStep(), 1),
           isActive: _currentStep >= 1,
           state: _currentStep > 1 ? StepState.complete : StepState.indexed,
         ),
@@ -466,7 +483,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                   ),
                 )
               : null,
-          content: _buildDateStep(),
+          content: _animatedStepContent(_buildDateStep(), 2),
           isActive: _currentStep >= 2,
           state: _currentStep > 2 ? StepState.complete : StepState.indexed,
         ),
@@ -588,92 +605,79 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                             ),
                           ),
                         ),
-                        child: Stepper(
-                          currentStep: _currentStep,
-                          onStepContinue: _proceedToNextStep,
-                          onStepCancel: _goToPreviousStep,
-                          onStepTapped: (step) {
-                            // Add animation when tapping on step
-                            setState(() {
-                              _currentStep = step;
-                            });
-                          },
-                          steps: _buildSteps(),
-                          type: StepperType.vertical,
-                          elevation: 0,
-                          margin: EdgeInsets.zero,
-                          controlsBuilder: (context, details) {
-                            return Padding(
-                              padding: EdgeInsets.only(top: padding * 1.5),
-                              child: Row(
-                                children: [
-                                  if (details.currentStep > 0)
-                                    Expanded(
-                                      flex: 1,
-                                      child: TweenAnimationBuilder<double>(
-                                        tween: Tween<double>(begin: 0.9, end: 1.0),
-                                        duration: Duration(milliseconds: 200),
-                                        builder: (context, scale, child) {
-                                          return Transform.scale(
-                                            scale: scale,
-                                            child: OutlinedButton(
-                                              onPressed: details.onStepCancel,
-                                              style: OutlinedButton.styleFrom(
-                                                side: BorderSide(color: Color(0xFF2B8FEB)),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(screenSize.width * 0.03),
-                                                ),
-                                                padding: EdgeInsets.symmetric(vertical: padding),
-                                              ),
-                                              child: FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                child: Text(
-                                                  'Back',
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: screenSize.width * 0.038,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: Color(0xFF2B8FEB),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  if (details.currentStep > 0)
-                                    SizedBox(width: padding),
-                                  Expanded(
-                                    flex: 2,
-                                    child: TweenAnimationBuilder<double>(
-                                      tween: Tween<double>(begin: 0.9, end: 1.0),
-                                      duration: Duration(milliseconds: 200),
-                                      builder: (context, scale, child) {
-                                        return Transform.scale(
-                                          scale: scale,
-                                          child: ElevatedButton(
-                                            onPressed: details.onStepContinue,
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text(
-                                                details.currentStep == _buildSteps().length - 1
-                                                    ? 'Confirm Booking'
-                                                    : 'Continue',
-                                                style: GoogleFonts.poppins(
-                                                  fontSize: screenSize.width * 0.038,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
+                        child: AnimatedSwitcher(
+                          duration: Duration(milliseconds: 400),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (Widget child, Animation<double> animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: Offset(0.05, 0),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
                               ),
                             );
                           },
+                          child: Stepper(
+                            key: ValueKey<int>(_currentStep),
+                            currentStep: _currentStep,
+                            onStepContinue: () {}, // Handled by selection
+                            onStepCancel: _goToPreviousStep,
+                            onStepTapped: (step) {
+                              // Add animation when tapping on step
+                              _animateToStep(step);
+                            },
+                            steps: _buildSteps(),
+                            type: StepperType.vertical,
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            controlsBuilder: (context, details) {
+                              return Padding(
+                                padding: EdgeInsets.only(top: padding * 1.5),
+                                child: Row(
+                                  children: [
+                                    if (details.currentStep > 0)
+                                      Expanded(
+                                        child: TweenAnimationBuilder<double>(
+                                          tween: Tween<double>(begin: 0.9, end: 1.0),
+                                          duration: Duration(milliseconds: 300),
+                                          curve: Curves.easeOutCubic,
+                                          builder: (context, scale, child) {
+                                            return Transform.scale(
+                                              scale: scale,
+                                              child: OutlinedButton(
+                                                onPressed: details.onStepCancel,
+                                                style: OutlinedButton.styleFrom(
+                                                  side: BorderSide(color: Color(0xFF2B8FEB)),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+                                                  ),
+                                                  padding: EdgeInsets.symmetric(vertical: padding),
+                                                ),
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                    'Back',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: screenSize.width * 0.038,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Color(0xFF2B8FEB),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                       if (_errorMessage != null)
@@ -922,10 +926,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
 
   void _goToPreviousStep() {
     if (_currentStep > 0) {
-      setState(() {
-        _currentStep -= 1;
-        _errorMessage = null;
-      });
+      _animateToStep(_currentStep - 1);
     } else {
       Navigator.pop(context);
     }
@@ -1254,264 +1255,943 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       doctorHospitals = _doctorHospitals;
     }
     
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _currentStep == (widget.preSelectedDoctor != null ? 0 : 1) ? 1.0 : 0.8,
-      child: Column(
-        key: _stepKeys['location'],
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _selectedDoctor != null || widget.preSelectedDoctor != null
-                ? 'Choose Hospital for ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
-                : 'Choose Hospital Location',
-            style: GoogleFonts.poppins(
-              fontSize: fontSize['title'],
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+    return Column(
+      key: _stepKeys['location'],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _selectedDoctor != null || widget.preSelectedDoctor != null
+              ? 'Choose Hospital for ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
+              : 'Choose Hospital Location',
+          style: GoogleFonts.poppins(
+            fontSize: fontSize['title'],
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
-          SizedBox(height: spacing),
-          Text(
-            _selectedDoctor != null || widget.preSelectedDoctor != null
-                ? 'Select the hospital where you would like to schedule your appointment with ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
-                : 'Select the hospital where you would like to schedule your appointment',
-            style: GoogleFonts.poppins(
-              fontSize: fontSize['subtitle'],
-              color: Colors.grey[600],
-            ),
+        ),
+        SizedBox(height: spacing),
+        Text(
+          _selectedDoctor != null || widget.preSelectedDoctor != null
+              ? 'Select the hospital where you would like to schedule your appointment with ${_selectedDoctor ?? widget.preSelectedDoctor!['name']}'
+              : 'Select the hospital where you would like to schedule your appointment',
+          style: GoogleFonts.poppins(
+            fontSize: fontSize['subtitle'],
+            color: Colors.grey[600],
           ),
-          SizedBox(height: padding * 1.5),
-          
-          if (doctorHospitals.isEmpty) ...[
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: iconSize * 2,
-                    color: Colors.grey[400],
+        ),
+        SizedBox(height: padding * 1.5),
+        
+        if (doctorHospitals.isEmpty) ...[
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: iconSize * 2,
+                  color: Colors.grey[400],
+                ),
+                SizedBox(height: padding),
+                Text(
+                  'No hospitals available for the selected doctor',
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize['item'],
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
                   ),
-                  SizedBox(height: padding),
-                  Text(
-                    'No hospitals available for the selected doctor',
-                    style: GoogleFonts.poppins(
-                      fontSize: fontSize['item'],
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: spacing),
+                Text(
+                  'Please select a different doctor or try another date',
+                  style: GoogleFonts.poppins(
+                    fontSize: fontSize['subtitle'],
+                    color: Colors.grey[500],
                   ),
-                  SizedBox(height: spacing),
-                  Text(
-                    'Please select a different doctor or try another date',
-                    style: GoogleFonts.poppins(
-                      fontSize: fontSize['subtitle'],
-                      color: Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          ] else ...[
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  itemCount: doctorHospitals.length,
-                  itemBuilder: (context, index) {
-                    final hospital = doctorHospitals[index];
-                    final hospitalName = hospital['hospitalName'];
-                    final hospitalId = hospital['hospitalId'];
-                    final isSelected = hospitalId == _selectedHospitalId || hospitalName == _selectedLocation;
-                    
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: spacing),
-                      child: InkWell(
-                        onTap: () => _onHospitalSelected(hospitalId, hospitalName),
-                        borderRadius: BorderRadius.circular(borderRadius),
-                        child: Container(
-                          padding: EdgeInsets.all(padding),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Color(0xFFEDF7FF) : Colors.white,
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            border: Border.all(
-                              color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
-                              width: isSelected ? 2 : 1,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: Color(0xFF2B8FEB).withOpacity(0.1),
-                                      blurRadius: 10,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ]
-                                : [],
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          )
+        ] else ...[
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                itemCount: doctorHospitals.length,
+                itemBuilder: (context, index) {
+                  final hospital = doctorHospitals[index];
+                  final hospitalName = hospital['hospitalName'];
+                  final hospitalId = hospital['hospitalId'];
+                  final isSelected = hospitalId == _selectedHospitalId || hospitalName == _selectedLocation;
+                  
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: spacing),
+                    child: InkWell(
+                      onTap: () => _onHospitalSelected(hospitalId, hospitalName),
+                      borderRadius: BorderRadius.circular(borderRadius),
+                      child: Container(
+                        padding: EdgeInsets.all(padding),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Color(0xFFEDF7FF) : Colors.white,
+                          borderRadius: BorderRadius.circular(borderRadius),
+                          border: Border.all(
+                            color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
+                            width: isSelected ? 2 : 1,
                           ),
-                          child: Row(
-                            children: [
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: Color(0xFF2B8FEB).withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(padding * 0.75),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Color(0xFF2B8FEB).withOpacity(0.1)
+                                    : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(borderRadius * 0.75),
+                              ),
+                              child: Icon(
+                                MdiIcons.officeBuildingOutline,
+                                color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
+                                size: iconSize,
+                              ),
+                            ),
+                            SizedBox(width: padding),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    hospitalName,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: fontSize['item'],
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  if (hospital.containsKey('address')) ...[
+                                    SizedBox(height: spacing * 0.5),
+                                    Text(
+                                      hospital['address'],
+                                      style: GoogleFonts.poppins(
+                                        fontSize: fontSize['detail'],
+                                        color: Colors.grey[600],
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
                               Container(
-                                padding: EdgeInsets.all(padding * 0.75),
+                                padding: EdgeInsets.all(padding * 0.5),
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Color(0xFF2B8FEB).withOpacity(0.1)
-                                      : Colors.grey.shade50,
-                                  borderRadius: BorderRadius.circular(borderRadius * 0.75),
+                                  color: Color(0xFF2B8FEB),
+                                  shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  MdiIcons.officeBuildingOutline,
-                                  color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade600,
-                                  size: iconSize,
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: iconSize * 0.6,
                                 ),
                               ),
-                              SizedBox(width: padding),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      hospitalName,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: fontSize['item'],
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    if (hospital.containsKey('address')) ...[
-                                      SizedBox(height: spacing * 0.5),
-                                      Text(
-                                        hospital['address'],
-                                        style: GoogleFonts.poppins(
-                                          fontSize: fontSize['detail'],
-                                          color: Colors.grey[600],
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              if (isSelected)
-                                Container(
-                                  padding: EdgeInsets.all(padding * 0.5),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFF2B8FEB),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: iconSize * 0.6,
-                                  ),
-                                ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                );
-              }
-            ),
-          ],
+                    ),
+                  );
+                },
+              );
+            }
+          ),
         ],
-      ),
+      ],
     );
   }
 
   Widget _buildDateStep() {
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _currentStep == (widget.preSelectedDoctor != null ? 1 : 2) ? 1.0 : 0.8,
-      child: Column(
-        key: _stepKeys['date'],
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.preSelectedDoctor != null) ...[
-            Container(
-              padding: EdgeInsets.all(16),
-              margin: EdgeInsets.only(bottom: 24),
-              decoration: BoxDecoration(
-                color: Color(0xFFEDF7FF),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
+    return Column(
+      key: _stepKeys['date'],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.preSelectedDoctor != null) ...[
+          Container(
+            padding: EdgeInsets.all(16),
+            margin: EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              color: Color(0xFFEDF7FF),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: AssetImage(widget.preSelectedDoctor!['image']),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.preSelectedDoctor!['name'],
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        widget.preSelectedDoctor!['specialty'],
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF2B8FEB).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              widget.preSelectedDoctor!['fee'],
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF2B8FEB),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            widget.preSelectedDoctor!['experience'],
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        Text(
+          'Select Appointment Date',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          widget.preSelectedDoctor != null
+              ? 'Choose your preferred date for the appointment with ${widget.preSelectedDoctor!['name']}'
+              : 'Choose your preferred date for the appointment',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        SizedBox(height: 24),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 4),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
+            ],
+          ),
+          child: TableCalendar(
+            firstDay: DateTime.now(),
+            lastDay: DateTime.now().add(Duration(days: 90)),
+            focusedDay: _selectedDate ?? DateTime.now(),
+            selectedDayPredicate: (day) {
+              return isSameDay(_selectedDate, day);
+            },
+            onDaySelected: _onDateSelected,
+            calendarStyle: CalendarStyle(
+              selectedDecoration: BoxDecoration(
+                color: Color(0xFF2B8FEB),
+                shape: BoxShape.circle,
+              ),
+              todayDecoration: BoxDecoration(
+                color: Color(0xFF2B8FEB).withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              selectedTextStyle: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+              todayTextStyle: GoogleFonts.poppins(
+                color: Color(0xFF2B8FEB),
+                fontWeight: FontWeight.w600,
+              ),
+              defaultTextStyle: GoogleFonts.poppins(),
+              weekendTextStyle: GoogleFonts.poppins(
+                color: Colors.red.shade300,
+              ),
+              outsideTextStyle: GoogleFonts.poppins(
+                color: Colors.grey.shade400,
+              ),
+            ),
+            headerStyle: HeaderStyle(
+              titleTextStyle: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              formatButtonVisible: false,
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                color: Color(0xFF2B8FEB),
+              ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                color: Color(0xFF2B8FEB),
+              ),
+            ),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+              ),
+              weekendStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.w500,
+                color: Colors.red.shade300,
+              ),
+            ),
+          ),
+        ),
+        if (_selectedDate != null) ...[
+          SizedBox(height: 24),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Color(0xFFEDF7FF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Color(0xFF2B8FEB).withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF2B8FEB).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.calendar_today,
+                    color: Color(0xFF2B8FEB),
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Selected Date',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTimeStep() {
+    return Column(
+      key: _stepKeys['time'],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Choose Appointment Time',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          _selectedDate != null 
+              ? 'Select your preferred time slot for ${DateFormat('EEEE').format(_selectedDate!)}, ${DateFormat('d/M/y').format(_selectedDate!)}'
+              : 'Select your preferred time slot',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        SizedBox(height: 24),
+        
+        Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Available Slots',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              if (_loadingTimeSlots) ...[
+                Center(
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2B8FEB)),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading available time slots...',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (_availableTimesForSelectedDate.isEmpty) ...[
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.event_busy,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No time slots available',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Please select a different date or hospital',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: _availableTimesForSelectedDate
+                      .map((time) => _buildTimeSlot(time))
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+        
+        if (_selectedTime != null) ...[
+          SizedBox(height: 24),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Color(0xFFEDF7FF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Color(0xFF2B8FEB).withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF2B8FEB).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.schedule,
+                    color: Color(0xFF2B8FEB),
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Selected Time',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        _selectedTime!,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDoctorStep() {
+    return Column(
+      key: _stepKeys['doctor'],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Choose Your Doctor',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Select a doctor for your appointment',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        SizedBox(height: 24),
+        
+        if (_isLoading)
+          Center(
+            child: Column(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text(
+                  'Loading doctors...',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (_errorMessage != null)
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Colors.red[300],
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Error loading doctors',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  _errorMessage!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _fetchAllDoctors,
+                  icon: Icon(Icons.refresh),
+                  label: Text('Retry'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (_doctorHospitals.isEmpty)
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.local_hospital_outlined,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'No doctors available',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Please try again later',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: _doctorHospitals.length,
+            itemBuilder: (context, index) {
+              final doctor = _doctorHospitals[index];
+              final isSelected = _selectedDoctor == doctor['name'];
+              
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedDoctor = doctor['name'];
+                      _doctorData = doctor;
+                      
+                      // When selecting a doctor, also prepare their hospitals for the next step
+                      if (doctor['hospitals'] != null && (doctor['hospitals'] as List).isNotEmpty) {
+                        // Just store the hospitals data; don't replace _doctorHospitals
+                        // as it contains the list of all doctors in this step
+                      } else {
+                        // If hospitals are missing, fetch them
+                        _fetchDoctorHospitals(doctor['id']);
+                      }
+                    });
+                    
+                    // Auto-proceed to next step
+                    Future.delayed(Duration(milliseconds: 400), () {
+                      if (_isStepValid()) {
+                        _animateToStep(_currentStep + 1);
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      image: DecorationImage(
-                        image: AssetImage(widget.preSelectedDoctor!['image']),
-                        fit: BoxFit.cover,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
+                        width: isSelected ? 2 : 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
+                          color: isSelected
+                              ? Color(0xFF2B8FEB).withOpacity(0.1)
+                              : Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.preSelectedDoctor!['name'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          widget.preSelectedDoctor!['specialty'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 6),
                         Row(
                           children: [
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              width: 64,
+                              height: 64,
                               decoration: BoxDecoration(
-                                color: Color(0xFF2B8FEB).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
+                                color: Color(0xFFEDF7FF),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: Text(
-                                widget.preSelectedDoctor!['fee'],
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF2B8FEB),
-                                ),
+                              child: doctor['image'].toString().startsWith('assets/')
+                                  ? Image.asset(
+                                      doctor['image'],
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.network(
+                                      doctor['image'],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Icon(
+                                        MdiIcons.doctor,
+                                        color: Colors.blue[300],
+                                        size: 40,
+                                      ),
+                                    ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    doctor['name'],
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    doctor['specialty'],
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.star,
+                                        color: Colors.amber,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        double.parse(doctor['rating'].toString()).toStringAsFixed(1),
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      SizedBox(width: 16),
+                                      Icon(
+                                        MdiIcons.briefcase,
+                                        color: Colors.grey[600],
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        doctor['experience'],
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                            SizedBox(width: 8),
-                            Text(
-                              widget.preSelectedDoctor!['experience'],
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                            if (isSelected)
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF2B8FEB),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check_circle,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildInfoItem(
+                                Icons.message,
+                                'Languages',
+                                doctor['languages'] != null 
+                                    ? (doctor['languages'] as List).join(', ')
+                                    : 'English, Urdu',
+                              ),
+                              Container(
+                                width: 1,
+                                height: 40,
+                                color: Colors.grey.shade300,
+                              ),
+                              _buildInfoItem(
+                                Icons.school,
+                                'Qualifications',
+                                doctor['qualifications'] != null
+                                    ? (doctor['qualifications'] as List).join(', ')
+                                    : 'MBBS',
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Consultation Fee',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    doctor['fee'] ?? 'Rs 1500',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF2B8FEB),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Flexible(
+                              flex: 4,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFEDF7FF),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.schedule,
+                                      color: Color(0xFF2B8FEB),
+                                      size: 14,
+                                    ),
+                                    SizedBox(width: 3),
+                                    Flexible(
+                                      child: Text(
+                                        doctor['hospitalName'] ?? 'Multiple Hospitals',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF2B8FEB),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -1519,793 +2199,11 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
-          Text(
-            'Select Appointment Date',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+                ),
+              );
+            },
           ),
-          SizedBox(height: 8),
-          Text(
-            widget.preSelectedDoctor != null
-                ? 'Choose your preferred date for the appointment with ${widget.preSelectedDoctor!['name']}'
-                : 'Choose your preferred date for the appointment',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          SizedBox(height: 24),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: TableCalendar(
-              firstDay: DateTime.now(),
-              lastDay: DateTime.now().add(Duration(days: 90)),
-              focusedDay: _selectedDate ?? DateTime.now(),
-              selectedDayPredicate: (day) {
-                return isSameDay(_selectedDate, day);
-              },
-              onDaySelected: _onDateSelected,
-              calendarStyle: CalendarStyle(
-                selectedDecoration: BoxDecoration(
-                  color: Color(0xFF2B8FEB),
-                  shape: BoxShape.circle,
-                ),
-                todayDecoration: BoxDecoration(
-                  color: Color(0xFF2B8FEB).withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                selectedTextStyle: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-                todayTextStyle: GoogleFonts.poppins(
-                  color: Color(0xFF2B8FEB),
-                  fontWeight: FontWeight.w600,
-                ),
-                defaultTextStyle: GoogleFonts.poppins(),
-                weekendTextStyle: GoogleFonts.poppins(
-                  color: Colors.red.shade300,
-                ),
-                outsideTextStyle: GoogleFonts.poppins(
-                  color: Colors.grey.shade400,
-                ),
-              ),
-              headerStyle: HeaderStyle(
-                titleTextStyle: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-                formatButtonVisible: false,
-                leftChevronIcon: Icon(
-                  Icons.chevron_left,
-                  color: Color(0xFF2B8FEB),
-                ),
-                rightChevronIcon: Icon(
-                  Icons.chevron_right,
-                  color: Color(0xFF2B8FEB),
-                ),
-              ),
-              daysOfWeekStyle: DaysOfWeekStyle(
-                weekdayStyle: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade700,
-                ),
-                weekendStyle: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w500,
-                  color: Colors.red.shade300,
-                ),
-              ),
-            ),
-          ),
-          if (_selectedDate != null) ...[
-            SizedBox(height: 24),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Color(0xFFEDF7FF),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Color(0xFF2B8FEB).withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Color(0xFF2B8FEB).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.calendar_today,
-                      color: Color(0xFF2B8FEB),
-                      size: 24,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Selected Date',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeStep() {
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _currentStep == (widget.preSelectedDoctor != null ? 2 : 3) ? 1.0 : 0.8,
-      child: Column(
-        key: _stepKeys['time'],
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Choose Appointment Time',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            _selectedDate != null 
-                ? 'Select your preferred time slot for ${DateFormat('EEEE').format(_selectedDate!)}, ${DateFormat('d/M/y').format(_selectedDate!)}'
-                : 'Select your preferred time slot',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          SizedBox(height: 24),
-          
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Available Slots',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 16),
-                if (_loadingTimeSlots) ...[
-                  Center(
-                    child: Column(
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2B8FEB)),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Loading available time slots...',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (_availableTimesForSelectedDate.isEmpty) ...[
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.event_busy,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No time slots available',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Please select a different date or hospital',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: _availableTimesForSelectedDate
-                        .map((time) => _buildTimeSlot(time))
-                        .toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          
-          if (_selectedTime != null) ...[
-            SizedBox(height: 24),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Color(0xFFEDF7FF),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Color(0xFF2B8FEB).withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Color(0xFF2B8FEB).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.schedule,
-                      color: Color(0xFF2B8FEB),
-                      size: 24,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Selected Time',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          _selectedTime!,
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeSlot(String time) {
-    final isSelected = time == _selectedTime;
-    
-    // Use the same datetime comparison method as in _fetchTimeSlotsForDate
-    final now = DateTime.now();
-    final slotTime = _parseTimeOfDay(time);
-    
-    final isPastTime = _selectedDate != null && DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-      slotTime.hour,
-      slotTime.minute,
-    ).isBefore(now);
-    
-    // Check if slot is already booked
-    final isBooked = _bookedTimeSlots.contains(time);
-    
-    // Whether this slot is available
-    final isAvailable = !isPastTime && !isBooked;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.8, end: 1.0),
-      duration: Duration(milliseconds: 200),
-      builder: (context, scale, child) {
-        return Transform.scale(
-          scale: isSelected ? scale : 1.0,
-          child: InkWell(
-            onTap: isAvailable 
-                ? () {
-                    setState(() {
-                      _selectedTime = time;
-                    });
-                  }
-                : null,
-            borderRadius: BorderRadius.circular(12),
-            child: AnimatedContainer(
-              duration: Duration(milliseconds: 200),
-              padding: EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                color: !isAvailable 
-                        ? Colors.grey.shade100
-                        : isSelected
-                            ? Color(0xFF2B8FEB)
-                            : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: !isAvailable
-                          ? Colors.grey.shade300
-                          : isSelected
-                              ? Color(0xFF2B8FEB)
-                              : Colors.grey.shade200,
-                ),
-                boxShadow: isSelected && isAvailable
-                    ? [
-                        BoxShadow(
-                          color: Color(0xFF2B8FEB).withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ]
-                    : [],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isBooked) 
-                    Icon(Icons.block, size: 14, color: Colors.red.shade400),
-                  if (isBooked) 
-                    SizedBox(width: 4),
-                  Text(
-                    time,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: !isAvailable
-                              ? Colors.grey.shade400
-                              : isSelected
-                                  ? Colors.white
-                                  : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDoctorStep() {
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _currentStep == 0 ? 1.0 : 0.8,
-      child: Column(
-        key: _stepKeys['doctor'],
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Choose Your Doctor',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Select a doctor for your appointment',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          SizedBox(height: 24),
-          
-          if (_isLoading)
-            Center(
-              child: Column(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading doctors...',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (_errorMessage != null)
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: Colors.red[300],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Error loading doctors',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    _errorMessage!,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: _fetchAllDoctors,
-                    icon: Icon(Icons.refresh),
-                    label: Text('Retry'),
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (_doctorHospitals.isEmpty)
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.local_hospital_outlined,
-                    size: 48,
-                    color: Colors.grey[400],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No doctors available',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Please try again later',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: _doctorHospitals.length,
-              itemBuilder: (context, index) {
-                final doctor = _doctorHospitals[index];
-                final isSelected = _selectedDoctor == doctor['name'];
-                
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedDoctor = doctor['name'];
-                        _doctorData = doctor;
-                        
-                        // When selecting a doctor, also prepare their hospitals for the next step
-                        if (doctor['hospitals'] != null && (doctor['hospitals'] as List).isNotEmpty) {
-                          // Just store the hospitals data; don't replace _doctorHospitals
-                          // as it contains the list of all doctors in this step
-                        } else {
-                          // If hospitals are missing, fetch them
-                          _fetchDoctorHospitals(doctor['id']);
-                        }
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isSelected ? Color(0xFF2B8FEB) : Colors.grey.shade200,
-                          width: isSelected ? 2 : 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isSelected
-                                ? Color(0xFF2B8FEB).withOpacity(0.1)
-                                : Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 64,
-                                height: 64,
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFEDF7FF),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: doctor['image'].toString().startsWith('assets/')
-                                    ? Image.asset(
-                                        doctor['image'],
-                                        fit: BoxFit.cover,
-                                      )
-                                    : Image.network(
-                                        doctor['image'],
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => Icon(
-                                          MdiIcons.doctor,
-                                          color: Colors.blue[300],
-                                          size: 40,
-                                        ),
-                                      ),
-                              ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      doctor['name'],
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      doctor['specialty'],
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.star,
-                                          color: Colors.amber,
-                                          size: 16,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          double.parse(doctor['rating'].toString()).toStringAsFixed(1),
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        SizedBox(width: 16),
-                                        Icon(
-                                          MdiIcons.briefcase,
-                                          color: Colors.grey[600],
-                                          size: 16,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          doctor['experience'],
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (isSelected)
-                                Container(
-                                  padding: EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFF2B8FEB),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.check_circle,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildInfoItem(
-                                  Icons.message,
-                                  'Languages',
-                                  doctor['languages'] != null 
-                                      ? (doctor['languages'] as List).join(', ')
-                                      : 'English, Urdu',
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 40,
-                                  color: Colors.grey.shade300,
-                                ),
-                                _buildInfoItem(
-                                  Icons.school,
-                                  'Qualifications',
-                                  doctor['qualifications'] != null
-                                      ? (doctor['qualifications'] as List).join(', ')
-                                      : 'MBBS',
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                flex: 3,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Consultation Fee',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      doctor['fee'] ?? 'Rs 1500',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF2B8FEB),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Flexible(
-                                flex: 4,
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFEDF7FF),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.schedule,
-                                        color: Color(0xFF2B8FEB),
-                                        size: 14,
-                                      ),
-                                      SizedBox(width: 3),
-                                      Flexible(
-                                        child: Text(
-                                          doctor['hospitalName'] ?? 'Multiple Hospitals',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF2B8FEB),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -2359,227 +2257,251 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildDetailsStep() {
-    return AnimatedOpacity(
-      duration: Duration(milliseconds: 300),
-      opacity: _currentStep == (widget.preSelectedDoctor != null ? 3 : 4) ? 1.0 : 0.8,
-      child: Column(
-        key: _stepKeys['details'],
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Appointment Summary',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+    return Column(
+      key: _stepKeys['details'],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Appointment Summary',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
-          SizedBox(height: 8),
-          Text(
-            'Review your appointment details',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'Review your appointment details',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[600],
           ),
-          SizedBox(height: 24),
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                if (widget.preSelectedDoctor == null) ...[
-                  _buildSummaryItem(
-                    MdiIcons.stethoscope,
-                    'Doctor',
-                    _selectedDoctor ?? 'Not selected',
-                    Color(0xFFE91E63),
-                  ),
-                  SizedBox(height: 16),
-                  Divider(),
-                  SizedBox(height: 16),
-                ] else ...[
-                  _buildSummaryItem(
-                    MdiIcons.stethoscope,
-                    'Doctor',
-                    widget.preSelectedDoctor!['name'],
-                    Color(0xFFE91E63),
-                  ),
-                  SizedBox(height: 16),
-                  Divider(),
-                  SizedBox(height: 16),
-                ],
+        ),
+        SizedBox(height: 24),
+        Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              if (widget.preSelectedDoctor == null) ...[
                 _buildSummaryItem(
-                  MdiIcons.hospitalBuilding,
-                  'Hospital',
-                  _selectedLocation ?? 'Not selected',
-                  Color(0xFF2B8FEB),
+                  MdiIcons.stethoscope,
+                  'Doctor',
+                  _selectedDoctor ?? 'Not selected',
+                  Color(0xFFE91E63),
                 ),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
+              ] else ...[
                 _buildSummaryItem(
-                  Icons.calendar_today,
-                  'Date',
-                  _selectedDate != null
-                      ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                      : 'Not selected',
-                  Color(0xFF00BFA5),
+                  MdiIcons.stethoscope,
+                  'Doctor',
+                  widget.preSelectedDoctor!['name'],
+                  Color(0xFFE91E63),
                 ),
                 SizedBox(height: 16),
                 Divider(),
                 SizedBox(height: 16),
-                _buildSummaryItem(
-                  Icons.schedule,
-                  'Time',
-                  _selectedTime ?? 'Not selected',
-                  Color(0xFFFFA000),
-                ),
               ],
-            ),
+              _buildSummaryItem(
+                MdiIcons.hospitalBuilding,
+                'Hospital',
+                _selectedLocation ?? 'Not selected',
+                Color(0xFF2B8FEB),
+              ),
+              SizedBox(height: 16),
+              Divider(),
+              SizedBox(height: 16),
+              _buildSummaryItem(
+                Icons.calendar_today,
+                'Date',
+                _selectedDate != null
+                    ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                    : 'Not selected',
+                Color(0xFF00BFA5),
+              ),
+              SizedBox(height: 16),
+              Divider(),
+              SizedBox(height: 16),
+              _buildSummaryItem(
+                Icons.schedule,
+                'Time',
+                _selectedTime ?? 'Not selected',
+                Color(0xFFFFA000),
+              ),
+            ],
           ),
-          SizedBox(height: 24),
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Reason for Visit',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: _appointmentReasons.map((reason) {
-                    return _buildReasonChip(reason);
-                  }).toList(),
-                ),
-              ],
-            ),
+        ),
+        SizedBox(height: 24),
+        Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
-          if (_selectedDoctor != null || widget.preSelectedDoctor != null) ...[
-            SizedBox(height: 24),
-            AnimatedContainer(
-              duration: Duration(milliseconds: 300),
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.grey.shade200,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Reason for Visit',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFEDF7FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      MdiIcons.walletOutline,
-                      color: Color(0xFF2B8FEB),
-                      size: 22,
-                    ),
+              SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _appointmentReasons.map((reason) {
+                  return _buildReasonChip(reason);
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        if (_selectedDoctor != null || widget.preSelectedDoctor != null) ...[
+          SizedBox(height: 24),
+          AnimatedContainer(
+            duration: Duration(milliseconds: 300),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.grey.shade200,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEDF7FF),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Consultation Fee',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0.8, end: 1.0),
-                          duration: Duration(milliseconds: 300),
-                          builder: (context, scale, child) {
-                            final String fee = widget.preSelectedDoctor != null 
-                                ? widget.preSelectedDoctor!['fee']
-                                : _doctorHospitals
-                                    .firstWhere(
-                                      (d) => d['hospitalId'] == _selectedHospitalId,
-                                      orElse: () => {'fee': 'Not available'},
-                                    )['fee']
-                                    .toString();
-                                
-                            return Transform.scale(
-                              scale: scale,
-                              child: Text(
-                                fee,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2B8FEB),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                  child: Icon(
+                    MdiIcons.walletOutline,
+                    color: Color(0xFF2B8FEB),
+                    size: 22,
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Color(0xFF2B8FEB).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Pay at Hospital',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF2B8FEB),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Consultation Fee',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      SizedBox(height: 2),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.8, end: 1.0),
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, scale, child) {
+                          final String fee = widget.preSelectedDoctor != null 
+                              ? widget.preSelectedDoctor!['fee']
+                              : _doctorHospitals
+                                  .firstWhere(
+                                    (d) => d['hospitalId'] == _selectedHospitalId,
+                                    orElse: () => {'fee': 'Not available'},
+                                  )['fee']
+                                  .toString();
+                              
+                          return Transform.scale(
+                            scale: scale,
+                            child: Text(
+                              fee,
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2B8FEB),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF2B8FEB).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Pay at Hospital',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF2B8FEB),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        
+        // Add confirm booking button
+        SizedBox(height: 32),
+        Container(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _selectedReason == null ? null : _processPayment,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF2B8FEB),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+              disabledBackgroundColor: Colors.grey.shade300,
+              disabledForegroundColor: Colors.grey.shade600,
+            ),
+            child: Text(
+              'Confirm Booking',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2640,7 +2562,8 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.8, end: 1.0),
-      duration: Duration(milliseconds: 200),
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
       builder: (context, scale, child) {
         return Transform.scale(
           scale: isSelected ? scale : 1.0,
@@ -2649,10 +2572,17 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
               setState(() {
                 _selectedReason = reason;
               });
+              
+              // Auto-update validation, but don't process payment
+              // This is the final step, so we don't auto-proceed
+              setState(() {
+                _errorMessage = null;
+              });
             },
             borderRadius: BorderRadius.circular(30),
             child: AnimatedContainer(
-              duration: Duration(milliseconds: 200),
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 10,
@@ -2898,7 +2828,12 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     // If we have both hospital and date, fetch time slots
     if (_selectedHospitalId != null && _selectedDate != null) {
       debugPrint('🔄 Date changed, fetching new time slots');
-      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
+      _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!).then((_) {
+        // Auto-proceed to next step after fetching time slots
+        if (_isStepValid()) {
+          _animateToStep(_currentStep + 1);
+        }
+      });
     }
   }
 
@@ -2919,6 +2854,11 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
     if (_selectedHospitalId != null && _selectedDate != null) {
       debugPrint('🔄 Hospital changed, fetching new time slots');
       _fetchTimeSlotsForDate(_selectedHospitalId!, _selectedDate!);
+    }
+    
+    // Auto-proceed to next step
+    if (_isStepValid()) {
+      _animateToStep(_currentStep + 1);
     }
   }
 
@@ -2953,6 +2893,131 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
       // Return current time as fallback
       return TimeOfDay.now();
     }
+  }
+
+  // Helper method to animate step transitions
+  void _animateToStep(int step) {
+    if (_currentStep == step || _animatingStep) return;
+    
+    setState(() {
+      _animatingStep = true;
+    });
+    
+    _animationController.reverse().then((_) {
+      setState(() {
+        _currentStep = step;
+        _errorMessage = null;
+      });
+      
+      _animationController.forward().then((_) {
+        setState(() {
+          _animatingStep = false;
+        });
+      });
+    });
+  }
+
+  Widget _buildTimeSlot(String time) {
+    final isSelected = time == _selectedTime;
+    
+    // Use the same datetime comparison method as in _fetchTimeSlotsForDate
+    final now = DateTime.now();
+    final slotTime = _parseTimeOfDay(time);
+    
+    final isPastTime = _selectedDate != null && DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      slotTime.hour,
+      slotTime.minute,
+    ).isBefore(now);
+    
+    // Check if slot is already booked
+    final isBooked = _bookedTimeSlots.contains(time);
+    
+    // Whether this slot is available
+    final isAvailable = !isPastTime && !isBooked;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.8, end: 1.0),
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      builder: (context, scale, child) {
+        return Transform.scale(
+          scale: isSelected ? scale : 1.0,
+          child: InkWell(
+            onTap: isAvailable 
+                ? () {
+                    setState(() {
+                      _selectedTime = time;
+                    });
+                    
+                    // Auto-proceed to next step after selecting time
+                    Future.delayed(Duration(milliseconds: 300), () {
+                      if (_isStepValid()) {
+                        _animateToStep(_currentStep + 1);
+                      }
+                    });
+                  }
+                : null,
+            borderRadius: BorderRadius.circular(12),
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: !isAvailable 
+                        ? Colors.grey.shade100
+                        : isSelected
+                            ? Color(0xFF2B8FEB)
+                            : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: !isAvailable
+                          ? Colors.grey.shade300
+                          : isSelected
+                              ? Color(0xFF2B8FEB)
+                              : Colors.grey.shade200,
+                ),
+                boxShadow: isSelected && isAvailable
+                    ? [
+                        BoxShadow(
+                          color: Color(0xFF2B8FEB).withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isBooked) 
+                    Icon(Icons.block, size: 14, color: Colors.red.shade400),
+                  if (isBooked) 
+                    SizedBox(width: 4),
+                  Text(
+                    time,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: !isAvailable
+                              ? Colors.grey.shade400
+                              : isSelected
+                                  ? Colors.white
+                                  : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 } 
 
