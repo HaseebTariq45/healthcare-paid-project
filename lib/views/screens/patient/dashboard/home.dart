@@ -432,48 +432,48 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 
   // Cities for location filter
   final List<String> _pakistanCities = [
-    'Islamabad',
-    'Karachi',
-    'Lahore',
+    'Abbottabad',
+    'Attock',
+    'Bahawalpur',
+    'Burewala',
+    'Chiniot',
+    'Dera Ghazi Khan',
+    'Dera Ismail Khan',
     'Faisalabad',
-    'Rawalpindi',
+    'Gujranwala',
+    'Gujrat',
+    'Hafizabad',
+    'Hyderabad',
+    'Islamabad',
+    'Jhang',
+    'Jhelum',
+    'Kāmoke',
+    'Karachi',
+    'Kasur',
+    'Khanewal',
+    'Kohat',
+    'Kotri',
+    'Lahore',
+    'Larkana',
+    'Mardan',
+    'Mianwali',
+    'Mingora',
+    'Mirpur Khas',
     'Multan',
+    'Muzaffargarh',
+    'Nawabshah',
+    'Okara',
     'Peshawar',
     'Quetta',
-    'Sialkot',
-    'Gujranwala',
-    'Hyderabad',
-    'Bahawalpur',
-    'Sargodha',
-    'Sukkur',
-    'Larkana',
-    'Sheikhupura',
     'Rahim Yar Khan',
-    'Jhang',
-    'Dera Ghazi Khan',
-    'Gujrat',
-    'Sahiwal',
-    'Wah Cantonment',
-    'Mardan',
-    'Kasur',
-    'Okara',
-    'Mingora',
-    'Nawabshah',
-    'Chiniot',
-    'Kotri',
-    'Kāmoke',
-    'Hafizabad',
+    'Rawalpindi',
     'Sadiqabad',
-    'Mirpur Khas',
-    'Burewala',
-    'Kohat',
-    'Khanewal',
-    'Dera Ismail Khan',
-    'Abbottabad',
-    'Muzaffargarh',
-    'Mianwali',
-    'Jhelum',
-    'Attock',
+    'Sahiwal',
+    'Sargodha',
+    'Sheikhupura',
+    'Sialkot',
+    'Sukkur',
+    'Wah Cantonment',
   ];
 
   // Add this method to format rating
@@ -2729,64 +2729,116 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     final double horizontalPadding = screenSize.width * 0.05;
     final double verticalPadding = screenSize.height * 0.02;
     
+    // For searching cities
+    TextEditingController searchController = TextEditingController();
+    List<String> filteredCities = List.from(_pakistanCities);
+    
     return await showDialog<String?>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(screenSize.width * 0.05),
-          ),
-          child: Container(
-            width: screenSize.width * 0.9,
-            padding: EdgeInsets.all(horizontalPadding),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Filter cities based on search
+            void filterCities(String query) {
+              setState(() {
+                if (query.isEmpty) {
+                  filteredCities = List.from(_pakistanCities);
+                } else {
+                  filteredCities = _pakistanCities
+                    .where((city) => city.toLowerCase().contains(query.toLowerCase()))
+                    .toList();
+                }
+              });
+            }
+            
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+              ),
+              child: Container(
+                width: screenSize.width * 0.9,
+                padding: EdgeInsets.all(horizontalPadding),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Select City",
-                      style: GoogleFonts.poppins(
-                        fontSize: screenSize.width * 0.05,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Select City",
+                          style: GoogleFonts.poppins(
+                            fontSize: screenSize.width * 0.05,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                    SizedBox(height: verticalPadding * 0.5),
+                    
+                    // Search field
+                    TextField(
+                      controller: searchController,
+                      decoration: InputDecoration(
+                        hintText: "Search city...",
+                        prefixIcon: Icon(LucideIcons.search, color: Color(0xFF3366CC)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: screenSize.width * 0.03,
+                          vertical: screenSize.height * 0.01,
+                        ),
+                      ),
+                      onChanged: filterCities,
+                    ),
+                    
+                    SizedBox(height: verticalPadding),
+                    
+                    // City list
+                    Container(
+                      height: screenSize.height * 0.4,
+                      child: filteredCities.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No cities found",
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: filteredCities.length,
+                            itemBuilder: (context, index) {
+                              return ListTile(
+                                leading: Icon(
+                                  LucideIcons.building,
+                                  color: Color(0xFF3366CC),
+                                ),
+                                title: Text(
+                                  filteredCities[index],
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                onTap: () => Navigator.pop(context, filteredCities[index]),
+                              );
+                            },
+                          ),
                     ),
                   ],
                 ),
-                SizedBox(height: verticalPadding),
-                Container(
-                  height: screenSize.height * 0.4, // Fixed height for scrollable content
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: _pakistanCities.map((city) {
-                        return ListTile(
-                          leading: Icon(
-                            LucideIcons.building,
-                            color: Color(0xFF3366CC),
-                          ),
-                          title: Text(
-                            city,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          onTap: () => Navigator.pop(context, city),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          }
         );
       },
     );
