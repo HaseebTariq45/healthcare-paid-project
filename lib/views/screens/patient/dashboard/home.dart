@@ -2753,36 +2753,75 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 Container(
                   height: screenSize.height * 0.5, // Fixed height for scrollable content
                   child: SingleChildScrollView(
-                    child: Column(
-                      children: _diseaseCategories.map((specialty) {
-                        return ListTile(
-                          leading: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: specialty.color.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              specialty.icon,
-                              color: specialty.color,
-                            ),
-                          ),
-                          title: Text(
-                            specialty.name,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          subtitle: Text(
-                            specialty.nameUrdu,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                      ),
+                      itemCount: _diseaseCategories.length,
+                      itemBuilder: (context, index) {
+                        final specialty = _diseaseCategories[index];
+                        return GestureDetector(
                           onTap: () => Navigator.pop(context, specialty),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 5,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: specialty.color.withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: specialty.color.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    specialty.icon,
+                                    color: specialty.color,
+                                    size: screenSize.width * 0.08,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  specialty.name,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                    fontSize: screenSize.width * 0.035,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  specialty.nameUrdu,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: screenSize.width * 0.03,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
                         );
-                      }).toList(),
+                      },
                     ),
                   ),
                 ),

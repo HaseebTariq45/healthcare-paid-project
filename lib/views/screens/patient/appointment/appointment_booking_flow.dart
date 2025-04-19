@@ -634,6 +634,7 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                             type: StepperType.vertical,
                             elevation: 0,
                             margin: EdgeInsets.zero,
+                            physics: ClampingScrollPhysics(),
                             controlsBuilder: (context, details) {
                               return Padding(
                                 padding: EdgeInsets.only(top: padding * 1.5),
@@ -1421,17 +1422,127 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
   }
 
   Widget _buildDateStep() {
-    return Column(
-      key: _stepKeys['date'],
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (widget.preSelectedDoctor != null) ...[
+    return SingleChildScrollView(
+      physics: ClampingScrollPhysics(),
+      child: Column(
+        key: _stepKeys['date'],
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.preSelectedDoctor != null) ...[
+            Container(
+              padding: EdgeInsets.all(16),
+              margin: EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: Color(0xFFEDF7FF),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: AssetImage(widget.preSelectedDoctor!['image']),
+                        fit: BoxFit.cover,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.preSelectedDoctor!['name'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          widget.preSelectedDoctor!['specialty'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF2B8FEB).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                widget.preSelectedDoctor!['fee'],
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF2B8FEB),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              widget.preSelectedDoctor!['experience'],
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          Text(
+            'Select Appointment Date',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            widget.preSelectedDoctor != null
+                ? 'Choose your preferred date for the appointment with ${widget.preSelectedDoctor!['name']}'
+                : 'Choose your preferred date for the appointment',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          SizedBox(height: 24),
           Container(
-            padding: EdgeInsets.all(16),
-            margin: EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(
-              color: Color(0xFFEDF7FF),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -1440,228 +1551,125 @@ class _AppointmentBookingFlowState extends State<AppointmentBookingFlow> with Si
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: AssetImage(widget.preSelectedDoctor!['image']),
-                      fit: BoxFit.cover,
+            child: TableCalendar(
+              firstDay: DateTime.now(),
+              lastDay: DateTime.now().add(Duration(days: 90)),
+              focusedDay: _selectedDate ?? DateTime.now(),
+              selectedDayPredicate: (day) {
+                return isSameDay(_selectedDate, day);
+              },
+              onDaySelected: _onDateSelected,
+              calendarStyle: CalendarStyle(
+                selectedDecoration: BoxDecoration(
+                  color: Color(0xFF2B8FEB),
+                  shape: BoxShape.circle,
+                ),
+                todayDecoration: BoxDecoration(
+                  color: Color(0xFF2B8FEB).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                selectedTextStyle: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+                todayTextStyle: GoogleFonts.poppins(
+                  color: Color(0xFF2B8FEB),
+                  fontWeight: FontWeight.w600,
+                ),
+                defaultTextStyle: GoogleFonts.poppins(),
+                weekendTextStyle: GoogleFonts.poppins(
+                  color: Colors.red.shade300,
+                ),
+                outsideTextStyle: GoogleFonts.poppins(
+                  color: Colors.grey.shade400,
+                ),
+              ),
+              headerStyle: HeaderStyle(
+                titleTextStyle: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+                formatButtonVisible: false,
+                leftChevronIcon: Icon(
+                  Icons.chevron_left,
+                  color: Color(0xFF2B8FEB),
+                ),
+                rightChevronIcon: Icon(
+                  Icons.chevron_right,
+                  color: Color(0xFF2B8FEB),
+                ),
+              ),
+              daysOfWeekStyle: DaysOfWeekStyle(
+                weekdayStyle: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey.shade700,
+                ),
+                weekendStyle: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.red.shade300,
+                ),
+              ),
+              availableGestures: AvailableGestures.horizontalSwipe,
+              calendarFormat: CalendarFormat.month,
+            ),
+          ),
+          if (_selectedDate != null) ...[
+            SizedBox(height: 24),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Color(0xFFEDF7FF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Color(0xFF2B8FEB).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF2B8FEB).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
+                    child: Icon(
+                      Icons.calendar_today,
+                      color: Color(0xFF2B8FEB),
+                      size: 24,
+                    ),
                   ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.preSelectedDoctor!['name'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        widget.preSelectedDoctor!['specialty'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Color(0xFF2B8FEB).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              widget.preSelectedDoctor!['fee'],
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF2B8FEB),
-                              ),
-                            ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Selected Date',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[600],
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            widget.preSelectedDoctor!['experience'],
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        Text(
-          'Select Appointment Date',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        SizedBox(height: 8),
-        Text(
-          widget.preSelectedDoctor != null
-              ? 'Choose your preferred date for the appointment with ${widget.preSelectedDoctor!['name']}'
-              : 'Choose your preferred date for the appointment',
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
-        ),
-        SizedBox(height: 24),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TableCalendar(
-            firstDay: DateTime.now(),
-            lastDay: DateTime.now().add(Duration(days: 90)),
-            focusedDay: _selectedDate ?? DateTime.now(),
-            selectedDayPredicate: (day) {
-              return isSameDay(_selectedDate, day);
-            },
-            onDaySelected: _onDateSelected,
-            calendarStyle: CalendarStyle(
-              selectedDecoration: BoxDecoration(
-                color: Color(0xFF2B8FEB),
-                shape: BoxShape.circle,
-              ),
-              todayDecoration: BoxDecoration(
-                color: Color(0xFF2B8FEB).withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              selectedTextStyle: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-              todayTextStyle: GoogleFonts.poppins(
-                color: Color(0xFF2B8FEB),
-                fontWeight: FontWeight.w600,
-              ),
-              defaultTextStyle: GoogleFonts.poppins(),
-              weekendTextStyle: GoogleFonts.poppins(
-                color: Colors.red.shade300,
-              ),
-              outsideTextStyle: GoogleFonts.poppins(
-                color: Colors.grey.shade400,
+                ],
               ),
             ),
-            headerStyle: HeaderStyle(
-              titleTextStyle: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-              formatButtonVisible: false,
-              leftChevronIcon: Icon(
-                Icons.chevron_left,
-                color: Color(0xFF2B8FEB),
-              ),
-              rightChevronIcon: Icon(
-                Icons.chevron_right,
-                color: Color(0xFF2B8FEB),
-              ),
-            ),
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500,
-                color: Colors.grey.shade700,
-              ),
-              weekendStyle: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500,
-                color: Colors.red.shade300,
-              ),
-            ),
-          ),
-        ),
-        if (_selectedDate != null) ...[
+          ],
+          // Add padding at the bottom to ensure the content is scrollable
           SizedBox(height: 24),
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Color(0xFFEDF7FF),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Color(0xFF2B8FEB).withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF2B8FEB).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.calendar_today,
-                    color: Color(0xFF2B8FEB),
-                    size: 24,
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selected Date',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
-      ],
+      ),
     );
   }
 

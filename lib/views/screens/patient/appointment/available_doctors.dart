@@ -453,8 +453,8 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
                 _buildHeader(context),
-                _buildFilterBar(context),
                 _buildSearchBar(context),
+                _buildFilterBar(context),
             // Only show category tabs if not viewing a specific specialty
             if (!viewingSpecificSpecialty)
                   _buildCategoryTabs(context),
@@ -626,44 +626,58 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     }
 
     return Container(
-      padding: EdgeInsets.fromLTRB(width * 0.05, height * 0.015, width * 0.05, height * 0.015),
+      padding: EdgeInsets.fromLTRB(width * 0.05, height * 0.02, width * 0.05, height * 0.02),
       decoration: BoxDecoration(
         color: const Color(0xFF3366CC),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
           GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
+            onTap: () => Navigator.pop(context),
+            child: Container(
               padding: EdgeInsets.all(width * 0.02),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(width * 0.03),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
                   ),
-              child: Icon(
-                    LucideIcons.arrowLeft,
-                    color: Colors.white,
-                size: width * 0.05,
-                  ),
-                ),
+                ],
               ),
+              child: Icon(
+                LucideIcons.arrowLeft,
+                color: Colors.white,
+                size: width * 0.05,
+              ),
+            ),
+          ),
           SizedBox(width: width * 0.03),
           Expanded(
             child: Row(
               children: [
                 Flexible(
-            child: Text(
-              headerTitle,
-            style: GoogleFonts.poppins(
+                  child: Text(
+                    headerTitle,
+                    style: GoogleFonts.poppins(
                       fontSize: width * 0.045,
-                fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                     overflow: TextOverflow.ellipsis,
-          ),
-          ),
+                  ),
+                ),
                 if (selectedGender != null && genderIconTemp != null)
-          Container(
+                  Container(
                     margin: EdgeInsets.only(left: width * 0.02),
                     padding: EdgeInsets.symmetric(
                       horizontal: width * 0.02, 
@@ -672,6 +686,13 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                     decoration: BoxDecoration(
                       color: genderColor.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(width * 0.03),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -696,23 +717,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
               ],
             ),
           ),
-          Container(
-            padding: EdgeInsets.all(width * 0.02),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(width * 0.03),
-            ),
-            child: InkWell(
-              onTap: () {
-                _showFilterDialog();
-              },
-              child: Icon(
-                Icons.filter_list,
-                color: Colors.white,
-                size: width * 0.05,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -725,49 +729,172 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     final double height = screenSize.height;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(width * 0.05, height * 0.015, width * 0.05, height * 0.015),
+      padding: EdgeInsets.fromLTRB(width * 0.05, height * 0.02, width * 0.05, height * 0.02),
       decoration: BoxDecoration(
         color: const Color(0xFF3366CC),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(width * 0.075),
           bottomRight: Radius.circular(width * 0.075),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-          borderRadius: BorderRadius.circular(width * 0.03),
-                boxShadow: [
-                  BoxShadow(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(width * 0.05),
+          boxShadow: [
+            BoxShadow(
               color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
+              blurRadius: 10,
               offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
             hintText: "Search doctors...",
             hintStyle: GoogleFonts.poppins(
               fontSize: width * 0.035,
               color: Colors.grey.shade400,
             ),
-            prefixIcon: Icon(LucideIcons.search, color: Colors.grey.shade600, size: width * 0.045),
+            prefixIcon: Icon(LucideIcons.search, color: const Color(0xFF3366CC), size: width * 0.045),
             suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                  icon: Icon(LucideIcons.x, size: width * 0.045),
-                        onPressed: () {
-                          _searchController.clear();
-                        },
-                      ) 
-                    : null,
-                  border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: height * 0.015),
+              ? IconButton(
+                  icon: Icon(LucideIcons.x, size: width * 0.045, color: Colors.grey.shade500),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                ) 
+              : null,
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(vertical: height * 0.015, horizontal: width * 0.02),
+            fillColor: Colors.white,
+            filled: true,
           ),
           style: GoogleFonts.poppins(
             fontSize: width * 0.035,
-                ),
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterBar(BuildContext context) {
+    // Get screen dimensions for responsive sizing
+    final Size screenSize = MediaQuery.of(context).size;
+    final double width = screenSize.width;
+    final double height = screenSize.height;
+
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: height * 0.015, horizontal: width * 0.02),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3366CC).withOpacity(0.95),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            SizedBox(width: width * 0.03),
+            
+            // Rating filter
+            _buildQuickFilterChip(
+              context: context,
+              icon: Icons.star,
+              label: selectedRating == null ? "Rating" : "$selectedRating Rating",
+              isActive: selectedRating != null,
+              onTap: () {
+                _showRatingFilterSheet();
+              },
+            ),
+            
+            SizedBox(width: width * 0.02),
+            
+            // Gender filter
+            _buildQuickFilterChip(
+              context: context,
+              icon: selectedGender == "Male" 
+                ? Icons.male 
+                : selectedGender == "Female" 
+                  ? Icons.female 
+                  : Icons.person,
+              label: selectedGender ?? "Gender",
+              isActive: selectedGender != null,
+              onTap: () {
+                _showGenderFilterSheet();
+              },
+            ),
+            
+            SizedBox(width: width * 0.02),
+            
+            // City filter - only show if user's city is available
+            if (userCity != null)
+              _buildQuickFilterChip(
+                context: context,
+                icon: LucideIcons.mapPin,
+                label: showOnlyInMyCity ? "In $userCity" : "City",
+                isActive: showOnlyInMyCity,
+                onTap: () {
+                  setState(() {
+                    showOnlyInMyCity = !showOnlyInMyCity;
+                    _applyFilters();
+                  });
+                },
+              ),
+              
+            SizedBox(width: width * 0.02),
+            
+            // Price sorting
+            _buildQuickFilterChip(
+              context: context,
+              icon: sortByPriceLowToHigh ? LucideIcons.arrowDown : LucideIcons.arrowUp,
+              label: sortByPriceLowToHigh ? "Price: Low to High" : "Price: High to Low",
+              isActive: true,
+              onTap: () {
+                setState(() {
+                  sortByPriceLowToHigh = !sortByPriceLowToHigh;
+                  _applyFilters();
+                });
+              },
+            ),
+            
+            SizedBox(width: width * 0.02),
+            
+            // Clear all filters
+            if (selectedRating != null || selectedGender != null || showOnlyInMyCity)
+              _buildQuickFilterChip(
+                context: context,
+                icon: LucideIcons.x,
+                label: "Clear All",
+                isActive: true,
+                backgroundColor: Colors.red.shade400,
+                onTap: () {
+                  setState(() {
+                    selectedRating = null;
+                    selectedGender = null;
+                    showOnlyInMyCity = false;
+                    _applyFilters();
+                  });
+                },
+              ),
+              
+            SizedBox(width: width * 0.03),
+          ],
         ),
       ),
     );
@@ -781,54 +908,60 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     
     return Container(
       height: height * 0.06,
-      margin: EdgeInsets.only(top: height * 0.012),
-              child: ListView.builder(
+      margin: EdgeInsets.only(top: height * 0.015, bottom: height * 0.01),
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: width * 0.04),
         itemCount: _categories.length,
-                itemBuilder: (context, index) {
+        itemBuilder: (context, index) {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: width * 0.012),
             child: GestureDetector(
-                    onTap: () {
-              setState(() {
-                _selectedCategoryIndex = index;
-              });
+              onTap: () {
+                setState(() {
+                  _selectedCategoryIndex = index;
+                });
                 // Call the asynchronous filter method
                 _applyFilters();
-            },
-            child: Container(
+              },
+              child: Container(
                 padding: EdgeInsets.symmetric(horizontal: width * 0.05),
-              decoration: BoxDecoration(
+                decoration: BoxDecoration(
                   color: _selectedCategoryIndex == index
                       ? const Color(0xFF3366CC)
                       : const Color(0xFFF5F7FF),
                   borderRadius: BorderRadius.circular(width * 0.05),
-                boxShadow: _selectedCategoryIndex == index
-                    ? [
-                        BoxShadow(
+                  boxShadow: _selectedCategoryIndex == index
+                      ? [
+                          BoxShadow(
                             color: const Color(0xFF3366CC).withOpacity(0.3),
-                            blurRadius: 4,
+                            blurRadius: 5,
                             offset: const Offset(0, 2),
-                        ),
-                      ]
-                      : null,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _categories[index],
-                style: GoogleFonts.poppins(
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _categories[index],
+                  style: GoogleFonts.poppins(
                     fontSize: width * 0.035,
-                  fontWeight: FontWeight.w500,
-                  color: _selectedCategoryIndex == index
-                      ? Colors.white
+                    fontWeight: FontWeight.w500,
+                    color: _selectedCategoryIndex == index
+                        ? Colors.white
                         : Colors.grey.shade600,
                   ),
                 ),
               ),
-                    ),
-                  );
-                },
+            ),
+          );
+        },
       ),
     );
   }
@@ -885,9 +1018,10 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
         borderRadius: BorderRadius.circular(width * 0.04),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 12,
             offset: const Offset(0, 5),
+            spreadRadius: 1,
           ),
         ],
         border: Border.all(
@@ -899,176 +1033,307 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(width * 0.04),
-      onTap: () {
+          onTap: () {
             // Navigate to appointment booking
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AppointmentBookingFlow(
-              preSelectedDoctor: doctor,
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AppointmentBookingFlow(
+                  preSelectedDoctor: doctor,
                   specialty: doctor["specialty"],
-            ),
-          ),
-        );
-      },
-          child: Padding(
-            padding: EdgeInsets.all(width * 0.04),
-              child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                Container(
-                  width: width * 0.2,
-                  height: width * 0.2,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: AssetImage(doctor["image"]),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
                 ),
-                SizedBox(width: width * 0.04),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Doctor info section
+              Padding(
+                padding: EdgeInsets.all(width * 0.04),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Doctor image with availability indicator
+                    Stack(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                doctor["name"],
-                                style: GoogleFonts.poppins(
-                                fontSize: width * 0.04,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                        Container(
+                          width: width * 0.2,
+                          height: width * 0.2,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              image: AssetImage(doctor["image"]),
+                              fit: BoxFit.cover,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
                               ),
-                              overflow: TextOverflow.ellipsis,
+                            ],
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
                             ),
                           ),
-                          if (isAvailable) // Check if doctor is available
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: width * 0.02, 
-                                vertical: height * 0.004
-                              ),
+                        ),
+                        if (isAvailable)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: width * 0.04,
+                              height: width * 0.04,
                               decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(width * 0.03),
+                                color: Colors.green,
+                                shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Colors.green.shade200,
-                                  width: 1,
+                                  color: Colors.white,
+                                  width: 1.5,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: width * 0.015,
-                                    height: width * 0.015,
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      shape: BoxShape.circle,
-                                    ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 1),
                                   ),
-                                  SizedBox(width: width * 0.01),
-                                  Text(
-                                    "Online",
-                                style: GoogleFonts.poppins(
-                                      fontSize: width * 0.025,
-                                  fontWeight: FontWeight.w500,
-                                      color: Colors.green,
-                                    ),
-                                ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      SizedBox(height: height * 0.004),
-                      Row(
-                        children: [
-                        Text(
-                          doctor["specialty"],
-                          style: GoogleFonts.poppins(
-                              fontSize: width * 0.035,
-                            color: Colors.grey.shade600,
                           ),
-                        ),
-                          SizedBox(width: width * 0.02),
-                          // Display gender
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: width * 0.015, 
-                              vertical: height * 0.002
-                            ),
-                            decoration: BoxDecoration(
-                              color: genderColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(width * 0.03),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  genderIcon,
-                                  size: width * 0.03,
-                                  color: genderColor,
-                                ),
-                                SizedBox(width: width * 0.01),
-                                Text(
-                                  gender,
+                      ],
+                    ),
+                    SizedBox(width: width * 0.04),
+                    
+                    // Doctor details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Name and availability badge
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  doctor["name"],
                                   style: GoogleFonts.poppins(
-                                    fontSize: width * 0.025,
-                                    fontWeight: FontWeight.w500,
-                                    color: genderColor,
+                                    fontSize: width * 0.042,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                    height: 1.3,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isAvailable)
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: width * 0.02, 
+                                    vertical: height * 0.004
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(width * 0.03),
+                                    border: Border.all(
+                                      color: Colors.green.shade200,
+                                      width: 1,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.green.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: width * 0.015,
+                                        height: width * 0.015,
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      SizedBox(width: width * 0.01),
+                                      Text(
+                                        "Online",
+                                        style: GoogleFonts.poppins(
+                                          fontSize: width * 0.025,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.green,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: height * 0.008),
+                          
+                          // Specialty and gender row
+                          Row(
+                            children: [
+                              // Specialty pill
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: width * 0.02, 
+                                  vertical: height * 0.003
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF3366CC).withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(width * 0.05),
+                                ),
+                                child: Text(
+                                  doctor["specialty"],
+                                  style: GoogleFonts.poppins(
+                                    fontSize: width * 0.032,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF3366CC),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: width * 0.02),
+                              
+                              // Gender pill
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: width * 0.015, 
+                                  vertical: height * 0.003
+                                ),
+                                decoration: BoxDecoration(
+                                  color: gender == "Male" ? Colors.blue.withOpacity(0.1) : 
+                                         gender == "Female" ? Colors.pink.withOpacity(0.1) : 
+                                         Colors.grey.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(width * 0.03),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      genderIcon,
+                                      size: width * 0.03,
+                                      color: gender == "Male" ? Colors.blue : 
+                                             gender == "Female" ? Colors.pink : 
+                                             Colors.grey,
+                                    ),
+                                    SizedBox(width: width * 0.01),
+                                    Text(
+                                      gender,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: width * 0.025,
+                                        fontWeight: FontWeight.w500,
+                                        color: gender == "Male" ? Colors.blue : 
+                                               gender == "Female" ? Colors.pink : 
+                                               Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          SizedBox(height: height * 0.01),
+                          
+                          // Rating and experience row
+                          Row(
+                            children: [
+                              _buildInfoItem(
+                                context, 
+                                Icons.star_rounded,
+                                ratingStr,
+                                Colors.amber,
+                                withBackground: true
+                              ),
+                              SizedBox(width: width * 0.03),
+                              _buildInfoItem(
+                                context, 
+                                LucideIcons.briefcase,
+                                experienceStr,
+                                const Color(0xFF3366CC)
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      SizedBox(height: height * 0.008),
-                        Row(
-                          children: [
-                          _buildRatingBar(context, ratingStr),
-                          SizedBox(width: width * 0.04),
-                          Icon(
-                              LucideIcons.briefcase,
-                            color: const Color(0xFF3366CC),
-                            size: width * 0.04,
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Price and location section
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(width * 0.04),
+                    bottomRight: Radius.circular(width * 0.04),
+                  ),
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.grey.shade200,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: width * 0.04,
+                  vertical: height * 0.015,
+                ),
+                child: Row(
+                  children: [
+                    // Price container
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: width * 0.025, 
+                        vertical: height * 0.006
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(width * 0.02),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.1),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
                           ),
-                          SizedBox(width: width * 0.01),
-                          Text(
-                            experienceStr,
-                            style: GoogleFonts.poppins(
-                              fontSize: width * 0.035,
-                              color: Colors.grey.shade600,
-                            ),
-                            ),
-                          ],
-                        ),
-                      SizedBox(height: height * 0.008),
-                        Row(
-                          children: [
-                            Icon(
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
                             LucideIcons.banknote,
                             color: Colors.green.shade600,
-                            size: width * 0.04,
+                            size: width * 0.035,
                           ),
                           SizedBox(width: width * 0.01),
                           Text(
                             fee,
                             style: GoogleFonts.poppins(
-                              fontSize: width * 0.035,
-                              fontWeight: FontWeight.w500,
+                              fontSize: width * 0.032,
+                              fontWeight: FontWeight.w600,
                               color: Colors.green.shade700,
                             ),
                           ),
-                          Spacer(),
-                            Icon(
-                              LucideIcons.mapPin,
+                        ],
+                      ),
+                    ),
+                    
+                    // Location section
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            LucideIcons.mapPin,
                             color: isInUserCity ? Colors.blue.shade600 : Colors.orange.shade600,
-                            size: width * 0.04,
+                            size: width * 0.035,
                           ),
                           SizedBox(width: width * 0.01),
                           Flexible(
@@ -1076,13 +1341,14 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Flexible(
-                              child: Text(
-                              location,
-                                style: GoogleFonts.poppins(
-                                      fontSize: width * 0.035,
-                                  color: Colors.grey.shade600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                                  child: Text(
+                                    location,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: width * 0.03,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                                 if (isInUserCity)
@@ -1103,20 +1369,62 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
                                         fontWeight: FontWeight.w500,
                                         color: Colors.blue.shade700,
                                       ),
-                              ),
-                            ),
-                          ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  // Helper method to build consistent info items
+  Widget _buildInfoItem(
+    BuildContext context, 
+    IconData icon, 
+    String text, 
+    Color color, 
+    {bool withBackground = false}
+  ) {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double width = screenSize.width;
+    
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: withBackground ? width * 0.02 : 0, 
+        vertical: withBackground ? width * 0.005 : 0
+      ),
+      decoration: BoxDecoration(
+        color: withBackground ? color.withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(width * 0.02),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: width * 0.04,
+          ),
+          SizedBox(width: width * 0.01),
+          Text(
+            text,
+            style: GoogleFonts.poppins(
+              fontSize: width * 0.033,
+              fontWeight: withBackground ? FontWeight.w600 : FontWeight.w500,
+              color: withBackground ? color : Colors.grey.shade700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1137,24 +1445,7 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     // Format to one decimal place for display
     String displayRating = rating.toStringAsFixed(1);
     
-    return Row(
-      children: [
-        Text(
-          displayRating,
-          style: GoogleFonts.poppins(
-            fontSize: width * 0.035,
-            fontWeight: FontWeight.w600,
-            color: Colors.amber.shade800,
-          ),
-        ),
-        SizedBox(width: width * 0.01),
-        Icon(
-          Icons.star,
-          color: Colors.amber,
-          size: width * 0.04,
-        ),
-      ],
-    );
+    return _buildInfoItem(context, Icons.star_rounded, displayRating, Colors.amber, withBackground: true);
   }
 
   void _showFilterDialog() {
@@ -1413,111 +1704,6 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
     );
   }
 
-  // New widget for quick filter options
-  Widget _buildFilterBar(BuildContext context) {
-    // Get screen dimensions for responsive sizing
-    final Size screenSize = MediaQuery.of(context).size;
-    final double width = screenSize.width;
-    final double height = screenSize.height;
-
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: height * 0.01),
-      color: const Color(0xFF3366CC),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: [
-            SizedBox(width: width * 0.05),
-            
-            // Rating filter
-            _buildQuickFilterChip(
-              context: context,
-              icon: Icons.star,
-              label: selectedRating == null ? "Rating" : "$selectedRating Rating",
-              isActive: selectedRating != null,
-              onTap: () {
-                _showRatingFilterSheet();
-              },
-            ),
-            
-            SizedBox(width: width * 0.02),
-            
-            // Gender filter
-            _buildQuickFilterChip(
-              context: context,
-              icon: selectedGender == "Male" 
-                ? Icons.male 
-                : selectedGender == "Female" 
-                  ? Icons.female 
-                  : Icons.person,
-              label: selectedGender ?? "Gender",
-              isActive: selectedGender != null,
-              onTap: () {
-                _showGenderFilterSheet();
-              },
-            ),
-            
-            SizedBox(width: width * 0.02),
-            
-            // City filter - only show if user's city is available
-            if (userCity != null)
-              _buildQuickFilterChip(
-                context: context,
-                icon: LucideIcons.mapPin,
-                label: showOnlyInMyCity ? "In $userCity" : "City",
-                isActive: showOnlyInMyCity,
-                onTap: () {
-                  setState(() {
-                    showOnlyInMyCity = !showOnlyInMyCity;
-                    _applyFilters();
-                  });
-                },
-              ),
-              
-            SizedBox(width: width * 0.02),
-            
-            // Price sorting
-            _buildQuickFilterChip(
-              context: context,
-              icon: sortByPriceLowToHigh ? LucideIcons.arrowDown : LucideIcons.arrowUp,
-              label: sortByPriceLowToHigh ? "Price: Low to High" : "Price: High to Low",
-              isActive: true,
-              onTap: () {
-                setState(() {
-                  sortByPriceLowToHigh = !sortByPriceLowToHigh;
-                  _applyFilters();
-                });
-              },
-            ),
-            
-            SizedBox(width: width * 0.02),
-            
-            // Clear all filters
-            if (selectedRating != null || selectedGender != null || showOnlyInMyCity)
-              _buildQuickFilterChip(
-                context: context,
-                icon: LucideIcons.x,
-                label: "Clear All",
-                isActive: true,
-                backgroundColor: Colors.red.shade400,
-                onTap: () {
-                  setState(() {
-                    selectedRating = null;
-                    selectedGender = null;
-                    showOnlyInMyCity = false;
-                    _applyFilters();
-                  });
-                },
-              ),
-              
-            SizedBox(width: width * 0.05),
-          ],
-        ),
-      ),
-    );
-  }
-
   // Widget for individual filter chip in the filter bar
   Widget _buildQuickFilterChip({
     required BuildContext context,
@@ -1536,14 +1722,21 @@ class _DoctorsScreenState extends State<DoctorsScreen> {
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: width * 0.025,
-          vertical: height * 0.007,
+          horizontal: width * 0.03,
+          vertical: height * 0.008,
         ),
         decoration: BoxDecoration(
           color: isActive 
               ? (backgroundColor ?? Colors.white) 
-              : Colors.white.withOpacity(0.2),
+              : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(width * 0.05),
+          boxShadow: isActive ? [
+            BoxShadow(
+              color: (backgroundColor ?? Colors.white).withOpacity(0.3),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ] : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
